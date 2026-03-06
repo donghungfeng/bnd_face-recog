@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Chấm Công (Log)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #00ff88; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; border-color: rgba(255,255,255,0.1); }
+        body { font-family: 'Roboto', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        header { text-align: center; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto 20px auto; }
+        h1 { font-family: 'Orbitron', sans-serif; color: var(--primary); margin: 0; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+        
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card); padding: 20px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.3); overflow-x: auto; }
+        
+        button.refresh-btn { background: #334155; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-family: 'Orbitron', sans-serif; font-weight: bold; transition: 0.2s; }
+        button.refresh-btn:hover { background: var(--primary); color: #000; }
+        
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 15px 12px; border-bottom: 1px solid var(--border-color); }
+        th { color: var(--primary); font-family: 'Orbitron', sans-serif; font-size: 0.9rem; background: rgba(255,255,255,0.02); }
+        
+        .time-col { color: #94a3b8; font-family: monospace; font-size: 0.95rem; }
+        .name-col { font-weight: bold; color: white; }
+        .file-path { font-size: 0.8rem; color: #64748b; font-family: monospace; }
+        
+        tr:hover { background: rgba(255,255,255,0.02); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>NHẬT KÝ CHẤM CÔNG</h1>
+        <button class="refresh-btn" onclick="fetchAttendance()">🔄 LÀM MỚI</button>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>THỜI GIAN (LOG)</th>
+                        <th>MÃ NV</th>
+                        <th>TÊN NHÂN VIÊN</th>
+                        <th>FILE BẰNG CHỨNG (LƯU TRỮ)</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody">
+                    <tr><td colspan="4" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000/api/attendance?limit=100";
+
+        // Hàm format thời gian ISO sang chuẩn Việt Nam
+        function formatDateTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('vi-VN', { 
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+        }
+
+        async function fetchAttendance() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                const tbody = document.getElementById('logTableBody');
+                
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Chưa có dữ liệu chấm công.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                data.forEach(log => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="time-col">${formatDateTime(log.check_in_time)}</td>
+                            <td><span style="background: rgba(0, 255, 136, 0.1); color: var(--primary); padding: 4px 8px; border-radius: 5px;">${log.username}</span></td>
+                            <td class="name-col">${log.full_name}</td>
+                            <td class="file-path">${log.image_path}</td>
+                        </tr>
+                    `;
+                });
+            } catch (err) { 
+                console.error(err); 
+                document.getElementById('logTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ff4444;">Lỗi mất kết nối máy chủ!</td></tr>';
+            }
+        }
+
+        // Tự động load dữ liệu
+        fetchAttendance();
+        
+        // Tự động refresh mỗi 30 giây
+        setInterval(fetchAttendance, 30000);
+    </script>
+</body>
+</html>

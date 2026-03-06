@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Bảng Tính Lương{% endblock %}
+{% block page_title %}Bảng Lương Tổng Hợp (Kế Toán){% endblock %}
+
+{% block extra_css %}
+<style>
+    /* THANH CÔNG CỤ TRÊN 1 DÒNG NGANG */
+    .filter-bar { 
+        background: var(--bg-card); padding: 15px 20px; border-radius: 12px; 
+        border: 1px solid var(--border); margin-bottom: 20px; 
+        display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; 
+        align-items: center; gap: 20px; overflow-x: auto; 
+    }
+    .filter-bar::-webkit-scrollbar { height: 6px; }
+    .filter-bar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    
+    .filter-group { display: flex !important; align-items: center; gap: 10px; white-space: nowrap; }
+    .filter-bar label { margin: 0; font-weight: 600; color: var(--text-main); white-space: nowrap; }
+    .filter-bar input { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-family: 'Nunito'; outline: none; width: auto !important; min-width: 150px; }
+    .filter-bar input:focus { border-color: var(--primary); }
+    
+    .btn-export { 
+        background: #10b981; color: white; border: none; padding: 10px 20px; 
+        border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        white-space: nowrap !important; flex-shrink: 0 !important; margin-left: auto !important;
+    }
+    .btn-export:hover { background: #059669; }
+
+    /* ĐỊNH DẠNG BẢNG LƯƠNG */
+    .table-card { background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.02);}
+    table { width: 100%; border-collapse: collapse; text-align: right; white-space: nowrap; } 
+    th, td { padding: 12px 15px; border-bottom: 1px solid var(--border); }
+    th { background: #f8fafc; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; } 
+    tr:hover { background: #f1f5f9; }
+    
+    .money { font-family: 'Orbitron', monospace; font-weight: 600; }
+    .net-salary { color: #16a34a; font-weight: 800; font-size: 1.1rem; }
+    .deduction { color: #dc2626; }
+    .hours { color: #0284c7; font-weight: bold; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <label style="font-weight: bold; color: var(--text-main);">📅 Chọn tháng tính lương:</label>
+        <input type="month" id="monthSelect" onchange="fetchPayroll()">
+        <button class="btn-export" onclick="window.print()">🖨️ In Bảng Lương</button>
+    </div>
+    <br>
+    
+</div>
+
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th>MÃ NV</th>
+                <th>HỌ VÀ TÊN</th>
+                <th>LƯƠNG/GIỜ</th>
+                <th>TỔNG GIỜ CÔNG</th>
+                <th>PHỤ CẤP</th>
+                <th>PHẠM QUY (PHÚT)</th>
+                <th>KHẤU TRỪ</th>
+                <th>THỰC LÃNH</th>
+            </tr>
+        </thead>
+        <tbody id="payrollTableBody">
+            <tr><td colspan="8" style="text-align: center;">Đang tính toán dữ liệu...</td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const today = new Date();
+    document.getElementById('monthSelect').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+    // Hàm format Tiền tệ VNĐ
+    const formatMoney = (amount) => {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    };
+
+    async function fetchPayroll() {
+        const monthVal = document.getElementById('monthSelect').value;
+        if (!monthVal) return;
+        const [year, month] = monthVal.split('-');
+
+        const tbody = document.getElementById('payrollTableBody');
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Đang phân tích AI và tính toán...</td></tr>';
+
+        try {
+            const res = await fetch(`/api/payroll?month=${parseInt(month)}&year=${year}`);
+            const data = await res.json();
+            
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Không có dữ liệu chấm công tháng này.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            data.forEach(emp => {
+                const totalViolations = emp.total_late + emp.total_early;
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${emp.username}</strong></td>
+                        <td>${emp.full_name}<br><small style="color:var(--text-muted)">${emp.department || ''}</small></td>
+                        <td class="money" style="color:#64748b">${formatMoney(emp.hourly_rate)}</td>
+                        <td class="hours">${emp.total_hours}h</td>
+                        <td class="money">${formatMoney(emp.allowance)}</td>
+                        <td><span style="color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold;">${totalViolations}p</span></td>
+                        <td class="money deduction">-${formatMoney(emp.deductions)}</td>
+                        <td class="money net-salary">${formatMoney(emp.net_salary)}</td>
+                    </tr>
+                `;
+            });
+        } catch (err) {
+            console.error(err);
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Lỗi kết nối Server!</td></tr>';
+        }
+    }
+
+    fetchPayroll();
+</script>
+{% endblock %}

@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Lịch Chấm Công{% endblock %}
+{% block page_title %}Lịch Trình Cá Nhân{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 1. TỐI ƯU THANH CÔNG CỤ TRÊN 1 DÒNG NGANG */
+    .filter-bar { 
+        background: var(--bg-card); 
+        padding: 12px 20px; 
+        border-radius: 12px; 
+        border: 1px solid var(--border); 
+        margin-bottom: 15px; 
+        display: flex; 
+        flex-wrap: nowrap; /* ĐIỂM MẤU CHỐT: Ép tuyệt đối không được rớt dòng */
+        justify-content: space-between; 
+        align-items: center; 
+        gap: 15px;
+        overflow-x: auto; /* Nếu màn hình siêu bé, cho phép lướt ngang chứ không bẻ dòng */
+    }
+    
+    /* Làm đẹp thanh cuộn ngang (nếu xuất hiện) */
+    .filter-bar::-webkit-scrollbar { height: 6px; }
+    .filter-bar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    .filter-group { 
+        display: flex; 
+        flex-wrap: nowrap; /* Ép không xuống dòng */
+        gap: 20px; 
+        align-items: center; 
+    }
+    
+    .filter-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap; /* ĐIỂM MẤU CHỐT: Không cho chữ "Nhân viên:" bị tách đôi */
+    }
+    
+    .filter-bar label { margin: 0; font-weight: 600; color: var(--text-main); }
+    
+    .filter-bar select, .filter-bar input { 
+        padding: 6px 12px; 
+        border-radius: 6px; 
+        border: 1px solid var(--border); 
+        font-family: 'Nunito'; 
+        font-size: 0.9rem;
+        outline: none;
+        max-width: 250px; /* Giữ select box không bị phình to quá mức */
+    }
+    .filter-bar select:focus, .filter-bar input:focus { border-color: var(--primary); }
+
+    /* Nút bấm gọn gàng */
+    .btn-action { 
+        background: var(--primary); color: white; border: none; 
+        padding: 8px 16px; border-radius: 6px; font-weight: bold; 
+        cursor: pointer; transition: 0.2s; font-size: 0.9rem;
+        display: flex; align-items: center; gap: 5px;
+        white-space: nowrap; 
+        flex-shrink: 0; 
+        
+        /* THÊM DÒNG NÀY ĐỂ ĐẨY NÚT SANG PHẢI */
+        margin-left: auto; 
+    }
+    .btn-action:hover { background: #3751c9; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(67, 97, 238, 0.2); }
+
+    /* 2. TỐI ƯU LƯỚI LỊCH NHỎ GỌN */
+    .calendar-wrapper { 
+        background: var(--bg-card); padding: 15px; border-radius: 12px; border: 1px solid var(--border); 
+    }
+    .calendar-header { 
+        display: grid; grid-template-columns: repeat(7, 1fr); 
+        text-align: center; font-weight: bold; color: var(--text-muted); 
+        margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase;
+    }
+    .calendar-grid { 
+        display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; /* Thu hẹp khoảng cách ô */
+    }
+    .cal-day { 
+        border: 1px solid var(--border); border-radius: 8px; 
+        min-height: 85px; /* Giảm chiều cao ô */
+        padding: 6px;     /* Giảm khoảng trắng bên trong */
+        background: #fff; display: flex; flex-direction: column; gap: 3px; 
+        transition: 0.2s;
+    }
+    .cal-day:hover { border-color: #cbd5e1; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+    .cal-day.empty { background: transparent; border: none; box-shadow: none; }
+    .cal-day.today { border: 2px solid var(--primary); background: #f0f4ff; }
+    
+    .day-number { 
+        font-weight: 700; color: var(--text-main); font-size: 0.9rem; 
+        align-self: flex-end; margin-bottom: 2px;
+    }
+    
+    /* 3. TỐI ƯU BADGE THÔNG TIN TRONG Ô */
+    .badge { 
+        font-size: 0.7rem; /* Chữ nhỏ lại */
+        padding: 2px 6px; 
+        border-radius: 4px; 
+        font-weight: 700; text-align: left; 
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .badge-in { background: #e0f2fe; color: #0284c7; }
+    .badge-out { background: #fce7f3; color: #c026d3; }
+    .badge-miss { background: #f1f5f9; color: #94a3b8; font-weight: 600; font-style: normal; }
+    .badge-work { background: #dcfce7; color: #16a34a; margin-top: auto; border-top: 1px solid #bbf7d0;} 
+    .badge-leave { background: #fff3cd; color: #d35400; border-left: 3px solid #f39c12; white-space: normal; line-height: 1.2;} 
+
+    /* Modal giữ nguyên nhưng tinh chỉnh nhẹ */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.3s; }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal-content { background: white; width: 450px; padding: 25px; border-radius: 12px; transform: translateY(-20px); transition: 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+    .modal-overlay.active .modal-content { transform: translateY(0); }
+
+    /* Responsive cho màn hình nhỏ */
+    @media (max-width: 900px) {
+        .filter-bar { flex-direction: column; align-items: stretch; gap: 15px; }
+        .filter-group { flex-wrap: wrap; }
+        .btn-action { justify-content: center; }
+        .cal-day { min-height: 75px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <div class="filter-group">
+        <div class="filter-item">
+            <label>👤 Nhân viên:</label>
+            <select id="empSelect" onchange="renderCalendar()">
+                <option value="">-- Chọn nhân viên --</option>
+            </select>
+        </div>
+        <div class="filter-item">
+            <label>📅 Tháng:</label>
+            <input type="month" id="monthSelect" onchange="renderCalendar()">
+        </div>
+
+        <div class="filter-item">
+            <label></label>
+            <button class="btn-action" onclick="openLeaveModal()">✈️ Đăng ký Nghỉ phép/Công tác</button>
+
+        </div>
+    </div>
+</div>
+<br>
+
+<div class="calendar-wrapper">
+    <div class="calendar-header">
+        <div>Thứ 2</div><div>Thứ 3</div><div>Thứ 4</div><div>Thứ 5</div>
+        <div>Thứ 6</div><div>Thứ 7</div><div>Chủ Nhật</div>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+</div>
+
+<div class="modal-overlay" id="leaveModal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; color:var(--primary);">Đăng Ký Nghỉ Phép / Công Tác</h3>
+        <div class="form-group">
+            <label>Ngày nghỉ/công tác*</label>
+            <input type="date" id="leaveDate" required>
+        </div>
+        <div class="form-group">
+            <label>Lý do (Ốm, Việc riêng, Gặp khách hàng...)*</label>
+            <input type="text" id="leaveReason" placeholder="Nhập lý do..." required>
+        </div>
+        <div class="form-group">
+            <label>Người xác nhận (Trưởng phòng/HR)</label>
+            <input type="text" id="leaveApprover" placeholder="VD: Anh Tuấn">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button class="btn-action" style="background:#e2e8f0; color:#475569;" onclick="closeLeaveModal()">Hủy</button>
+            <button class="btn-action" onclick="submitLeave()">Gửi Đơn</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const today = new Date();
+    document.getElementById('monthSelect').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+    async function loadEmployees() {
+        try {
+            const res = await fetch('/api/employees');
+            const data = await res.json();
+            const select = document.getElementById('empSelect');
+            data.forEach(emp => { select.innerHTML += `<option value="${emp.username}">${emp.full_name} (${emp.username})</option>`; });
+            if(data.length > 0) { select.value = data[0].username; renderCalendar(); }
+        } catch (e) { console.error("Lỗi load nhân viên", e); }
+    }
+
+    async function renderCalendar() {
+        const username = document.getElementById('empSelect').value;
+        const monthVal = document.getElementById('monthSelect').value;
+        const grid = document.getElementById('calendarGrid');
+        
+        if (!username || !monthVal) return;
+
+        const [year, month] = monthVal.split('-');
+        try {
+            const res = await fetch(`/api/attendance/calendar?username=${username}&month=${parseInt(month)}&year=${year}`);
+            const apiData = await res.json();
+
+            grid.innerHTML = '';
+            const firstDay = new Date(year, month - 1, 1).getDay();
+            const daysInMonth = new Date(year, month, 0).getDate();
+            let startOffset = firstDay === 0 ? 6 : firstDay - 1;
+
+            for (let i = 0; i < startOffset; i++) grid.innerHTML += `<div class="cal-day empty"></div>`;
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const isToday = (day === today.getDate() && parseInt(month) === today.getMonth() + 1 && parseInt(year) === today.getFullYear());
+                let dayClass = isToday ? 'cal-day today' : 'cal-day';
+                
+                let dayData = apiData[day] || {};
+                let inHtml = dayData.in ? `<div class="badge badge-in">Vào: ${dayData.in}</div>` : `<div class="badge badge-miss">Vào: --:--</div>`;
+                let outHtml = dayData.out ? `<div class="badge badge-out">Ra: ${dayData.out}</div>` : `<div class="badge badge-miss">Ra: --:--</div>`;
+                
+                // Công thực tế
+                let workHtml = dayData.work_time ? `<div class="badge badge-work">⏱ Công: ${dayData.work_time}</div>` : '';
+                
+                // Nghỉ phép
+                let leaveHtml = '';
+                if (dayData.leave) {
+                    leaveHtml = `<div class="badge badge-leave">⛱ ${dayData.leave.reason}<br><small>(${dayData.leave.status})</small></div>`;
+                    inHtml = ''; outHtml = ''; workHtml = '';
+                }
+
+                grid.innerHTML += `
+                    <div class="${dayClass}">
+                        <div class="day-number">${day}</div>
+                        ${leaveHtml}
+                        ${inHtml}
+                        ${outHtml}
+                        ${workHtml}
+                    </div>
+                `;
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    // Modal Handle
+    function openLeaveModal() { document.getElementById('leaveModal').classList.add('active'); }
+    function closeLeaveModal() { document.getElementById('leaveModal').classList.remove('active'); }
+
+    async function submitLeave() {
+        const username = document.getElementById('empSelect').value;
+        if (!username) return alert("Vui lòng chọn nhân viên ở bộ lọc trước!");
+
+        const payload = {
+            username: username,
+            leave_date: document.getElementById('leaveDate').value,
+            reason: document.getElementById('leaveReason').value,
+            approver: document.getElementById('leaveApprover').value
+        };
+
+        if(!payload.leave_date || !payload.reason) return alert("Vui lòng nhập đủ thông tin!");
+
+        try {
+            const res = await fetch("/api/leave", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+                alert("Đăng ký thành công!");
+                closeLeaveModal();
+                renderCalendar(); 
+            }
+        } catch(e) { alert("Lỗi kết nối"); }
+    }
+
+    loadEmployees();
+</script>
+{% endblock %}

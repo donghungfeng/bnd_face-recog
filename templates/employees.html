@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Quản Lý Nhân Sự{% endblock %}
+{% block page_title %}Danh Sách & Quản Lý Nhân Sự{% endblock %}
+
+{% block extra_css %}
+<style>
+    .action-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-sm { padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; border: none; cursor: pointer; transition: 0.2s; white-space: nowrap;}
+    .btn-edit { background: #e0f2fe; color: #0284c7; }
+    .btn-edit:hover { background: #bae6fd; }
+    .btn-delete { background: #fee2e2; color: #dc2626; }
+    .btn-delete:hover { background: #fecaca; }
+    .btn-face-del { background: #fef3c7; color: #d97706; }
+    .btn-face-del:hover { background: #fde68a; }
+    
+    .form-edit-mode { border-left: 4px solid #f59e0b !important; }
+    .btn-cancel { background: #e2e8f0; color: #475569; font-weight: bold; border: none; padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; font-size: 1rem; transition: 0.2s; margin-top: 10px;}
+    
+    /* CSS cho thanh Tìm Kiếm */
+    .search-bar { background: #f8fafc; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: flex; gap: 15px; border: 1px solid var(--border); }
+    .search-bar input, .search-bar select { padding: 8px 15px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; flex: 1; font-family: 'Nunito'; }
+    .search-bar input:focus { border-color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid-container">
+    <div class="card" id="formCard">
+        <h3 id="formTitle">+ Thêm Nhân Sự Mới</h3>
+        <form id="empForm">
+            <input type="hidden" id="edit_mode" value="false">
+            <input type="hidden" id="original_username" value="">
+            <div class="form-group"><label>Mã Nhân Sự (Username)*</label><input type="text" id="username" required></div>
+            <div class="form-group"><label>Họ và Tên*</label><input type="text" id="full_name" required></div>
+            <div class="form-group"><label>Phòng Ban</label><input type="text" id="department"></div>
+            <div class="form-group"><label>Số điện thoại</label><input type="text" id="phone"></div>
+            <div class="form-group"><label>Ngày sinh</label><input type="date" id="dob"></div>
+            <div class="form-group" id="statusGroup" style="display: none;">
+                <label>Trạng thái</label>
+                <select id="status"><option value="active">Đang làm</option><option value="inactive">Đã nghỉ</option></select>
+            </div>
+            <button type="submit" class="btn-primary" id="submitBtn">LƯU THÔNG TIN</button>
+            <button type="button" class="btn-cancel" id="cancelBtn" style="display: none;" onclick="resetForm()">HỦY SỬA</button>
+        </form>
+    </div>
+
+    <div class="card" style="overflow-x: auto;">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="🔍 Tìm theo Tên hoặc Mã NV..." oninput="filterTable()">
+            <select id="deptFilter" onchange="filterTable()">
+                <option value="">Lọc theo Phòng Ban (Tất cả)</option>
+            </select>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>MÃ NV</th>
+                    <th>HỌ VÀ TÊN</th>
+                    <th>PHÒNG BAN</th>
+                    <th>KHUÔN MẶT</th>
+                    <th>THAO TÁC</th>
+                </tr>
+            </thead>
+            <tbody id="empTableBody"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const API_URL = "/api/employees";
+    let currentEmployees = []; 
+
+    async function fetchEmployees() {
+        const res = await fetch(API_URL);
+        currentEmployees = await res.json();
+        
+        // Cập nhật danh sách Phòng ban cho Filter
+        const depts = [...new Set(currentEmployees.map(e => e.department).filter(d => d))];
+        const deptSelect = document.getElementById('deptFilter');
+        deptSelect.innerHTML = '<option value="">Lọc theo Phòng Ban (Tất cả)</option>';
+        depts.forEach(d => deptSelect.innerHTML += `<option value="${d}">${d}</option>`);
+
+        renderTable(currentEmployees);
+    }
+
+    // Tách riêng hàm Render để phục vụ tính năng Lọc
+    function renderTable(data) {
+        const tbody = document.getElementById('empTableBody');
+        tbody.innerHTML = '';
+        data.forEach(emp => {
+            const faceHtml = emp.has_face 
+                ? `<span style="color:#16a34a; font-weight:bold;">🟢 Đã có</span>` 
+                : `<span style="color:#dc2626; font-weight:bold;">🔴 Chưa có</span>`;
+            
+            const btnDelFace = emp.has_face 
+                ? `<button class="btn-sm btn-face-del" title="Xóa ảnh cũ để chụp lại" onclick="deleteFace('${emp.username}')">📸 Xóa Ảnh</button>` : '';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${emp.username}</strong></td>
+                    <td>${emp.full_name}</td>
+                    <td>${emp.department || '-'}</td>
+                    <td>${faceHtml}</td>
+                    <td>
+                        <div class="action-group">
+                            <button class="btn-sm btn-edit" onclick="editEmployee('${emp.username}')">✏️ Sửa</button>
+                            <button class="btn-sm btn-delete" onclick="deleteEmployee('${emp.username}')">🗑️ Xóa</button>
+                            ${btnDelFace}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // TÍNH NĂNG TÌM KIẾM & LỌC REAL-TIME
+    function filterTable() {
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        const dept = document.getElementById('deptFilter').value;
+        
+        const filtered = currentEmployees.filter(emp => {
+            const matchName = emp.full_name.toLowerCase().includes(keyword) || emp.username.toLowerCase().includes(keyword);
+            const matchDept = dept === "" || emp.department === dept;
+            return matchName && matchDept;
+        });
+        renderTable(filtered);
+    }
+
+    // XÓA KHUÔN MẶT ĐỂ CHỤP LẠI
+    async function deleteFace(username) {
+        if(confirm(`Xóa dữ liệu khuôn mặt của ${username}? Nhân viên sẽ phải ra iPad chụp lại từ đầu.`)) {
+            await fetch('/unregister', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: username}) });
+            alert("Đã xóa ảnh khuôn mặt!");
+            fetchEmployees();
+        }
+    }
+
+    function editEmployee(username) {
+        const emp = currentEmployees.find(e => e.username === username);
+        document.getElementById('edit_mode').value = "true";
+        document.getElementById('original_username').value = emp.username;
+        document.getElementById('formTitle').innerText = `✏️ Cập Nhật: ${emp.full_name}`;
+        document.getElementById('submitBtn').innerText = "CẬP NHẬT";
+        document.getElementById('cancelBtn').style.display = "block";
+        document.getElementById('statusGroup').style.display = "block";
+        document.getElementById('formCard').classList.add('form-edit-mode');
+        document.getElementById('username').value = emp.username;
+        document.getElementById('full_name').value = emp.full_name;
+        document.getElementById('department').value = emp.department || "";
+        document.getElementById('phone').value = emp.phone || "";
+        document.getElementById('status').value = emp.status || "active";
+    }
+
+    function resetForm() {
+        document.getElementById('empForm').reset();
+        document.getElementById('edit_mode').value = "false";
+        document.getElementById('formTitle').innerText = "+ Thêm Nhân Sự Mới";
+        document.getElementById('submitBtn').innerText = "LƯU THÔNG TIN";
+        document.getElementById('cancelBtn').style.display = "none";
+        document.getElementById('statusGroup').style.display = "none";
+        document.getElementById('formCard').classList.remove('form-edit-mode');
+    }
+
+    document.getElementById('empForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const isEditMode = document.getElementById('edit_mode').value === "true";
+        const originalUsername = document.getElementById('original_username').value;
+        const payload = {
+            username: document.getElementById('username').value.trim(),
+            full_name: document.getElementById('full_name').value.trim(),
+            department: document.getElementById('department').value.trim(),
+            phone: document.getElementById('phone').value.trim(),
+            status: isEditMode ? document.getElementById('status').value : "active"
+        };
+        const method = isEditMode ? 'PUT' : 'POST';
+        const url = isEditMode ? `${API_URL}/${originalUsername}` : API_URL;
+        
+        const res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (res.ok) { alert("Lưu thành công!"); resetForm(); fetchEmployees(); }
+    });
+
+    async function deleteEmployee(username) {
+        if (confirm(`Xóa nhân viên ${username}?`)) {
+            await fetch(`${API_URL}/${username}`, { method: 'DELETE' });
+            fetchEmployees();
+        }
+    }
+
+    fetchEmployees();
+</script>
+{% endblock %}

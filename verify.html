@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Face Recognition</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --success: #00ff88;
+            --warning: #ffb800;
+            --error: #ff4444;
+            --bg: #0f172a;
+            --card: #1e293b;
+        }
+
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            background: var(--bg); color: #f8fafc; 
+            margin: 0; padding: 15px;
+            display: flex; flex-direction: column; align-items: center;
+            height: 100dvh; box-sizing: border-box; overflow: hidden;
+        }
+
+        header { width: 100%; max-width: 700px; text-align: center; margin-bottom: 10px; flex-shrink: 0; }
+        h2 { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--primary); margin: 5px 0 15px 0; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
+
+        .info { 
+            font-family: 'Orbitron', sans-serif; font-size: 1rem; padding: 15px; 
+            border-radius: 12px; background: var(--card); border: 1px solid rgba(255,255,255,0.1); 
+            transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; 
+            font-weight: bold;
+        }
+
+        .distance-meter { width: 100%; height: 6px; background: #334155; border-radius: 10px; margin-top: 15px; overflow: hidden; position: relative; }
+        #distanceFill { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease, background 0.3s ease; }
+
+        .main-wrapper { 
+            position: relative; width: 100%; max-width: 700px; 
+            flex: 1; background: #000; border-radius: 15px; overflow: hidden; 
+            border: 2px solid #334155; box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
+        }
+
+        #webcam { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+        .guide-overlay { 
+            position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            pointer-events: none; border: 2px dashed rgba(255,255,255,0.3); 
+            border-radius: 50% / 45%; width: 260px; height: 340px; 
+            transition: all 0.3s; z-index: 5;
+        }
+        .guide-active { border-color: var(--success); box-shadow: 0 0 25px rgba(0, 255, 136, 0.4); border-style: solid; background: rgba(0, 255, 136, 0.05); }
+
+        .scan-bar { position: absolute; width: 100%; height: 3px; background: linear-gradient(to bottom, transparent, var(--primary)); box-shadow: 0 0 15px var(--primary); top: 0; z-index: 5; animation: scan 3s ease-in-out infinite; opacity: 0.6; }
+        @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
+
+        .status-scanning { color: var(--primary); border-color: var(--primary); }
+        .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
+        .status-warning { color: var(--warning); border-color: var(--warning); }
+        .status-err { color: var(--error); border-color: var(--error); background: rgba(255, 68, 68, 0.1); }
+
+        .loader { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ================= BẢNG LỊCH SỬ (HIỂN THỊ CHUẨN 5 NGƯỜI) ================= */
+        .history-container {
+            width: 100%; max-width: 700px; margin-top: 15px; 
+            background: var(--card); border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 15px; padding: 12px; flex-shrink: 0; 
+            box-sizing: border-box;
+        }
+        .history-title {
+            font-family: 'Orbitron', sans-serif; font-size: 0.8rem; color: #94a3b8;
+            margin-bottom: 10px; letter-spacing: 1px; display: flex; align-items: center; gap: 5px;
+        }
+        
+        .history-list {
+            list-style: none; padding: 0; margin: 0; 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 8px; width: 100%;
+        }
+        
+        .history-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+            padding: 10px 5px; background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+            text-align: center; animation: popIn 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .history-item:first-child { 
+            background: rgba(0, 255, 136, 0.15); 
+            border: 1px solid rgba(0, 255, 136, 0.5); 
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+        }
+        
+        .history-time { color: #cbd5e1; font-family: monospace; font-size: 0.75rem; }
+        .history-name { font-weight: bold; color: var(--success); font-size: 0.95rem; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-prob { color: var(--primary); font-size: 0.75rem; background: rgba(0, 242, 255, 0.1); padding: 2px 8px; border-radius: 10px; }
+
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>AI Face Recognition</h2>
+        <div id="resultBox" class="info status-scanning">
+            <div class="loader"></div> ĐANG KHỞI TẠO CAMERA...
+        </div>
+        <div class="distance-meter">
+            <div id="distanceFill"></div>
+        </div>
+    </header>
+    
+    <div class="main-wrapper">
+        <div class="guide-overlay" id="guideCircle"></div>
+        <div class="scan-bar"></div>
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="cropCanvas" style="display:none;"></canvas>
+    </div>
+
+    <div class="history-container">
+        <div class="history-title"><span style="color:var(--success)">●</span> Danh sách chấm công thành công</div>
+        <ul class="history-list" id="historyList"></ul>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const resultBox = document.getElementById('resultBox');
+        const distanceFill = document.getElementById('distanceFill');
+        const guideCircle = document.getElementById('guideCircle');
+        const cropCanvas = document.getElementById('cropCanvas');
+        const historyList = document.getElementById('historyList');
+
+        let lastProcessingTime = 0;
+        let isProcessing = false;
+        let lastDetection = null;
+        let isFaceDetectionRunning = false; // Cờ kiểm soát MediaPipe
+
+        const FACE_MIN_SIZE = 0.30; 
+        const FACE_MAX_SIZE = 0.55;
+        const CENTER_X_MIN = 0.35; 
+        const CENTER_X_MAX = 0.65;
+        const CENTER_Y_MIN = 0.35; 
+        const CENTER_Y_MAX = 0.65;
+
+        const faceDetection = new FaceDetection({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+        });
+
+        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.7 });
+
+        faceDetection.onResults((results) => {
+            isFaceDetectionRunning = false; // Giải phóng cờ để frame tiếp theo được chạy
+
+            if (results.detections.length > 0) {
+                lastDetection = results.detections[0].boundingBox;
+                const faceSize = lastDetection.width;
+                const faceX = lastDetection.xCenter;
+                const faceY = lastDetection.yCenter;
+
+                distanceFill.style.width = (faceSize * 100) + "%";
+
+                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && 
+                                   (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
+
+                if (!isCentered) {
+                    guideCircle.classList.remove('guide-active');
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = `⚠️ HÃY ĐƯA MẶT VÀO GIỮA KHUNG`;
+                    }
+                } 
+                else if (faceSize < FACE_MIN_SIZE) {
+                    guideCircle.classList.remove('guide-active');
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = `⚠️ VUI LÒNG LẠI GẦN CAMERA HƠN`;
+                    }
+                } 
+                else if (faceSize > FACE_MAX_SIZE) {
+                    guideCircle.classList.remove('guide-active');
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = `⚠️ VUI LÒNG ĐỨNG XA RA CHÚT`;
+                    }
+                } 
+                else {
+                    guideCircle.classList.add('guide-active');
+                    const now = Date.now();
+                    
+                    if (!isProcessing && now - lastProcessingTime > 1500) {
+                        sendToAPI();
+                        lastProcessingTime = now;
+                    }
+                }
+            } else {
+                lastDetection = null;
+                distanceFill.style.width = "0%";
+                guideCircle.classList.remove('guide-active');
+                if (!isProcessing) {
+                    resultBox.className = "info status-scanning";
+                    resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
+                }
+            }
+        });
+
+        function captureCroppedFace() {
+            if (!lastDetection) return null;
+
+            const videoW = video.videoWidth;
+            const videoH = video.videoHeight;
+            let { xCenter, yCenter, width, height } = lastDetection;
+
+            const padding = 0.3; 
+            let cropW = width * (1 + padding) * videoW;
+            let cropH = height * (1 + padding) * videoH;
+            
+            let startX = (xCenter * videoW) - (cropW / 2);
+            let startY = (yCenter * videoH) - (cropH / 2);
+
+            startX = Math.max(0, startX);
+            startY = Math.max(0, startY);
+            cropW = Math.min(videoW - startX, cropW);
+            cropH = Math.min(videoH - startY, cropH);
+
+            cropCanvas.width = 224; 
+            cropCanvas.height = 224;
+            const ctx = cropCanvas.getContext('2d');
+            
+            ctx.translate(224, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, startX, startY, cropW, cropH, 0, 0, 224, 224);
+            return cropCanvas.toDataURL('image/jpeg', 0.85);
+        }
+
+        // TỐI ƯU HÓA: Ép khung hình Full-frame xuống tối đa 640px để cứu RAM điện thoại
+        function captureFullFrame() {
+            const tempCanvas = document.createElement('canvas');
+            const maxWidth = 640; 
+            const scale = Math.min(1, maxWidth / video.videoWidth);
+            
+            tempCanvas.width = video.videoWidth * scale;
+            tempCanvas.height = video.videoHeight * scale;
+            const ctx = tempCanvas.getContext('2d');
+            
+            ctx.translate(tempCanvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            return tempCanvas.toDataURL('image/jpeg', 0.7); // Nén mạnh hơn xuống 70%
+        }
+
+        function addHistoryItem(userId, probability) {
+            const timeString = new Date().toLocaleTimeString('vi-VN', { hour12: false, hour: '2-digit', minute: '2-digit', second:'2-digit' });
+            const li = document.createElement('li');
+            li.className = 'history-item';
+            
+            li.innerHTML = `
+                <span class="history-time">${timeString}</span>
+                <span class="history-name" title="${userId}">${userId.toUpperCase()}</span>
+                <span class="history-prob">${probability}</span>
+            `;
+            
+            historyList.prepend(li);
+            if (historyList.children.length > 5) {
+                historyList.removeChild(historyList.lastChild);
+            }
+        }
+
+        async function sendToAPI() {
+            isProcessing = true; // KHÓA GIAO DỊCH
+            resultBox.className = "info status-scanning";
+            resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
+            
+            try {
+                const croppedImage = captureCroppedFace();
+                const fullImage = captureFullFrame();
+                
+                if (!croppedImage || !fullImage) {
+                    isProcessing = false;
+                    return;
+                }
+
+                const API_URL = "https://hrm.benhnhietdoi.vn"; 
+                
+                const response = await fetch(`${API_URL}/recognize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_base64: croppedImage, full_image_base64: fullImage })
+                });
+                
+                const data = await response.json();
+                
+                if (data.recognized) {
+                    resultBox.className = "info status-ok";
+                    resultBox.innerHTML = `✅ XIN CHÀO: ${data.user_id.toUpperCase()}`;
+                    
+                    // Thêm hàm lấy log để hiển thị tên thay vì username (nếu có API)
+                    addHistoryItem(data.user_id, data.match_probability);
+
+                } else {
+                    resultBox.className = "info status-err";
+                    resultBox.innerHTML = `❌ ${data.message.toUpperCase()}`;
+                }
+            } catch (e) {
+                resultBox.className = "info status-err";
+                resultBox.innerHTML = `⚠️ LỖI KẾT NỐI SERVER`;
+            } finally {
+                // TỐI ƯU HÓA: Đảm bảo biến isProcessing luôn được giải phóng sau 1.5 giây dù thành công hay lỗi
+                setTimeout(() => { 
+                    isProcessing = false; 
+                }, 1500);
+            }
+        }
+
+        // TỐI ƯU HÓA: Thay vì setInterval 100ms mù quáng, dùng requestAnimationFrame để đồng bộ với khả năng xử lý của máy
+        async function processVideoFrame() {
+            if (video.readyState >= 2 && !isFaceDetectionRunning) {
+                isFaceDetectionRunning = true;
+                await faceDetection.send({ image: video });
+            }
+            requestAnimationFrame(processVideoFrame);
+        }
+
+        async function startCamera() {
+            try {
+                // Ép camera mở ở độ phân giải lý tưởng, tránh bị điện thoại mở 4K làm đơ máy
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } 
+                });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    processVideoFrame(); // Khởi động vòng lặp thông minh
+                }
+            } catch (err) {
+                resultBox.className = "info status-err";
+                resultBox.innerHTML = "❌ LỖI TRUY CẬP CAMERA";
+            }
+        }
+
+        startCamera();
+    </script>
+</body>
+</html>

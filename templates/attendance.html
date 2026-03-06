@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Bảng Chấm Công{% endblock %}
+{% block page_title %}Nhật Ký & Giải Trình Chấm Công{% endblock %}
+
+{% block extra_css %}
+<style>
+    .refresh-btn { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 15px; cursor: pointer; color: var(--text-main); font-weight: 600; font-family: 'Nunito'; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); float: right; }
+    .refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .thumbnail { width: 45px; height: 45px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+    
+    /* CSS cho các Trạng thái */
+    .time-err { color: #e74c3c; font-weight: bold; }
+    .time-ok { color: #94a3b8; }
+    .badge-explain { background: #fff3cd; color: #f39c12; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; border: 1px solid #ffe69c;}
+    .btn-explain { background: #e74c3c; color: white; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: bold; transition: 0.2s;}
+    .btn-explain:hover { background: #c0392b; }
+
+    /* CSS cho Modal (Popup Giải trình) */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.3s; }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal-content { background: white; width: 400px; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transform: translateY(-20px); transition: 0.3s; }
+    .modal-overlay.active .modal-content { transform: translateY(0); }
+    .modal-content h3 { margin-top: 0; color: var(--primary); }
+    .modal-content textarea { width: 100%; height: 100px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Nunito'; resize: none; box-sizing: border-box; margin-bottom: 15px;}
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+    .btn-cancel { background: #e2e8f0; color: #475569; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;}
+    .btn-submit { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="card" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; padding: 15px 25px;">
+    <div>
+        <h3 style="margin: 0; color: var(--primary); border: none; padding: 0;">Xuất Báo Cáo Chấm Công</h3>
+        <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Tải file CSV (mở bằng Excel) chứa lịch sử quét thẻ và đăng ký nghỉ phép.</p>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="month" id="exportMonth" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); outline: none;">
+<button onclick="downloadReport()" style="background: #10b981; color: white; border: none; padding: 9px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;">📥 Tải Báo Cáo Excel</button>    </div>
+</div>
+<div class="card" style="margin-bottom: 20px;">
+    <button class="refresh-btn" onclick="fetchAttendance()">🔄 Làm mới ngay</button>
+    <h3 style="border: none; padding: 0;">Lịch Sử Chấm Công Mới Nhất</h3>
+    
+    <div style="overflow-x: auto; margin-top: 15px;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ẢNH</th>
+                    <th>THỜI GIAN</th>
+                    <th>NHÂN VIÊN</th>
+                    <th>ĐI MUỘN</th>
+                    <th>VỀ SỚM</th>
+                    <th>TRẠNG THÁI / THAO TÁC</th>
+                </tr>
+            </thead>
+            <tbody id="logTableBody">
+                <tr><td colspan="6" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="explainModal">
+    <div class="modal-content">
+        <h3>📝 Viết Giải Trình</h3>
+        <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">Vui lòng nhập lý do đi muộn / về sớm để nhân sự duyệt.</p>
+        <input type="hidden" id="currentRecordId">
+        <textarea id="explainReason" placeholder="VD: Sáng nay kẹt xe ở ngã tư..."></textarea>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal()">Hủy</button>
+            <button class="btn-submit" onclick="submitExplanation()">Gửi Giải Trình</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const API_URL = "/api/attendance?limit=100";
+
+    function formatDateTime(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleString('vi-VN', { 
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    }
+
+    async function fetchAttendance() {
+        try {
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            const tbody = document.getElementById('logTableBody');
+            
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Chưa có dữ liệu chấm công.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            data.forEach(log => {
+                const imgTag = log.image_path ? `<img src="${log.image_path}" class="thumbnail">` : `<span style="font-size:0.8rem;">Trống</span>`;
+                
+                // Hiển thị Đi muộn / Về sớm
+                const lateHtml = log.late_minutes > 0 ? `<span class="time-err">+${log.late_minutes} phút</span>` : `<span class="time-ok">-</span>`;
+                const earlyHtml = log.early_minutes > 0 ? `<span class="time-err">-${log.early_minutes} phút</span>` : `<span class="time-ok">-</span>`;
+
+                // Logic nút Giải trình
+                let actionHtml = `<span class="time-ok">Hợp lệ</span>`;
+                
+                if (log.late_minutes > 0 || log.early_minutes > 0) {
+                    if (log.explanation_status === "Đã gửi") {
+                        actionHtml = `<span class="badge-explain" title="Lý do: ${log.explanation_reason}">⏳ Đang chờ duyệt</span>`;
+                    } else if (log.explanation_status === "Đã duyệt") {
+                        actionHtml = `<span style="color:#2ecc71; font-weight:bold;">✅ Đã duyệt</span>`;
+                    } else {
+                        actionHtml = `<button class="btn-explain" onclick="openModal(${log.id})">✍️ Giải trình</button>`;
+                    }
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${imgTag}</td>
+                        <td style="color: var(--text-muted); font-weight: 600; font-size: 0.9rem;">${formatDateTime(log.check_in_time)}</td>
+                        <td>
+                            <strong style="color: var(--text-main);">${log.full_name}</strong><br>
+                            <span style="font-size: 0.8rem; color: var(--primary);">#${log.username}</span>
+                        </td>
+                        <td>${lateHtml}</td>
+                        <td>${earlyHtml}</td>
+                        <td>${actionHtml}</td>
+                    </tr>
+                `;
+            });
+        } catch (err) { 
+            console.error(err); 
+        }
+    }
+
+    // Modal Logic
+    const modal = document.getElementById('explainModal');
+    
+    function openModal(id) {
+        document.getElementById('currentRecordId').value = id;
+        document.getElementById('explainReason').value = "";
+        modal.classList.add('active');
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+    }
+
+    async function submitExplanation() {
+        const id = document.getElementById('currentRecordId').value;
+        const reason = document.getElementById('explainReason').value.trim();
+
+        if(!reason) {
+            alert("Vui lòng nhập lý do giải trình!");
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/attendance/explain", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: parseInt(id), reason: reason })
+            });
+
+            if(res.ok) {
+                alert("Gửi giải trình thành công!");
+                closeModal();
+                fetchAttendance(); // Tải lại bảng để thấy trạng thái "Đang chờ duyệt"
+            } else {
+                alert("Có lỗi xảy ra khi gửi!");
+            }
+        } catch (err) {
+            alert("Lỗi kết nối Server");
+        }
+    }
+
+    fetchAttendance();
+    setInterval(fetchAttendance, 15000); 
+
+    const today = new Date();
+    document.getElementById('exportMonth').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+    function downloadReport() {
+        const monthVal = document.getElementById('exportMonth').value;
+        if(!monthVal) return alert("Vui lòng chọn tháng!");
+        
+        const [year, month] = monthVal.split('-');
+        
+        // Mở URL tải file ở cửa sổ mới (Trình duyệt sẽ tự động tải file CSV về)
+        window.location.href = `/api/reports/export?month=${parseInt(month)}&year=${year}`;
+    }
+    
+</script>
+{% endblock %}

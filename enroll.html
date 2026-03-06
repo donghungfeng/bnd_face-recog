@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HỆ THỐNG CHẤM CÔNG AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #007bff;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --warning: #ffb800;
+            --bg: #0f172a;
+            --card: #1e293b;
+        }
+
+        /* Bố cục lấp đầy màn hình iPad */
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            background: var(--bg); color: #f8fafc; 
+            margin: 0; padding: 15px;
+            display: flex; flex-direction: column; align-items: center;
+            height: 100dvh; box-sizing: border-box; overflow: hidden;
+        }
+
+        #toast {
+            position: fixed; top: 20px; right: 20px;
+            padding: 15px 25px; border-radius: 8px;
+            color: white; font-weight: bold; z-index: 1000;
+            transform: translateY(-100px); opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        #toast.show { transform: translateY(0); opacity: 1; }
+
+        header { width: 100%; max-width: 700px; text-align: center; margin-bottom: 10px; flex-shrink: 0; }
+        h2 { font-family: 'Orbitron', sans-serif; color: var(--primary); margin: 0; font-size: 1.2rem; }
+
+        #statusDisplay {
+            width: 100%; max-width: 700px; margin-top: 15px; padding: 12px;
+            background: var(--card); border-radius: 10px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.1); font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem; color: #94a3b8; transition: all 0.3s;
+            box-sizing: border-box;
+        }
+
+        .distance-meter {
+            width: 100%; max-width: 700px; height: 6px; background: #334155;
+            border-radius: 10px; margin-top: 10px; overflow: hidden; position: relative;
+        }
+        #distanceFill { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s; }
+
+        /* Container Camera co giãn */
+        .camera-container {
+            position: relative; width: 100%; max-width: 700px;
+            flex: 1; background: #000; border-radius: 20px;
+            overflow: hidden; border: 3px solid #334155; margin: 15px 0;
+        }
+        #webcam { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+        /* Khung oval chuẩn Tablet */
+        .guide-overlay {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none; border: 2px dashed rgba(255,255,255,0.3);
+            border-radius: 50% / 45%; width: 260px; height: 340px;
+            transition: all 0.3s; z-index: 5;
+        }
+        .guide-active { border-color: var(--success); box-shadow: 0 0 20px var(--success); border-style: solid; background: rgba(46, 213, 115, 0.05); }
+
+        .controls { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+        input {
+            padding: 15px; border-radius: 12px; border: 1px solid #334155;
+            background: #1e293b; color: white; font-size: 1.1rem; text-align: center;
+        }
+        input:focus { outline: none; border-color: var(--primary); }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button {
+            padding: 15px; border-radius: 12px; border: none; font-weight: bold;
+            color: white; cursor: pointer; transition: 0.2s; font-size: 1rem;
+        }
+        .btn-reg { background: var(--primary); }
+        .btn-del { background: var(--danger); }
+        button:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; opacity: 0.7; }
+        button:not(:disabled):active { transform: scale(0.95); opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <div id="toast"></div>
+
+    <header>
+        <h2>ĐĂNG KÝ NHÂN VIÊN MỚI</h2>
+        <div id="statusDisplay">VUI LÒNG ĐƯA MẶT VÀO KHUNG</div>
+        <div class="distance-meter">
+            <div id="distanceFill"></div>
+        </div>
+    </header>
+    
+    <div class="camera-container">
+        <div class="guide-overlay" id="guideCircle"></div>
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="cropCanvas" style="display:none;"></canvas>
+    </div>
+
+    <div class="controls">
+        <input type="text" id="userId" placeholder="Mã nhân viên (VD: NV01)..." autocomplete="off">
+        <div class="btn-group">
+            <button class="btn-reg" id="regBtn" onclick="handleAction('register')" disabled>➕ ĐĂNG KÝ</button>
+            <button class="btn-del" onclick="handleAction('unregister')">🗑️ XÓA ID</button>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const userIdInput = document.getElementById('userId');
+        const statusDisplay = document.getElementById('statusDisplay');
+        const distanceFill = document.getElementById('distanceFill');
+        const guideCircle = document.getElementById('guideCircle');
+        const regBtn = document.getElementById('regBtn');
+        const toast = document.getElementById('toast');
+        const cropCanvas = document.getElementById('cropCanvas');
+        
+        //const API_URL = "https://hrm.benhnhietdoi.vn"; // Thay đổi nếu cần
+        const API_URL = "http://localhost:8000"; // Thay đổi nếu cần
+        let lastDetection = null;
+
+        // Cấu hình Ngưỡng (Tâm & Độ lớn)
+        const FACE_MIN_SIZE = 0.35;
+        const FACE_MAX_SIZE = 0.60;
+        const CENTER_X_MIN = 0.35; 
+        const CENTER_X_MAX = 0.65;
+        const CENTER_Y_MIN = 0.35; 
+        const CENTER_Y_MAX = 0.65;
+
+        function notify(msg, type = 'success') {
+            toast.innerText = msg;
+            toast.style.backgroundColor = type === 'success' ? '#2ed573' : '#ff4757';
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+            statusDisplay.innerText = msg;
+        }
+
+        async function initCamera() {
+            try {
+                // Để Tablet tự bắt phân giải phù hợp
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" } 
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                notify("Lỗi camera: " + err.message, "error");
+            }
+        }
+
+        const faceDetection = new FaceDetection({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+        });
+
+        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.7 });
+
+        faceDetection.onResults((results) => {
+            if (results.detections.length > 0) {
+                lastDetection = results.detections[0].boundingBox;
+                const faceSize = lastDetection.width;
+                const faceX = lastDetection.xCenter;
+                const faceY = lastDetection.yCenter;
+                
+                distanceFill.style.width = (faceSize * 100) + "%";
+
+                // Kiểm tra Tọa độ Tâm
+                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && 
+                                   (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
+
+                if (!isCentered) {
+                    statusDisplay.innerText = "HÃY ĐƯA MẶT VÀO GIỮA KHUNG";
+                    statusDisplay.style.color = "#ffb800";
+                    guideCircle.classList.remove('guide-active');
+                    regBtn.disabled = true;
+                } 
+                else if (faceSize < FACE_MIN_SIZE) {
+                    statusDisplay.innerText = "HÃY LẠI GẦN HƠN";
+                    statusDisplay.style.color = "#ffb800";
+                    guideCircle.classList.remove('guide-active');
+                    regBtn.disabled = true;
+                } 
+                else if (faceSize > FACE_MAX_SIZE) {
+                    statusDisplay.innerText = "HÃY ĐỨNG XA RA CHÚT";
+                    statusDisplay.style.color = "#ff4757";
+                    guideCircle.classList.remove('guide-active');
+                    regBtn.disabled = true;
+                } 
+                else {
+                    statusDisplay.innerText = "VỊ TRÍ HOÀN HẢO - CÓ THỂ ĐĂNG KÝ";
+                    statusDisplay.style.color = "#2ed573";
+                    guideCircle.classList.add('guide-active');
+                    regBtn.disabled = false; // Bật nút đăng ký
+                }
+            } else {
+                lastDetection = null;
+                distanceFill.style.width = "0%";
+                statusDisplay.innerText = "KHÔNG TÌM THẤY KHUÔN MẶT";
+                statusDisplay.style.color = "#94a3b8";
+                guideCircle.classList.remove('guide-active');
+                regBtn.disabled = true;
+            }
+        });
+
+        function captureCroppedFace() {
+            if (!lastDetection) return null;
+
+            const videoW = video.videoWidth;
+            const videoH = video.videoHeight;
+            let { xCenter, yCenter, width, height } = lastDetection;
+
+            const padding = 0.25; // Lề cho ảnh crop
+            let cropW = width * (1 + padding) * videoW;
+            let cropH = height * (1 + padding) * videoH;
+            
+            let startX = (xCenter * videoW) - (cropW / 2);
+            let startY = (yCenter * videoH) - (cropH / 2);
+
+            startX = Math.max(0, startX);
+            startY = Math.max(0, startY);
+            cropW = Math.min(videoW - startX, cropW);
+            cropH = Math.min(videoH - startY, cropH);
+
+            cropCanvas.width = 224; 
+            cropCanvas.height = 224;
+            const ctx = cropCanvas.getContext('2d');
+            
+            ctx.translate(224, 0);
+            ctx.scale(-1, 1);
+            
+            ctx.drawImage(video, startX, startY, cropW, cropH, 0, 0, 224, 224);
+            return cropCanvas.toDataURL('image/jpeg', 0.9);
+        }
+
+        async function handleAction(action) {
+            const userId = userIdInput.value.trim();
+            if (!userId) {
+                notify("Vui lòng nhập ID nhân viên!", "error");
+                return;
+            }
+
+            if (action === 'unregister' && !confirm(`Xác nhận xóa dữ liệu của ${userId}?`)) return;
+
+            statusDisplay.innerText = "ĐANG XỬ LÝ...";
+            
+            try {
+                let response;
+                if (action === 'register') {
+                    const faceBase64 = captureCroppedFace();
+                    if (!faceBase64) {
+                        notify("Lỗi xén ảnh, hãy thử lại!", "error");
+                        return;
+                    }
+
+                    response = await fetch(`${API_URL}/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: userId, image_base64: faceBase64 })
+                    });
+                } else {
+                    response = await fetch(`${API_URL}/unregister`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: userId })
+                    });
+                }
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    notify(`${action === 'register' ? 'Đã đăng ký' : 'Đã xóa'}: ${userId}`, "success");
+                    if (action === 'unregister') userIdInput.value = "";
+                } else {
+                    notify(data.detail || data.message || "Thất bại", "error");
+                }
+            } catch (err) {
+                notify("Lỗi kết nối Server!", "error");
+            }
+        }
+
+        initCamera();
+        video.onloadedmetadata = () => {
+            setInterval(() => {
+                if (video.readyState >= 2) faceDetection.send({ image: video });
+            }, 100);
+        };
+    </script>
+</body>
+</html>
