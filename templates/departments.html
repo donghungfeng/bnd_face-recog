@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}Danh Mục Đơn Vị{% endblock %}
+{% block page_title %}Sơ Đồ Tổ Chức & Đơn Vị{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* CSS CHO CÂY PHÂN CẤP (TREE VIEW) CHUẨN ĐẸP, MẤT VIỀN NÚT CŨ */
+    .tree-wrapper { padding: 10px; }
+    .tree-list { list-style-type: none; padding-left: 25px; position: relative; margin: 0; }
+    
+    /* Đường kẻ dọc nối các node */
+    .tree-list::before { content: ''; position: absolute; top: 0; left: 10px; border-left: 2px dashed #cbd5e1; bottom: 0; }
+    
+    .tree-item { position: relative; margin: 0; padding: 10px 0; }
+    
+    /* Đường kẻ ngang nối vào từng node */
+    .tree-item::before { content: ''; position: absolute; top: 30px; left: -15px; border-top: 2px dashed #cbd5e1; width: 25px; }
+    
+    /* Thẻ Card của từng phòng ban */
+    .tree-node { 
+        display: flex; align-items: center; gap: 10px; padding: 12px 15px; 
+        background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; 
+        transition: 0.2s; z-index: 2; position: relative;
+    }
+    .tree-node:hover { background: #f0f9ff; border-color: #7dd3fc; box-shadow: 0 4px 10px rgba(0,0,0,0.03); transform: translateY(-1px); }
+    
+    .node-icon { font-size: 1.3rem; }
+    .node-title { flex: 1; font-weight: 700; color: var(--theme-dark); font-size: 1.05rem;}
+    
+    /* Huy hiệu loại đơn vị */
+    .node-badge { background: #fef08a; color: #854d0e; font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; font-weight: bold; margin-left: 10px;}
+    
+    /* Thông tin meta (mã, vị trí, cấp...) */
+    .node-meta { font-size: 0.85rem; color: #64748b; display: flex; gap: 20px; margin-right: 15px;}
+    
+    /* --- SỬA CSS NÚT BẤM TRONG CÂY ĐỂ TRÔNG ĐẸP VÀ MẤT VIỀN MẶC ĐỊNH --- */
+    .btn-edit, .btn-del {
+        border: none !important; /* Quan trọng: Xóa viền xấu xí của button mặc định */
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: 0.2s;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    /* Định dạng nút Sửa (✏️) */
+    .btn-edit { background: #e0e7ff !important; color: #4338ca !important; }
+    .btn-edit:hover { background: #c7d2fe !important; transform: translateY(-1px); }
+    
+    /* Định dạng nút Xóa (🗑️) */
+    .btn-del { background: #fee2e2 !important; color: #dc2626 !important; }
+    .btn-del:hover { background: #fecaca !important; transform: translateY(-1px); }
+    
+    /* Chỉnh Form dính chặt trên màn hình khi cuộn */
+    #formCard { position: sticky; top: 80px; align-self: start; }
+    
+    .form-actions { display: flex; gap: 10px; margin-top: 15px; }
+    .btn-cancel { background: #e2e8f0; color: #475569; font-weight: 700; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: none; width: 100%; transition: 0.2s;}
+    .btn-cancel:hover { background: #cbd5e1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid-container">
+    <div class="card" id="formCard">
+        <h3 id="formTitle">+ Thêm Đơn Vị Mới</h3>
+        <form id="deptForm">
+            <div class="form-group">
+                <label>Mã Đơn Vị*</label>
+                <input type="text" id="unit_code" placeholder="VD: K_NGOAI" required>
+            </div>
+            <div class="form-group">
+                <label>Tên Đơn Vị*</label>
+                <input type="text" id="unit_name" placeholder="VD: Khoa Ngoại Tổng Hợp" required>
+            </div>
+            <div class="form-group">
+                <label>Loại Đơn Vị</label>
+                <select id="unit_type">
+                    <option value="Bệnh viện">Bệnh viện</option>
+                    <option value="Viện">Viện</option>
+                    <option value="Khối">Khối</option>
+                    <option value="Ban">Ban</option>
+                    <option value="Trung Tâm">Trung Tâm</option>
+                    <option value="Khoa">Khoa</option>
+                    <option value="Phòng">Phòng</option>
+                    <option value="Tổ chức">Tổ chức</option>
+                    <option value="Tổ">Tổ</option>
+                    <option value="Nhóm">Nhóm</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Đơn Vị Cha (Trực thuộc)</label>
+                <select id="parent_id">
+                    <option value="">-- Cấp cao nhất (Không có) --</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex:1;">
+                    <label>Số thứ tự hiển thị</label>
+                    <input type="number" id="order_num" value="1">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Cấp phân cấp</label>
+                    <input type="number" id="level" value="1" placeholder="Cấp 1, 2...">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Vị trí (Tòa/Tầng)</label>
+                <input type="text" id="location" placeholder="Tầng 2 - Tòa A...">
+            </div>
+            <div class="form-group">
+                <label>Trạng thái</label>
+                <select id="status"><option value="active">Hoạt động</option><option value="inactive">Tạm ngưng</option></select>
+            </div>
+            <div class="form-group">
+                <label>Ghi chú</label>
+                <input type="text" id="notes">
+            </div>
+
+            <div class="form-actions">
+                <button type="button" id="cancelBtn" class="btn-cancel" onclick="cancelEdit()">HỦY SỬA (Reset)</button>
+                <button type="submit" id="submitBtn" class="btn-primary">LƯU ĐƠN VỊ</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>Sơ Đồ Tổ Chức</h3>
+        <div class="tree-wrapper" id="treeContainer">
+            <p style="text-align:center; color:gray;">Đang tải dữ liệu...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let departments = [];
+    let editingId = null; // Biến cờ theo dõi trạng thái Sửa
+
+    async function fetchDepartments() {
+        try {
+            const res = await fetch('/api/departments');
+            departments = await res.json();
+            
+            // 1. Đổ dữ liệu vào Dropdown "Đơn vị cha"
+            const parentSelect = document.getElementById('parent_id');
+            parentSelect.innerHTML = '<option value="">-- Cấp cao nhất (Không có) --</option>';
+            departments.forEach(d => {
+                // Không hiển thị chính nó hoặc con cháu của nó trong danh sách cha nếu đang sửa (tránh vòng lặp vô tận)
+                if (editingId !== d.id && !isDescendant(d.id, editingId)) {
+                    parentSelect.innerHTML += `<option value="${d.id}">${d.unit_name} (${d.unit_code})</option>`;
+                }
+            });
+
+            // Nếu đang sửa, chọn lại đúng giá trị parent_id cũ (nếu có)
+            if (editingId) {
+                const currentDept = departments.find(x => x.id === editingId);
+                if(currentDept) document.getElementById('parent_id').value = currentDept.parent_id || "";
+            }
+
+            // 2. Gọi hàm Đệ quy để vẽ Cây
+            const treeHtml = buildTree(null);
+            document.getElementById('treeContainer').innerHTML = treeHtml || '<p style="color:gray;">Chưa có dữ liệu.</p>';
+            
+        } catch (e) { console.error("Lỗi tải cây tổ chức:", e); }
+    }
+
+    // THUẬT TOÁN ĐỆ QUY ĐỂ VẼ CÂY
+    function buildTree(parentId) {
+        // Sắp xếp các đơn vị con theo số thứ tự hiển thị trước khi vẽ
+        const children = departments.filter(d => d.parent_id === parentId).sort((a,b) => a.order_num - b.order_num);
+        if (children.length === 0) return ''; 
+
+        let html = '<ul class="tree-list">';
+        children.forEach(child => {
+            // Biểu tượng icon thay đổi theo loại đơn vị
+            let icon = '🏢';
+            if(['Bệnh viện', 'Viện'].includes(child.unit_type)) icon = '🏥';
+            if(['Khối', 'Trung Tâm', 'Ban'].includes(child.unit_type)) icon = '🏛️';
+            if(['Khoa'].includes(child.unit_type)) icon = '🩺';
+            if(['Phòng', 'Tổ chức'].includes(child.unit_type)) icon = '💼';
+            if(['Tổ', 'Nhóm'].includes(child.unit_type)) icon = '👥';
+
+            // Định nghĩa HTML cho từng nút của cây
+            html += `
+                <li class="tree-item">
+                    <div class="tree-node">
+                        <span class="node-icon">${icon}</span>
+                        <div class="node-title">
+                            ${child.unit_name}
+                            <span class="node-badge">${child.unit_type}</span>
+                        </div>
+                        
+                        <div class="node-meta">
+                            <span>📌 ${child.unit_code}</span>
+                            <span>📍 ${child.location || '---'}</span>
+                            <span title="Cấp độ - Số thứ tự">C${child.level}-STT${child.order_num}</span>
+                        </div>
+                        
+                        <button class="btn-edit" onclick="editDept(${child.id})">✏️ Sửa</button>
+                        <button class="btn-del" onclick="deleteDept(${child.id}, '${child.unit_code}')">🗑️ Xóa</button>
+                    </div>
+                    ${buildTree(child.id)} </li>
+            `;
+        });
+        html += '</ul>';
+        return html;
+    }
+
+    // KÍCH HOẠT CHẾ ĐỘ SỬA
+    function editDept(id) {
+        const d = departments.find(x => x.id === id);
+        if(!d) return;
+        
+        editingId = id; // Bật cờ trạng thái sửa
+        
+        // Đổ dữ liệu của đơn vị đó vào Form
+        document.getElementById('unit_code').value = d.unit_code;
+        document.getElementById('unit_name').value = d.unit_name;
+        document.getElementById('unit_type').value = d.unit_type;
+        document.getElementById('order_num').value = d.order_num;
+        document.getElementById('level').value = d.level;
+        document.getElementById('location').value = d.location || '';
+        document.getElementById('status').value = d.status;
+        document.getElementById('notes').value = d.notes || '';
+        
+        // Cập nhật lại dropdown cha để loại bỏ chính nó ra khỏi danh sách
+        fetchDepartments().then(() => {
+            document.getElementById('parent_id').value = d.parent_id || '';
+        });
+        
+        // Đổi giao diện Form sang chế độ Cập nhật
+        document.getElementById('formTitle').innerHTML = '✏️ Sửa Thông Tin Đơn Vị';
+        document.getElementById('submitBtn').textContent = 'CẬP NHẬT';
+        document.getElementById('cancelBtn').style.display = 'block'; // Hiện nút Hủy
+        document.getElementById('formCard').style.borderColor = "#f59e0b"; // Đổi viền sang màu cam để cảnh báo
+        
+        // Cuộn màn hình lên form
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    // HỦY BỎ CHẾ ĐỘ SỬA (Reset Form về ban đầu)
+    function cancelEdit() {
+        editingId = null; // Tắt cờ trạng thái sửa
+        document.getElementById('deptForm').reset();
+        document.getElementById('formTitle').innerHTML = '+ Thêm Đơn Vị Mới';
+        document.getElementById('submitBtn').textContent = 'LƯU ĐƠN VỊ';
+        document.getElementById('cancelBtn').style.display = 'none'; // Ẩn nút Hủy
+        document.getElementById('formCard').style.borderColor = "var(--border)"; // Trả lại màu viền cũ
+        fetchDepartments(); // Vẽ lại dropdown cha như bình thường
+    }
+
+    // XỬ LÝ SUBMIT (Gửi dữ liệu lên API Thêm hoặc Sửa)
+    document.getElementById('deptForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            unit_code: document.getElementById('unit_code').value.trim().toUpperCase(),
+            unit_name: document.getElementById('unit_name').value.trim(),
+            unit_type: document.getElementById('unit_type').value,
+            parent_id: document.getElementById('parent_id').value ? parseInt(document.getElementById('parent_id').value) : null,
+            order_num: parseInt(document.getElementById('order_num').value) || 1,
+            level: parseInt(document.getElementById('level').value) || 1,
+            location: document.getElementById('location').value.trim(),
+            status: document.getElementById('status').value,
+            notes: document.getElementById('notes').value.trim()
+        };
+
+        // Xác định phương thức API là POST (Thêm mới) hay PUT (Cập nhật)
+        let method = 'POST';
+        let url = '/api/departments';
+        if (editingId) {
+            method = 'PUT';
+            url = `/api/departments/${editingId}`;
+        }
+
+        const res = await fetch(url, { method: method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+        
+        if(res.ok) { 
+            alert(editingId ? "Cập nhật thành công!" : "Đã thêm đơn vị mới thành công!"); 
+            cancelEdit(); // Reset form về ban đầu (thoát chế độ sửa)
+            fetchDepartments(); // Vẽ lại cây
+        } else {
+            const data = await res.json();
+            alert("Lỗi: " + data.detail);
+        }
+    });
+
+    // XÓA ĐƠN VỊ
+    async function deleteDept(id, code) {
+        if(confirm(`⚠️ Bạn có chắc chắn muốn xóa đơn vị [${code}]?\nLưu ý: Nếu đơn vị này có cấp dưới, bạn bắt buộc phải xóa cấp dưới trước!`)) {
+            const res = await fetch(`/api/departments/${id}`, { method: 'DELETE' });
+            if(res.ok) fetchDepartments(); // Refresh cây
+            else { const d = await res.json(); alert(d.detail); }
+        }
+    }
+
+    // HÀM HELPER: Kiểm tra xem một đơn vị có phải là con cháu của một đơn vị khác không
+    function isDescendant(checkId, ancestorId) {
+        if (!ancestorId) return false;
+        const dept = departments.find(d => d.id === checkId);
+        if (!dept || !dept.parent_id) return false;
+        if (dept.parent_id === ancestorId) return true;
+        return isDescendant(dept.parent_id, ancestorId); // GỌI ĐỆ QUY LÊN CẤP CHA TIẾP THEO
+    }
+
+    // Chạy tải dữ liệu cây tổ chức ngay khi load trang xong
+    fetchDepartments();
+</script>
+{% endblock %}

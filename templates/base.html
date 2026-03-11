@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,14 +8,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #4361ee; /* Xanh dương mềm mại */
-            --success: #2ecc71;
-            --danger: #e74c3c;
-            --bg-body: #f4f7f6; /* Nền xám sáng cực nhạt */
-            --bg-card: #ffffff; /* Nền trắng cho Card */
-            --text-main: #2b2d42; /* Chữ xám đậm, không dùng đen tuyền */
-            --text-muted: #8d99ae;
-            --border: #e2e8f0;
+            --theme-dark: #004b72;
+            --theme-dark-hover: #003a59;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg-body: #f0f2f5;
+            --bg-card: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
             --sidebar-width: 250px;
         }
 
@@ -31,27 +35,28 @@
         /* --- SIDEBAR --- */
         .sidebar {
             width: var(--sidebar-width);
-            background: var(--bg-card);
-            border-right: 1px solid var(--border);
+            background: var(--theme-dark);
+            color: #ffffff;
             transition: all 0.3s ease;
             display: flex;
             flex-direction: column;
             z-index: 1000;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
         }
 
         .sidebar.collapsed {
             width: 0;
             overflow: hidden;
-            border-right: none;
         }
 
         .sidebar-header {
             padding: 20px;
-            font-size: 1.5rem;
+            font-size: 1.1rem;
             font-weight: 700;
-            color: var(--primary);
+            color: #ffffff;
             text-align: center;
-            border-bottom: 1px solid var(--border);
+            background: var(--theme-dark-hover);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             white-space: nowrap;
         }
 
@@ -59,11 +64,12 @@
             display: flex;
             flex-direction: column;
             padding: 15px 0;
+            overflow-y: auto;
         }
 
         .sidebar-menu a {
-            padding: 15px 25px;
-            color: var(--text-main);
+            padding: 15px 20px 15px 25px;
+            color: #d1d5db;
             text-decoration: none;
             font-weight: 600;
             display: flex;
@@ -71,15 +77,17 @@
             gap: 10px;
             transition: 0.2s;
             white-space: nowrap;
+            border-left: 4px solid transparent;
         }
 
-        .sidebar-menu a:hover, .sidebar-menu a.active {
-            background: rgba(67, 97, 238, 0.05);
-            color: var(--primary);
-            border-right: 4px solid var(--primary);
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border-left: 4px solid #ffffff;
         }
 
-        /* --- MAIN CONTENT --- */
+        /* --- MAIN CONTENT & TOPBAR --- */
         .main-wrapper {
             flex: 1;
             display: flex;
@@ -89,76 +97,264 @@
         }
 
         .topbar {
-            background: var(--bg-card);
-            padding: 15px 25px;
-            border-bottom: 1px solid var(--border);
+            background: var(--theme-dark);
+            padding: 12px 25px;
             display: flex;
             align-items: center;
-            gap: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             position: sticky;
             top: 0;
             z-index: 999;
         }
 
-        .toggle-btn {
-            background: none; border: none; font-size: 1.5rem;
-            color: var(--text-main); cursor: pointer;
-            padding: 5px; border-radius: 5px; transition: 0.2s;
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
         }
-        .toggle-btn:hover { background: var(--bg-body); color: var(--primary); }
 
-        .topbar h2 { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-main); }
+        .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #ffffff;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: 0.2s;
+        }
+
+        .toggle-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
+        .topbar h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        
+        .user-info {
+            color: white;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .btn-logout {
+            background: rgba(255,255,255,0.2);
+            border: none; color: white; padding: 5px 10px; border-radius: 4px;
+            cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.8rem;
+        }
+        .btn-logout:hover { background: #ef4444; }
 
         .content { padding: 25px; }
 
-        /* --- STYLE CHUNG CHO CARD VÀ TABLE TẠI CÁC TRANG CON --- */
-        .grid-container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start; }
-        .card { background: var(--bg-card); padding: 25px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 8px 20px rgba(0,0,0,0.03); }
-        .card h3 { margin-top: 0; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px; font-weight: 700; }
-        
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 0.9rem; margin-bottom: 5px; color: var(--text-muted); font-weight: 600; }
-        input, select { width: 100%; padding: 12px; background: #fff; border: 1.5px solid var(--border); color: var(--text-main); border-radius: 10px; box-sizing: border-box; font-family: 'Nunito', sans-serif; transition: 0.2s; }
-        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1); }
-        
-        button.btn-primary { background: var(--primary); color: #fff; font-weight: 700; border: none; padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; font-size: 1rem; transition: 0.2s; box-shadow: 0 4px 10px rgba(67, 97, 238, 0.2); }
-        button.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(67, 97, 238, 0.3); }
-
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th, td { padding: 15px 12px; border-bottom: 1px solid var(--border); }
-        th { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        tr:hover { background: rgba(0,0,0,0.01); }
-        
-        @media (max-width: 768px) {
-            .sidebar { position: absolute; height: 100%; }
-            .grid-container { grid-template-columns: 1fr; }
+        /* --- STYLE CHUNG --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            align-items: start;
         }
 
+        .card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: var(--theme-dark);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .form-group { margin-bottom: 15px; }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-family: 'Nunito', sans-serif;
+            transition: 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        button.btn-primary {
+            background: var(--primary);
+            color: #fff;
+            font-weight: 700;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        button.btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            background: #f9fafb;
+        }
+
+        tr:hover { background: #f3f4f6; }
+
+        /* ÉP CÁC THANH FILTER NẰM NGANG */
+        .filter-bar {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center;
+            gap: 15px;
+            background: var(--bg-card);
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+                .sidebar-header {
+            padding: 15px 20px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffffff;
+            background: var(--theme-dark-hover);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            white-space: nowrap;
+            /* Chuyển thành flex để chứa Text và Nút đóng nằm ngang nhau */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* THÊM MỚI CSS CHO NÚT ĐÓNG */
+        .close-sidebar-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0 5px;
+            line-height: 1;
+            display: none; /* Mặc định ẩn trên máy tính */
+            transition: 0.2s;
+        }
+        .close-sidebar-btn:hover { color: #ffffff; }
+
+        /* --- ĐIỀU CHỈNH HEADER CHO MÀN HÌNH TABLET --- */
+        @media (max-width: 1024px) {
+            .topbar h2 { font-size: 0.95rem; }
+            .user-info { font-size: 0.8rem; gap: 10px; }
+        }
+
+        /* --- RESPONSIVE MOBILE TỐI ƯU CHUẨN --- */
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; height: 100vh; z-index: 9999; box-shadow: 4px 0 15px rgba(0,0,0,0.3); }
+            .grid-container { grid-template-columns: 1fr; }
+            .filter-bar { flex-direction: column !important; align-items: stretch; }
+            .close-sidebar-btn { display: block; }
+            
+            /* Xử lý Header không bị chen lấn */
+            .topbar { padding: 10px 15px; gap: 10px; }
+            .topbar-left { gap: 10px; flex: 1; }
+            .topbar h2 { 
+                font-size: 0.85rem; 
+                line-height: 1.3; 
+            }
+            
+            /* Giấu dòng "Xin chào..." dài thòng trên điện thoại */
+            #displayUserName { display: none; }
+            .btn-logout { padding: 6px 10px; font-size: 0.75rem; white-space: nowrap; margin-left: auto;}
+        }
+
+
+        /* LỖI CŨ Ở ĐÂY - ĐÃ ĐƯỢC CHỈNH LẠI CÚ PHÁP CHUẨN JINJA2 */
         {% block extra_css %}{% endblock %}
+        
     </style>
 </head>
+
 <body>
 
     <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">AI Face Recognition</div>
+        <div class="sidebar-header">
+            <span>BND FACE RECOGNITION</span>
+            <button class="close-sidebar-btn" onclick="toggleSidebar()">✖</button>
+        </div>
         <div class="sidebar-menu">
             <a href="/dashboard" id="nav-dashboard">🏠 Tổng quan</a>
+            <a href="/departments" id="nav-departments">🏢 Sơ đồ Tổ chức</a>
             <a href="/employees" id="nav-employees">👤 Quản lý Nhân sự</a>
-            <a href="/shifts" id="nav-shifts">🕒 Quản lý Ca làm việc</a>
+            <a href="/shifts" id="nav-shifts">📋 Danh mục Ca trực</a>
+            <a href="/assignments" id="nav-assignments">🤝 Phân công Ca trực</a>
             <a href="/attendance" id="nav-attendance">📊 Nhật ký chấm công</a>
             <a href="/calendar" id="nav-calendar">📅 Lịch Chấm công</a>
-            
-            <a href="/payroll" id="nav-payroll" style="color: #f59e0b;">💰 Bảng Tính Lương</a>
-            
-            <a href="/verify" target="_blank" style="margin-top: 20px; color: var(--success);">📷 Mở iPad Chấm Công</a>
+            <a href="/payroll" id="nav-payroll" style="color: var(--warning);">💰 Bảng Tính Lương</a>
+            <a href="/faces" id="nav-faces" style="color: #60a5fa;">🧠 Quản lý AI Core</a>
+            <a href="/verify" id="nav-ipad" target="_blank"
+                style="margin-top: auto; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.1); color: var(--success);">📷
+                Mở iPad Chấm Công</a>
         </div>
     </nav>
 
     <div class="main-wrapper">
         <header class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
-            <h2>{% block page_title %}Trang Chủ{% endblock %}</h2>
+            <div class="topbar-left">
+                <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+                <h2>{% block page_title %}Trang Chủ{% endblock %}</h2>
+            </div>
+            
+            <div class="user-info">
+                <span id="displayUserName">Xin chào, Khách</span>
+                <button class="btn-logout" onclick="logout()">Đăng xuất</button>
+            </div>
         </header>
 
         <main class="content">
@@ -167,14 +363,121 @@
     </div>
 
     <script>
-            function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+
+        // === 1. KIỂM TRA ĐĂNG NHẬP ===
+        const token = localStorage.getItem("hrm_token");
+        const userRole = localStorage.getItem("hrm_role") || "user"; 
+        const isAuthPage = window.location.pathname.includes("/login") || window.location.pathname.includes("/verify");
+        
+        // Đá về trang Login nếu chưa đăng nhập
+        if (!token && !isAuthPage) {
+            window.location.href = "/login";
+        }
+
+        // === 2. HIỂN THỊ TÊN VÀ CHỨC VỤ LÊN HEADER ===
+        if(token && !isAuthPage) {
+            const userName = localStorage.getItem("hrm_name") || "Khách";
+            
+            let roleName = "Nhân viên";
+            if (userRole === 'admin') roleName = "Quản trị hệ thống";
+            if (userRole === 'manager') roleName = "Quản lý / Trưởng khoa";
+            
+            document.getElementById('displayUserName').innerHTML = `Xin chào, <strong>${userName}</strong> (${roleName})`;
+        }
+
+        // === 3. PHÂN QUYỀN GIAO DIỆN (LỚP 1) ===
+        // Đầu tiên, bổ sung id="nav-ipad" cho thẻ <a> mở iPad chấm công (nếu bạn chưa có)
+        // Cấu hình các menu được phép nhìn thấy theo từng chức vụ:
+        const allowedMenus = {
+            // THÊM "nav-faces" VÀO CUỐI DANH SÁCH ADMIN:
+            "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad" ],
+            "manager": [ "nav-dashboard", "nav-employees", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad" ],
+            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad" ]
+        };
+        if (!isAuthPage) {
+            // Bước A: Ẩn TOÀN BỘ menu đi trước
+            document.querySelectorAll('.sidebar-menu a').forEach(menu => {
+                menu.style.display = 'none';
+            });
+
+            // Bước B: Chỉ bật lại (display: flex) những menu mà Role đó được cấp phép
+            const myMenus = allowedMenus[userRole] || allowedMenus["user"];
+            myMenus.forEach(menuId => {
+                const el = document.getElementById(menuId);
+                if (el) el.style.display = 'flex'; // Trả lại layout gốc của menu
+            });
+
+            // Bước C: Chống người dùng cố tình gõ URL tay (Đá về Dashboard nếu không có quyền)
             const currentPath = window.location.pathname;
-            if(currentPath === "/" || currentPath.includes("dashboard")) document.getElementById("nav-dashboard").classList.add("active");
-            if(currentPath.includes("employees")) document.getElementById("nav-employees").classList.add("active");
-            if(currentPath.includes("shifts")) document.getElementById("nav-shifts").classList.add("active");
-            if(currentPath.includes("attendance")) document.getElementById("nav-attendance").classList.add("active");
-            if(currentPath.includes("calendar")) document.getElementById("nav-calendar").classList.add("active"); // THÊM LOGIC NÀY
-        </script>
+            
+            // Nhân viên thường không được vào các trang cấu hình và lương
+            if (userRole === "user" && ["/departments", "/employees", "/shifts", "/assignments", "/payroll"].some(p => currentPath.includes(p))) {
+                alert("Bạn không có quyền truy cập trang này!");
+                window.location.href = "/dashboard";
+            }
+            
+            // Quản lý không được vào cấu hình gốc và bảng lương tổng
+            if (userRole === "manager" && ["/departments", "/shifts", "/payroll"].some(p => currentPath.includes(p))) {
+                alert("Bạn không có quyền truy cập trang này!");
+                window.location.href = "/dashboard";
+            }
+        }
+
+        // === 4. CÁC HÀM TIỆN ÍCH KHÁC ===
+        function logout() {
+            if(confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+                localStorage.removeItem("hrm_token");
+                localStorage.removeItem("hrm_role");
+                localStorage.removeItem("hrm_name");
+                window.location.href = "/login";
+            }
+        }
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+        
+        // Gắn class "active" cho menu đang chọn để nó sáng lên
+        const path = window.location.pathname;
+        if (path === "/" || path.includes("dashboard")) document.getElementById("nav-dashboard")?.classList.add("active");
+        if (path.includes("departments")) document.getElementById("nav-departments")?.classList.add("active");
+        if (path.includes("employees")) document.getElementById("nav-employees")?.classList.add("active");
+        if (path.includes("shifts")) document.getElementById("nav-shifts")?.classList.add("active");
+        if (path.includes("assignments")) document.getElementById("nav-assignments")?.classList.add("active");
+        if (path.includes("attendance")) document.getElementById("nav-attendance")?.classList.add("active");
+        if (path.includes("calendar")) document.getElementById("nav-calendar")?.classList.add("active");
+        if (path.includes("payroll")) document.getElementById("nav-payroll")?.classList.add("active");
+
+
+
+        // 5.1. Tự động gập Sidebar khi mới tải trang trên màn hình nhỏ (dưới 1024px)
+        if (window.innerWidth <= 1024) {
+            document.getElementById('sidebar').classList.add('collapsed');
+        }
+
+        // 5.2. Tự động đóng Sidebar khi bấm vào một link bất kỳ trong Menu
+        document.querySelectorAll('.sidebar-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                // Chỉ tự động đóng nếu đang ở giao diện Tablet/Mobile
+                if (window.innerWidth <= 1024) {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                }
+            });
+        });
+        
+        // 5.3. Bấm ra ngoài vùng menu thì cũng tự động gập menu lại (Cực kỳ tiện)
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.querySelector('.toggle-btn');
+            
+            // Nếu đang ở màn hình nhỏ, menu đang mở, và click không rơi vào menu hoặc nút toggle
+            if (window.innerWidth <= 1024 && !sidebar.classList.contains('collapsed')) {
+                if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
+                    sidebar.classList.add('collapsed');
+                }
+            }
+        });
+
+        
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

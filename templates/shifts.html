@@ -1,41 +1,60 @@
 {% extends "base.html" %}
 
-{% block title %}Quản Lý Ca Làm Việc{% endblock %}
-{% block page_title %}Cấu Hình Ca Làm Việc{% endblock %}
+{% block title %}Danh Mục Ca Trực{% endblock %}
+{% block page_title %}Cấu Hình Danh Mục Ca Trực{% endblock %}
 
 {% block content %}
 <div class="grid-container">
     <div class="card">
-        <h3>+ Thêm Ca Mới</h3>
+        <h3>+ Thêm Ca Trực Mới</h3>
         <form id="shiftForm">
             <div class="form-group">
-                <label>Mã Ca (VD: CA_SANG)*</label>
-                <input type="text" id="shift_code" required autocomplete="off">
+                <label>Mã Ca (VD: CA_DEM)*</label>
+                <input type="text" id="shift_code" placeholder="Viết liền không dấu" required autocomplete="off">
             </div>
             <div class="form-group">
-                <label>Giờ Bắt Đầu*</label>
-                <input type="time" id="start_time" required>
+                <label>Tên Ca Trực (VD: Ca Đêm Hồi Sức)*</label>
+                <input type="text" id="shift_name" placeholder="Tên hiển thị rõ ràng" required autocomplete="off">
+            </div>
+            <div class="form-group" style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label>Giờ Bắt Đầu*</label>
+                    <input type="time" id="start_time" required>
+                </div>
+                <div style="flex: 1;">
+                    <label>Giờ Kết Thúc*</label>
+                    <input type="time" id="end_time" required>
+                </div>
             </div>
             <div class="form-group">
-                <label>Giờ Kết Thúc*</label>
-                <input type="time" id="end_time" required>
+                <label>Loại Ca Trực</label>
+                <select id="is_overnight">
+                    <option value="0">☀️ Trong ngày (Không qua đêm)</option>
+                    <option value="1">🌙 Qua ngày (Trực xuyên đêm sang sáng)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ghi chú</label>
+                <input type="text" id="notes" placeholder="Tùy chọn ghi chú thêm...">
             </div>
             <button type="submit" class="btn-primary">LƯU CA LÀM VIỆC</button>
         </form>
     </div>
 
     <div class="card" style="overflow-x: auto;">
-        <h3>Danh Sách Ca</h3>
+        <h3>Danh Sách Ca Trực</h3>
         <table>
             <thead>
                 <tr>
                     <th>MÃ CA</th>
-                    <th>BẮT ĐẦU</th>
-                    <th>KẾT THÚC</th>
+                    <th>TÊN CA TRỰC</th>
+                    <th>THỜI GIAN</th>
+                    <th>LOẠI CA</th>
+                    <th>THAO TÁC</th>
                 </tr>
             </thead>
             <tbody id="shiftTableBody">
-            </tbody>
+                </tbody>
         </table>
     </div>
 </div>
@@ -45,33 +64,53 @@
 <script>
     const API_URL = "/api/shifts";
 
+    // 1. TẢI VÀ HIỂN THỊ DANH SÁCH CA TRỰC
     async function fetchShifts() {
         try {
             const res = await fetch(API_URL);
             const data = await res.json();
             const tbody = document.getElementById('shiftTableBody');
             tbody.innerHTML = '';
+            
             data.forEach(shift => {
+                // Hiển thị huy hiệu Đêm/Ngày
+                const typeHtml = shift.is_overnight === 1 
+                    ? `<span style="background: #fee2e2; color: #dc2626; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.75rem;">🌙 Qua ngày</span>`
+                    : `<span style="background: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.75rem;">☀️ Trong ngày</span>`;
+
                 tbody.innerHTML += `
                     <tr>
                         <td><strong>${shift.shift_code}</strong></td>
-                        <td><span style="background: var(--bg-body); padding: 5px 10px; border-radius: 5px; font-weight: bold;">${shift.start_time}</span></td>
-                        <td><span style="background: var(--bg-body); padding: 5px 10px; border-radius: 5px; font-weight: bold;">${shift.end_time}</span></td>
+                        <td>
+                            ${shift.shift_name}<br>
+                            <small style="color:var(--text-muted)">${shift.notes || ''}</small>
+                        </td>
+                        <td><span style="background: #f3f4f6; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; border: 1px solid #e5e7eb;">${shift.start_time} - ${shift.end_time}</span></td>
+                        <td>${typeHtml}</td>
+                        <td>
+                            <button onclick="deleteShift('${shift.shift_code}')" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">🗑️ Xóa</button>
+                        </td>
                     </tr>
                 `;
             });
-        } catch (err) { console.error(err); }
+        } catch (err) { console.error("Lỗi tải ca trực:", err); }
     }
 
+    // 2. THÊM CA TRỰC MỚI
     document.getElementById('shiftForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // Thêm ':00' để API backend hiểu đây là định dạng thời gian chuẩn (HH:MM:SS)
         const start = document.getElementById('start_time').value + ":00";
         const end = document.getElementById('end_time').value + ":00";
 
         const payload = {
             shift_code: document.getElementById('shift_code').value.trim().toUpperCase(),
+            shift_name: document.getElementById('shift_name').value.trim(),
             start_time: start,
-            end_time: end
+            end_time: end,
+            is_overnight: parseInt(document.getElementById('is_overnight').value),
+            notes: document.getElementById('notes').value.trim()
         };
 
         try {
@@ -80,8 +119,9 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+            
             if (res.ok) {
-                alert("Thêm ca thành công!");
+                alert("Thêm ca trực thành công!");
                 document.getElementById('shiftForm').reset();
                 fetchShifts();
             } else {
@@ -91,6 +131,23 @@
         } catch (err) { alert("Lỗi kết nối Server"); }
     });
 
+    // 3. XÓA CA TRỰC
+    async function deleteShift(shift_code) {
+        if(confirm(`⚠️ Bạn có chắc chắn muốn xóa ca trực [${shift_code}] không?`)) {
+            try {
+                const res = await fetch(`${API_URL}/${shift_code}`, { method: 'DELETE' });
+                if(res.ok) {
+                    fetchShifts(); // Refresh bảng
+                } else {
+                    alert("Lỗi khi xóa ca trực!");
+                }
+            } catch(e) {
+                alert("Lỗi kết nối Server");
+            }
+        }
+    }
+
+    // Chạy ngay khi load trang
     fetchShifts();
 </script>
 {% endblock %}

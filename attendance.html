@@ -1,103 +1,308 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bảng Chấm Công (Log)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-    <style>
-        :root { --primary: #00ff88; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; border-color: rgba(255,255,255,0.1); }
-        body { font-family: 'Roboto', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        header { text-align: center; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto 20px auto; }
-        h1 { font-family: 'Orbitron', sans-serif; color: var(--primary); margin: 0; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
-        
-        .container { max-width: 1200px; margin: 0 auto; }
-        .card { background: var(--card); padding: 20px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.3); overflow-x: auto; }
-        
-        button.refresh-btn { background: #334155; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-family: 'Orbitron', sans-serif; font-weight: bold; transition: 0.2s; }
-        button.refresh-btn:hover { background: var(--primary); color: #000; }
-        
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th, td { padding: 15px 12px; border-bottom: 1px solid var(--border-color); }
-        th { color: var(--primary); font-family: 'Orbitron', sans-serif; font-size: 0.9rem; background: rgba(255,255,255,0.02); }
-        
-        .time-col { color: #94a3b8; font-family: monospace; font-size: 0.95rem; }
-        .name-col { font-weight: bold; color: white; }
-        .file-path { font-size: 0.8rem; color: #64748b; font-family: monospace; }
-        
-        tr:hover { background: rgba(255,255,255,0.02); }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
 
-    <header>
-        <h1>NHẬT KÝ CHẤM CÔNG</h1>
-        <button class="refresh-btn" onclick="fetchAttendance()">🔄 LÀM MỚI</button>
-    </header>
+{% block title %}Nhật Ký Chấm Công{% endblock %}
+{% block page_title %}Nhật Ký Quét Khuôn Mặt & Thống Kê{% endblock %}
 
-    <div class="container">
-        <div class="card">
-            <table>
-                <thead>
-                    <tr>
-                        <th>THỜI GIAN (LOG)</th>
-                        <th>MÃ NV</th>
-                        <th>TÊN NHÂN VIÊN</th>
-                        <th>FILE BẰNG CHỨNG (LƯU TRỮ)</th>
-                    </tr>
-                </thead>
-                <tbody id="logTableBody">
-                    <tr><td colspan="4" style="text-align: center;">Đang tải dữ liệu...</td></tr>
-                </tbody>
-            </table>
+{% block extra_css %}
+<style>
+    .badge { padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; }
+    .badge-present { background: #dcfce7; color: #16a34a; }
+    .badge-late { background: #fef3c7; color: #d97706; }
+    .badge-absent { background: #fee2e2; color: #dc2626; }
+    
+    .conf-high { color: #10b981; font-weight: 800; }
+    .conf-med { color: #f59e0b; font-weight: 800; }
+    .conf-low { color: #ef4444; font-weight: 800; }
+    
+    .time-box { font-family: monospace; font-size: 1.05rem; font-weight: bold; color: var(--theme-dark); }
+
+    /* CSS Cho Giải Trình */
+    .btn-explain { background: #e0f2fe; color: #0284c7; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.8rem;}
+    .btn-explain:hover { background: #bae6fd; }
+    .explain-text { font-size: 0.85rem; color: #64748b; font-style: italic; max-width: 200px; line-height: 1.4;}
+    .explain-status { font-size: 0.75rem; font-weight: bold; background: #f1f5f9; padding: 3px 6px; border-radius: 4px; color: #475569; display: inline-block; margin-bottom: 4px;}
+
+    /* CSS Cho Thống Kê (MỚI) */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .stat-card { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .stat-card h4 { margin: 0 0 5px 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
+    .stat-card .num { font-size: 1.8rem; font-weight: 800; margin: 0; }
+    .num.blue { color: #3b82f6; }
+    .num.green { color: #10b981; }
+    .num.orange { color: #f59e0b; }
+    .num.red { color: #ef4444; }
+    .num.purple { color: #8b5cf6; }
+
+    /* Modal CSS */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 9999; }
+    .modal-content { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid-container" style="grid-template-columns: 1fr;">
+    <div class="card" style="overflow-x: auto;">
+        
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>Hiển thị:</label>
+                <select id="limitSelect" onchange="fetchAttendance()">
+                    <option value="50">50 bản ghi mới nhất</option>
+                    <option value="100" selected>100 bản ghi mới nhất</option>
+                    <option value="500">500 bản ghi mới nhất</option>
+                    <option value="1000">1000 bản ghi mới nhất</option>
+                </select>
+            </div>
+            <div class="filter-group" style="flex: 1; min-width: 250px;">
+                <label>🔍 Lọc theo nhân viên (Nhập tên/Mã):</label>
+                <input type="text" id="searchInput" placeholder="Nhập tên hoặc mã NV để xem thống kê riêng..." oninput="filterTable()">
+            </div>
+            <button class="btn-primary" style="background: var(--success); width: auto; margin-left: auto;" onclick="window.print()">🖨️ Xuất báo cáo</button>
         </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>Tổng số ca</h4>
+                <p class="num blue" id="statTotal">0</p>
+            </div>
+            <div class="stat-card">
+                <h4>Đúng giờ</h4>
+                <p class="num green" id="statPresent">0</p>
+            </div>
+            <div class="stat-card">
+                <h4>Đi muộn</h4>
+                <p class="num orange" id="statLate">0</p>
+            </div>
+            <div class="stat-card">
+                <h4>Vắng mặt</h4>
+                <p class="num red" id="statAbsent">0</p>
+            </div>
+            <div class="stat-card" style="background: #f3f4f6; border-color: #d1d5db;">
+                <h4>Tỷ lệ xác thực (TB)</h4>
+                <p class="num purple" id="statConf">--%</p>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>NGÀY</th>
+                    <th>NHÂN VIÊN</th>
+                    <th>GIỜ VÀO</th>
+                    <th>GIỜ RA</th>
+                    <th>XÁC THỰC</th>
+                    <th>TRẠNG THÁI</th>
+                    <th>GIẢI TRÌNH</th>
+                </tr>
+            </thead>
+            <tbody id="attTableBody">
+                <tr><td colspan="7" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
     </div>
+</div>
 
-    <script>
-        const API_URL = "http://localhost:8000/api/attendance?limit=100";
+<div id="explainModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3 style="margin-top:0; color: var(--theme-dark); border-bottom: 1px solid var(--border); padding-bottom: 10px;">✍️ Gửi Giải Trình Chấm Công</h3>
+        <form id="explainForm">
+            <input type="hidden" id="explain_id">
+            <div class="form-group">
+                <label>Lý do giải trình (Đi muộn, quên chấm công...)*</label>
+                <textarea id="explain_reason" rows="4" required style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-family: 'Nunito';" placeholder="Nhập chi tiết lý do..."></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn-primary" style="background: #e2e8f0; color: #475569;" onclick="closeExplainModal()">HỦY</button>
+                <button type="submit" class="btn-primary">GỬI QUẢN LÝ</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
 
-        // Hàm format thời gian ISO sang chuẩn Việt Nam
-        function formatDateTime(isoString) {
-            const date = new Date(isoString);
-            return date.toLocaleString('vi-VN', { 
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
-            });
-        }
+{% block extra_js %}
+<script>
+    let allAttendance = [];
+    const currentUserRole = localStorage.getItem("hrm_role") || "user";
 
-        async function fetchAttendance() {
-            try {
-                const res = await fetch(API_URL);
-                const data = await res.json();
-                const tbody = document.getElementById('logTableBody');
-                
-                if(data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Chưa có dữ liệu chấm công.</td></tr>';
-                    return;
-                }
+    // 1. Lấy dữ liệu từ API
+    async function fetchAttendance() {
+        const limit = document.getElementById('limitSelect').value;
+        try {
+            const res = await fetch(`/api/attendance?limit=${limit}`);
+            allAttendance = await res.json();
+            filterTable();
+        } catch (error) { console.error("Lỗi:", error); }
+    }
 
-                tbody.innerHTML = '';
-                data.forEach(log => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td class="time-col">${formatDateTime(log.check_in_time)}</td>
-                            <td><span style="background: rgba(0, 255, 136, 0.1); color: var(--primary); padding: 4px 8px; border-radius: 5px;">${log.username}</span></td>
-                            <td class="name-col">${log.full_name}</td>
-                            <td class="file-path">${log.image_path}</td>
-                        </tr>
-                    `;
-                });
-            } catch (err) { 
-                console.error(err); 
-                document.getElementById('logTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ff4444;">Lỗi mất kết nối máy chủ!</td></tr>';
-            }
-        }
-
-        // Tự động load dữ liệu
-        fetchAttendance();
+    // 2. Lọc dữ liệu trên bảng
+    function filterTable() {
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = allAttendance.filter(item => {
+            return item.full_name.toLowerCase().includes(keyword) || item.username.toLowerCase().includes(keyword);
+        });
         
-        // Tự động refresh mỗi 30 giây
-        setInterval(fetchAttendance, 30000);
-    </script>
-</body>
-</html>
+        // Tính toán Thống kê dựa trên dữ liệu đã lọc
+        calculateStats(filtered);
+        
+        // Render bảng
+        renderTable(filtered);
+    }
+
+    // --- HÀM TÍNH TOÁN THỐNG KÊ (MỚI) ---
+    function calculateStats(data) {
+        let total = data.length;
+        let present = 0;
+        let late = 0;
+        let absent = 0;
+        
+        // Biến để tính trung bình tỷ lệ xác thực AI
+        let totalConfidence = 0;
+        let validConfCount = 0;
+
+        data.forEach(item => {
+            // Tính số ca
+            if (item.status === 'Present' || item.status === 'Đúng giờ') present++;
+            else if (item.status === 'Late' || item.status === 'Đi muộn') late++;
+            else if (item.status === 'Absent' || item.status === 'Vắng') absent++;
+            else present++; 
+
+            // Cộng dồn tỷ lệ xác thực (Bỏ qua các ca không quét mặt/vắng mặt)
+            if (item.confidence && item.confidence > 0) {
+                totalConfidence += parseFloat(item.confidence);
+                validConfCount++;
+            }
+        });
+
+        // Tính trung bình
+        let avgConf = "--";
+        if (validConfCount > 0) {
+            avgConf = Math.round(totalConfidence / validConfCount);
+        }
+
+        // Cập nhật lên giao diện
+        document.getElementById('statTotal').innerText = total;
+        document.getElementById('statPresent').innerText = present;
+        document.getElementById('statLate').innerText = late;
+        document.getElementById('statAbsent').innerText = absent;
+        document.getElementById('statConf').innerText = avgConf !== "--" ? avgConf + '%' : '--%';
+        
+        // Đổi màu cảnh báo nếu Tỷ lệ trung bình quá thấp
+        const confElement = document.getElementById('statConf');
+        if (avgConf !== "--") {
+            if (avgConf >= 80) confElement.style.color = "#10b981"; // Xanh
+            else if (avgConf >= 60) confElement.style.color = "#f59e0b"; // Cam
+            else confElement.style.color = "#ef4444"; // Đỏ
+        } else {
+            confElement.style.color = "#8b5cf6"; // Tím mặc định nếu trống
+        }
+    }
+
+    // 3. Render bảng HTML
+    function renderTable(data) {
+        const tbody = document.getElementById('attTableBody');
+        tbody.innerHTML = '';
+        
+        // Đổi lại Header của Bảng (Chỉ còn 6 cột)
+        document.querySelector('thead tr').innerHTML = `
+            <th>NGÀY</th>
+            <th>NHÂN VIÊN</th>
+            <th>GIỜ CÓ MẶT</th>
+            <th>XÁC THỰC</th>
+            <th>TRẠNG THÁI</th>
+            <th>GIẢI TRÌNH</th>
+        `;
+
+        if(data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: gray;">Không có dữ liệu.</td></tr>'; 
+            return;
+        }
+
+        data.forEach(item => {
+            // 1. Ngày tháng
+            let dateStr = "---";
+            if(item.date) {
+                const [y, m, d] = item.date.split('-');
+                dateStr = `${d}/${m}/${y}`;
+            }
+            
+            // 2. Trạng thái (Đi muộn / Hợp lệ)
+            let statusBadge = `<span class="badge badge-present">✔️ Hợp lệ</span>`;
+            if (item.late_minutes > 0) {
+                statusBadge = `<span class="badge badge-late">⚠️ Đi muộn</span>`;
+            }
+
+            // 3. Tỷ lệ xác thực (Confidence)
+            let confHtml = `<span style="color:#94a3b8;">---</span>`;
+            if (item.confidence) {
+                let confClass = "conf-high", icon = "🎯";
+                if (item.confidence < 80) { confClass = "conf-med"; icon = "⚠️"; }
+                if (item.confidence < 60) { confClass = "conf-low"; icon = "❗"; }
+                confHtml = `<span class="${confClass}">${icon} ${item.confidence}%</span>`;
+            }
+
+            // 4. Cột Giải Trình
+            let explainHtml = '';
+            if (item.explanation_status && item.explanation_status !== "") {
+                let statusColor = item.explanation_status === 'Đã duyệt' ? '#10b981' : (item.explanation_status === 'Từ chối' ? '#ef4444' : '#f59e0b');
+                explainHtml = `
+                    <div class="explain-status" style="color: ${statusColor}; background: ${statusColor}20;">${item.explanation_status}</div>
+                    <div class="explain-text">${item.explanation_reason || ''}</div>
+                `;
+            } else if (item.late_minutes > 0) {
+                // Chỉ hiện nút giải trình nếu đi muộn
+                explainHtml = `<button class="btn-explain" onclick="openExplainModal(${item.id})">✍️ Giải trình</button>`;
+            } else {
+                explainHtml = `<span style="color:#cbd5e1;">---</span>`;
+            }
+
+            // Xuất ra HTML
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${dateStr}</strong></td>
+                    <td>${item.full_name} <br><small style="color:var(--text-muted);">Mã: ${item.username}</small></td>
+                    <td class="time-box" style="color:#2563eb; font-size: 1.1rem;">${item.scan_time}</td>
+                    <td>${confHtml}</td>
+                    <td>${statusBadge}</td>
+                    <td>${explainHtml}</td>
+                </tr>
+            `;
+        });
+    }
+
+    // --- XỬ LÝ MODAL GIẢI TRÌNH ---
+    function openExplainModal(id) {
+        document.getElementById('explain_id').value = id;
+        document.getElementById('explain_reason').value = '';
+        document.getElementById('explainModal').style.display = 'flex';
+    }
+
+    function closeExplainModal() {
+        document.getElementById('explainModal').style.display = 'none';
+    }
+
+    document.getElementById('explainForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            id: parseInt(document.getElementById('explain_id').value),
+            reason: document.getElementById('explain_reason').value.trim()
+        };
+
+        try {
+            const res = await fetch('/api/attendance/explain', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if(res.ok) {
+                alert(data.message);
+                closeExplainModal();
+                fetchAttendance(); 
+            } else {
+                alert("Lỗi: " + data.detail);
+            }
+        } catch(err) { alert("Lỗi kết nối máy chủ!"); }
+    });
+
+    fetchAttendance();
+</script>
+{% endblock %}

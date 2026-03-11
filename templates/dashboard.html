@@ -6,47 +6,29 @@
 {% block extra_css %}
 <style>
     /* Bọc toàn bộ nội dung để không bị tràn quá to trên màn hình rộng */
-    .dashboard-container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding-bottom: 30px;
-    }
+    .dashboard-container { max-width: 1400px; margin: 0 auto; padding-bottom: 30px; }
 
     /* Tiêu đề & Đồng hồ thời gian thực */
-    .dashboard-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 25px;
-    }
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;}
     .welcome-text h3 { margin: 0; color: var(--text-main); font-size: 1.3rem; font-weight: 700; }
     .welcome-text p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9rem; }
+    
+    .header-controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
     .live-clock { background: #fff; padding: 8px 15px; border-radius: 8px; border: 1px solid var(--border); font-family: 'Orbitron', monospace; font-weight: bold; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+    
+    /* Dropdown tự làm mới */
+    .reload-select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-main); background: #fff; cursor: pointer; outline: none; }
+    .reload-select:focus { border-color: var(--primary); }
 
     /* CSS Lưới 4 cột chuẩn cho Stats */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 20px;
-        margin-bottom: 30px;
-    }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
     
     .stat-card {
-        background: #fff;
-        padding: 20px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        background: #fff; padding: 20px; border-radius: 16px; border: 1px solid var(--border);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03); display: flex; align-items: center; justify-content: space-between;
         transition: transform 0.2s, box-shadow 0.2s;
     }
-    
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.08);
-    }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
 
     .stat-info { display: flex; flex-direction: column; }
     .stat-title { color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
@@ -60,29 +42,16 @@
     .bg-purple { background: #faf5ff; color: #a855f7; }
 
     /* Bảng hoạt động */
-    .recent-activity {
-        background: #fff;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-        overflow: hidden;
-    }
-    .recent-header {
-        padding: 20px 25px;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+    .recent-activity { background: #fff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); overflow: hidden; }
+    .recent-header { padding: 20px 25px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
     .recent-header h3 { margin: 0; color: var(--text-main); font-size: 1.1rem; font-weight: 700; }
     .recent-header a { color: var(--primary); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
     .recent-header a:hover { text-decoration: underline; }
 
-    .table-container { overflow-x: auto; }
+    .table-container { overflow-x: auto; min-height: 400px; /* Chống giật khung hình khi tải trang */}
     table { width: 100%; border-collapse: collapse; text-align: left; }
-    th { background: #f8fafc; color: var(--text-muted); font-size: 0.8rem; padding: 15px 25px; font-weight: 700; text-transform: uppercase; }
-    td { padding: 15px 25px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
+    th { background: #f8fafc; color: var(--text-muted); font-size: 0.8rem; padding: 15px 25px; font-weight: 700; text-transform: uppercase; white-space: nowrap;}
+    td { padding: 15px 25px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap;}
     tr:hover { background: #f8fafc; }
 
     /* Thiết kế User Profile trong bảng */
@@ -92,16 +61,23 @@
     .user-name { font-weight: 700; color: var(--text-main); font-size: 0.95rem; }
     .user-id { color: var(--text-muted); font-size: 0.8rem; font-family: monospace; }
     
-    .time-badge { color: #64748b; font-size: 0.9rem; font-weight: 600; }
+    .time-badge { color: var(--primary); font-size: 0.95rem; font-weight: 700; font-family: 'Orbitron', monospace;}
+    .date-badge { color: var(--text-muted); font-size: 0.75rem; display: block;}
     .status-success { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+    
+    /* Phân trang (Pagination) */
+    .pagination { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background: #fff; border-top: 1px solid var(--border); }
+    .page-info { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+    .btn-page { padding: 6px 12px; border: 1px solid var(--border); background: #fff; border-radius: 6px; cursor: pointer; color: var(--text-main); font-weight: 600; transition: 0.2s; font-size: 0.85rem;}
+    .btn-page:hover:not(:disabled) { background: #f1f5f9; border-color: #cbd5e1; }
+    .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* Responsive */
-    @media (max-width: 1024px) {
-        .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    }
+    @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 640px) {
         .stats-grid { grid-template-columns: 1fr; }
-        .dashboard-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+        .dashboard-header, .header-controls { flex-direction: column; align-items: flex-start; width: 100%;}
+        .live-clock, .reload-select { width: 100%; text-align: center; box-sizing: border-box;}
     }
 </style>
 {% endblock %}
@@ -114,7 +90,18 @@
             <h3>Tổng quan hệ thống</h3>
             <p>Dữ liệu cập nhật theo thời gian thực hôm nay</p>
         </div>
-        <div class="live-clock" id="clock">00:00:00</div>
+        
+        <div class="header-controls">
+            <select class="reload-select" id="reloadInterval" onchange="changeInterval()">
+                <option value="0">Tắt tự động cập nhật</option>
+                <option value="2000">Làm mới: 2 giây</option>
+                <option value="10000" selected>Làm mới: 10 giây</option>
+                <option value="20000">Làm mới: 20 giây</option>
+                <option value="30000">Làm mới: 30 giây</option>
+            </select>
+            
+            <div class="live-clock" id="clock">00:00:00</div>
+        </div>
     </div>
 
     <div class="stats-grid">
@@ -153,8 +140,8 @@
 
     <div class="recent-activity">
         <div class="recent-header">
-            <h3>Hoạt động gần đây</h3>
-            <a href="/attendance">Xem tất cả &rarr;</a>
+            <h3>Lịch sử quét khuôn mặt</h3>
+            <a href="/attendance">Đến trang Nhật ký &rarr;</a>
         </div>
         <div class="table-container">
             <table>
@@ -171,6 +158,12 @@
                 </tbody>
             </table>
         </div>
+        
+        <div class="pagination">
+            <button class="btn-page" id="prevBtn" onclick="changePage(-1)">« Trước</button>
+            <span class="page-info" id="pageInfo">Trang 1 / 1</span>
+            <button class="btn-page" id="nextBtn" onclick="changePage(1)">Sau »</button>
+        </div>
     </div>
 
 </div>
@@ -178,7 +171,7 @@
 
 {% block extra_js %}
 <script>
-    // Đồng hồ Real-time
+    // --- 1. ĐỒNG HỒ REAL-TIME ---
     function updateClock() {
         const now = new Date();
         document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN', { hour12: false });
@@ -186,60 +179,121 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Call API lấy dữ liệu
+    // --- 2. BIẾN TOÀN CỤC CHO PHÂN TRANG & RELOAD ---
+    let allAttendanceData = [];
+    let currentPage = 1;
+    const itemsPerPage = 10;
+    let refreshIntervalId = null;
+
+    // --- 3. FETCH DỮ LIỆU TỪ SERVER ---
     async function fetchDashboardData() {
         try {
-            // 1. Cập nhật Thống Kê
+            // Cập nhật các khối Thống Kê
             const statsRes = await fetch('/api/stats');
-            const stats = await statsRes.json();
-            
-            document.getElementById('val_employees').innerText = stats.total_employees;
-            document.getElementById('val_shifts').innerText = stats.total_shifts;
-            document.getElementById('val_unique_today').innerText = stats.unique_checkins_today;
-            document.getElementById('val_attendances_today').innerText = stats.today_attendances;
-
-            // 2. Cập nhật Bảng (Giới hạn 5 người)
-            const recentRes = await fetch('/api/attendance?limit=5');
-            const recentData = await recentRes.json();
-            
-            const tbody = document.getElementById('recentTableBody');
-            if(recentData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">Chưa có lượt chấm công nào hôm nay.</td></tr>';
-                return;
+            if (statsRes.ok) {
+                const stats = await statsRes.json();
+                document.getElementById('val_employees').innerText = stats.total_employees || 0;
+                document.getElementById('val_shifts').innerText = stats.total_shifts || 0;
+                document.getElementById('val_unique_today').innerText = stats.unique_checkins_today || 0;
+                document.getElementById('val_attendances_today').innerText = stats.today_attendances || 0;
             }
 
-            tbody.innerHTML = '';
-            recentData.forEach(log => {
-                const timeStr = new Date(log.check_in_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                
-                // Nếu có ảnh thì hiện ảnh, không thì hiện placeholder
-                const avatarSrc = log.image_path ? log.image_path : 'https://ui-avatars.com/api/?name=' + log.username + '&background=random';
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td>
-                            <div class="user-profile">
-                                <img src="${avatarSrc}" class="avatar" alt="avatar">
-                                <div class="user-info">
-                                    <span class="user-name">${log.full_name}</span>
-                                    <span class="user-id">#${log.username}</span>
-                                </div>
-                            </div>
-                        </td>
-                        <td><span class="time-badge">${timeStr}</span></td>
-                        <td><span class="status-success">Thành công</span></td>
-                        <td><span style="color: #64748b; font-size: 0.85rem;">🤖 Face AI</span></td>
-                    </tr>
-                `;
-            });
-            
+            // Kéo dữ liệu lịch sử quét khuôn mặt (Kéo 100 bản ghi mới nhất để phân trang Frontend)
+            const recentRes = await fetch('/api/attendance?limit=100');
+            if (recentRes.ok) {
+                allAttendanceData = await recentRes.json();
+                renderTable();
+            }
         } catch (error) {
             console.error("Lỗi tải Dashboard:", error);
         }
     }
 
-    // Load data ngay lập tức và tự động làm mới mỗi 10 giây
+    // --- 4. RENDER BẢNG THEO TRANG ---
+    function renderTable() {
+        const tbody = document.getElementById('recentTableBody');
+        
+        if(allAttendanceData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">Chưa có lượt chấm công nào.</td></tr>';
+            document.getElementById('pageInfo').innerText = "Trang 1 / 1";
+            document.getElementById('prevBtn').disabled = true;
+            document.getElementById('nextBtn').disabled = true;
+            return;
+        }
+
+        // Tính toán phân trang
+        const totalPages = Math.ceil(allAttendanceData.length / itemsPerPage);
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * itemsPerPage;
+        const endIdx = startIdx + itemsPerPage;
+        const pageData = allAttendanceData.slice(startIdx, endIdx);
+
+        tbody.innerHTML = '';
+        pageData.forEach(log => {
+            // Xử lý Ngày và Giờ (Chống lỗi null)
+            let timeStr = log.scan_time || "---";
+            let dateStr = "---";
+            if (log.date) {
+                const [y, m, d] = log.date.split('-');
+                dateStr = `${d}/${m}/${y}`;
+            }
+            
+            // Xử lý Ảnh Avatar (Thêm Date.now để chống cache ảnh)
+            const avatarSrc = (log.image_path && log.image_path !== "") 
+                ? `${log.image_path}?t=${Date.now()}` 
+                : `https://ui-avatars.com/api/?name=${log.username}&background=random`;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>
+                        <div class="user-profile">
+                            <img src="${avatarSrc}" class="avatar" alt="avatar">
+                            <div class="user-info">
+                                <span class="user-name">${log.full_name}</span>
+                                <span class="user-id">Mã: ${log.username}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="time-badge">${timeStr}</span>
+                        <span class="date-badge">${dateStr}</span>
+                    </td>
+                    <td><span class="status-success">Thành công</span></td>
+                    <td><span style="color: #64748b; font-size: 0.85rem;">🤖 Face AI</span></td>
+                </tr>
+            `;
+        });
+
+        // Cập nhật hiển thị số trang và trạng thái nút bấm
+        document.getElementById('pageInfo').innerText = `Trang ${currentPage} / ${totalPages}`;
+        document.getElementById('prevBtn').disabled = currentPage === 1;
+        document.getElementById('nextBtn').disabled = currentPage === totalPages;
+    }
+
+    function changePage(direction) {
+        currentPage += direction;
+        renderTable();
+    }
+
+    // --- 5. ĐIỀU KHIỂN AUTO-RELOAD ---
+    function changeInterval() {
+        const val = parseInt(document.getElementById('reloadInterval').value);
+        
+        // Xóa vòng lặp cũ nếu có
+        if (refreshIntervalId) clearInterval(refreshIntervalId);
+        
+        // Cài đặt vòng lặp mới nếu giá trị > 0
+        if (val > 0) {
+            refreshIntervalId = setInterval(fetchDashboardData, val);
+        }
+    }
+
+    // Khởi động chạy lần đầu
     fetchDashboardData();
-    setInterval(fetchDashboardData, 10000);
+    // Kích hoạt Auto-reload mặc định (10s)
+    changeInterval();
+
 </script>
 {% endblock %}

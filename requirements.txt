@@ -12,3 +12,4 @@ tf-keras
 jinja2
 sqlalchemy
 openpyxl
+PyJWT

@@ -1,0 +1,252 @@
+import os
+import cv2
+import glob
+import numpy as np
+from fastapi.responses import FileResponse
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi.concurrency import run_in_threadpool
+from deepface import DeepFace
+from sqlalchemy.orm import Session
+
+from schemas import FaceRequest, SingleFaceDeleteRequest, UnregisterRequest
+from config import DB_PATH, MODEL_NAME, CACHE_FILE
+from database import get_db
+
+import services 
+
+router = APIRouter()
+
+@router.post("/register")
+async def register(request: FaceRequest):
+    img = services.decode_base64(request.image_base64)
+    user_id = request.user_id
+    
+    # --- LOGIC TÌM SỐ THỨ TỰ TIẾP THEO ---
+    existing_files = glob.glob(os.path.join(DB_PATH, f"{user_id}_*.jpg"))
+    old_file = os.path.join(DB_PATH, f"{user_id}.jpg")
+    if os.path.exists(old_file):
+        existing_files.append(old_file)
+        
+    next_index = 1
+    indices = []
+    for f in existing_files:
+        basename = os.path.basename(f).replace(".jpg", "")
+        parts = basename.rsplit("_", 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            indices.append(int(parts[1]))
+            
+    if indices:
+        next_index = max(indices) + 1
+    elif os.path.exists(old_file):
+        next_index = 2
+        
+    if next_index > 3: # Giới hạn 3 ảnh mỗi người
+        return {"status": "error", "message": "Đã đạt giới hạn 3 ảnh cho nhân viên này."}
+        
+    new_filename = f"{user_id}_{next_index}.jpg" if next_index > 1 else f"{user_id}.jpg"
+    file_key = new_filename.replace(".jpg", "")
+    file_path = os.path.join(DB_PATH, new_filename)
+    
+    cv2.imwrite(file_path, img)
+    
+    try:
+        results = await run_in_threadpool(DeepFace.represent, img_path=img, model_name=MODEL_NAME, enforce_detection=False)
+        embedding = np.array(results[0]["embedding"])
+        
+        # Thêm mới vào Ma trận RAM (Append) thay vì ghi đè
+        services.known_file_keys.append(file_key)
+        services.known_user_ids.append(user_id)
+        if services.known_embeddings_matrix.size == 0:
+            services.known_embeddings_matrix = np.array([embedding])
+        else:
+            services.known_embeddings_matrix = np.vstack([services.known_embeddings_matrix, embedding])
+            
+    except Exception as e:
+        if os.path.exists(file_path): os.remove(file_path) # Xóa ảnh nếu AI lỗi
+        return {"status": "error", "message": f"Lỗi AI: {e}"}
+        
+    return {"status": "success", "message": f"Đã đăng ký diện mạo số {next_index} cho {user_id}"}
+
+@router.post("/recognize")
+async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
+    # HÀM NÀY ĐƯỢC GIỮ NGUYÊN VÌ LOGIC MA TRẬN ĐÃ TỰ ĐỘNG KHỚP VỚI KIẾN TRÚC MỚI!
+    img_crop = services.decode_base64(request.image_base64)
+    img_to_save = services.decode_base64(request.full_image_base64) if request.full_image_base64 else img_crop
+    
+    try:
+        results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=False)
+        if not results: return {"recognized": False, "message": "Không thấy mặt"}
+        
+        current_embedding = np.array(results[0]["embedding"])
+        
+        if len(services.known_user_ids) == 0:
+            return {"recognized": False, "message": "RAM chưa có dữ liệu, hãy tải lại."}
+
+        dot_products = np.dot(services.known_embeddings_matrix, current_embedding)
+        matrix_norms = np.linalg.norm(services.known_embeddings_matrix, axis=1)
+        current_norm = np.linalg.norm(current_embedding)
+        
+        similarities = dot_products / (matrix_norms * current_norm)
+
+        best_index = np.argmax(similarities)
+        max_sim = similarities[best_index]
+        best_match = services.known_user_ids[best_index] # Sẽ tự động trả về "NV001" dù trúng ảnh "NV001_2"
+
+        THRESHOLD = 0.77
+
+        if max_sim >= THRESHOLD:
+            background_tasks.add_task(services.background_logging, best_match, img_to_save, max_sim)
+            return {"recognized": True, "user_id": best_match, "match_probability": f"{round(max_sim * 100, 2)}%"}
+        
+        return {"recognized": False, "message": "Người lạ"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/unregister")
+async def unregister(request: UnregisterRequest):
+    user_id = request.user_id
+    
+    # Quét dọn toàn bộ file của User này trên ổ cứng
+    files_to_delete = glob.glob(os.path.join(DB_PATH, f"{user_id}_*.jpg"))
+    old_file = os.path.join(DB_PATH, f"{user_id}.jpg")
+    if os.path.exists(old_file): files_to_delete.append(old_file)
+    
+    for f in files_to_delete:
+        try: os.remove(f)
+        except: pass
+        
+    # Xóa toàn bộ các dòng thuộc User này trong Ma trận RAM
+    indices_to_delete = [i for i, uid in enumerate(services.known_user_ids) if uid == user_id]
+    
+    if indices_to_delete:
+        services.known_embeddings_matrix = np.delete(services.known_embeddings_matrix, indices_to_delete, axis=0)
+        # Xóa list từ dưới lên để không làm hỏng index
+        for i in sorted(indices_to_delete, reverse=True):
+            services.known_file_keys.pop(i)
+            services.known_user_ids.pop(i)
+            
+        services.save_cache()
+        return {"status": "success"}
+        
+    return {"status": "error", "message": "Không tìm thấy người này."}
+
+@router.get("/clear_ram")
+async def clear_ram():
+    services.known_file_keys.clear()
+    services.known_user_ids.clear()
+    services.known_embeddings_matrix = np.array([])
+    if os.path.exists(CACHE_FILE): os.remove(CACHE_FILE)
+    return {"status": "success"}
+
+@router.get("/api/ai_status")
+async def get_ai_status():
+    import os
+    files = [f for f in os.listdir(DB_PATH) if f.endswith(".jpg")]
+    
+    return {
+        "files_count": len(files), 
+        "ram_count": len(services.known_file_keys)
+    }
+
+@router.get("/reload_ram")
+async def reload_ram_api():
+    services.load_embeddings()
+    return {
+        "status": "success", 
+        "message": f"Đã nạp lại {len(services.known_file_keys)} khuôn mặt vào RAM!"
+    }
+
+@router.get("/api/faces/image/{filename}")
+def get_face_image(filename: str):
+    import os
+    # Trả về đích danh file được yêu cầu (vd: NV001_2)
+    file_path = os.path.join(DB_PATH, f"{filename}.jpg")
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+        
+    # Fallback (nếu frontend vô tình gọi mã gốc)
+    possible_files = [f"{filename}.jpg", f"{filename}_1.jpg", f"{filename}_2.jpg"]
+    for pf in possible_files:
+        pf_path = os.path.join(DB_PATH, pf)
+        if os.path.exists(pf_path):
+            return FileResponse(pf_path)
+            
+    raise HTTPException(status_code=404, detail="Không tìm thấy ảnh")
+
+@router.get("/api/faces/overview")
+def get_faces_overview(db: Session = Depends(get_db)):
+    import os
+    from models import Employee
+    from sqlalchemy.orm import joinedload
+    
+    # 1. Quét toàn bộ ảnh và gom nhóm MẢNG các file theo mã nhân viên
+    file_map = {}
+    if os.path.exists(DB_PATH):
+        for f in os.listdir(DB_PATH):
+            if f.endswith('.jpg'):
+                exact_name = f.replace('.jpg', '')
+                parts = exact_name.rsplit("_", 1)
+                # Tách NV001_2 thành uid_upper = NV001
+                if len(parts) == 2 and parts[1].isdigit():
+                    uid_upper = parts[0].upper()
+                else:
+                    uid_upper = exact_name.upper()
+                    
+                if uid_upper not in file_map:
+                    file_map[uid_upper] = []
+                file_map[uid_upper].append(exact_name) # Push thêm ảnh vào danh sách
+                
+    # 2. Lấy danh sách NV từ DB
+    emps = db.query(Employee).options(joinedload(Employee.department)).all()
+    emp_dict_upper = {e.username.upper(): e for e in emps}
+    
+    results = []
+    
+    # 3. Nối danh sách ảnh vào nhân viên đã có
+    for e in emps:
+        username_upper = e.username.upper()
+        has_face = username_upper in file_map
+        
+        results.append({
+            "type": "mapped" if has_face else "no_face",
+            "username": e.username,
+            "full_name": e.full_name,
+            "department_name": e.department.unit_name if e.department else "Chưa xếp phòng",
+            "images": file_map.get(username_upper, []) # Trả về mảng chứa [NV001_1, NV001_2]
+        })
+        
+    # 4. Tìm các ảnh bị "mồ côi" (Chưa có thông tin trong DB)
+    for upper_name, file_names in file_map.items():
+        if upper_name not in emp_dict_upper:
+            results.append({
+                "type": "unmapped",
+                "username": upper_name,
+                "full_name": "Người lạ / Chưa ĐK",
+                "department_name": "---",
+                "images": file_names
+            })
+            
+    return results
+
+@router.post("/delete_single_face")
+async def delete_single_face(request: SingleFaceDeleteRequest):
+    filename = request.filename
+    file_path = os.path.join(DB_PATH, f"{filename}.jpg")
+    
+    # 1. Xóa file vật lý trên ổ cứng
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        
+    # 2. Xóa chính xác dòng dữ liệu của ảnh này trong Ma trận RAM
+    if filename in services.known_file_keys:
+        idx = services.known_file_keys.index(filename)
+        
+        # Rút phần tử khỏi mảng
+        services.known_file_keys.pop(idx)
+        services.known_user_ids.pop(idx)
+        services.known_embeddings_matrix = np.delete(services.known_embeddings_matrix, idx, axis=0)
+        
+        # Lưu lại cache
+        services.save_cache()
+        
+    return {"status": "success", "message": f"Đã xóa ảnh {filename}"}

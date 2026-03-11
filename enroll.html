@@ -87,11 +87,44 @@
         .btn-del { background: var(--danger); }
         button:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; opacity: 0.7; }
         button:not(:disabled):active { transform: scale(0.95); opacity: 0.8; }
+
+        /* Nút Quay lại góc trái trên */
+        .btn-back {
+            position: absolute;
+            top: 15px;
+            left: 33px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: 0.2s;
+            z-index: 50;
+            border: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(5px);
+        }
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            transform: translateX(-2px);
+        }
+
+        /* Đẩy Header xuống một chút để không bị đè chữ trên màn hình nhỏ */
+        @media (max-width: 480px) {
+            header { margin-top: 40px; }
+        }
     </style>
 </head>
 <body>
 
     <div id="toast"></div>
+
+    <a href="/employees" class="btn-back">⬅ Quay lại</a>
 
     <header>
         <h2>ĐĂNG KÝ NHÂN VIÊN MỚI</h2>
@@ -128,6 +161,16 @@
         //const API_URL = "https://hrm.benhnhietdoi.vn"; // Thay đổi nếu cần
         const API_URL = "http://localhost:8000"; // Thay đổi nếu cần
         let lastDetection = null;
+
+        // --- MỚI: TỰ ĐỘNG ĐIỀN ID TỪ URL PARAMETER ---
+        const urlParams = new URLSearchParams(window.location.search);
+        // Hỗ trợ cả 2 kiểu viết tham số: ?id=NV001 hoặc ?userid=NV001
+        const paramId = urlParams.get('id') || urlParams.get('userid'); 
+        if (paramId) {
+            userIdInput.value = paramId.toUpperCase(); // Đổi thành chữ hoa cho đồng bộ
+            userIdInput.blur();
+        }
+        // ----------------------------------------------
 
         // Cấu hình Ngưỡng (Tâm & Độ lớn)
         const FACE_MIN_SIZE = 0.35;
@@ -241,7 +284,7 @@
         }
 
         async function handleAction(action) {
-            const userId = userIdInput.value.trim();
+            const userId = userIdInput.value.trim().toUpperCase(); // Ép chuẩn in hoa khi submit
             if (!userId) {
                 notify("Vui lòng nhập ID nhân viên!", "error");
                 return;
@@ -260,13 +303,13 @@
                         return;
                     }
 
-                    response = await fetch(`${API_URL}/register`, {
+                    response = await fetch(`/register`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ user_id: userId, image_base64: faceBase64 })
                     });
                 } else {
-                    response = await fetch(`${API_URL}/unregister`, {
+                    response = await fetch(`/unregister`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ user_id: userId })

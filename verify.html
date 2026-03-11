@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Face Recognition</title>
+    <title>BND Face Recognition</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
     
@@ -109,7 +109,7 @@
 <body>
 
     <header>
-        <h2>AI Face Recognition</h2>
+        <h3>BND Face Recognition</h3>
         <div id="resultBox" class="info status-scanning">
             <div class="loader"></div> ĐANG KHỞI TẠO CAMERA...
         </div>
@@ -288,9 +288,10 @@
                     return;
                 }
 
-                const API_URL = "https://hrm.benhnhietdoi.vn"; 
+                const API_URL = "https://hrm.benhnhietdoi.vn";
+                //const API_URL = "http://localhost:8000"; 
                 
-                const response = await fetch(`${API_URL}/recognize`, {
+                const response = await fetch(`/recognize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ image_base64: croppedImage, full_image_base64: fullImage })

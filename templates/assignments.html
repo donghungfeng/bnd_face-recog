@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Phân Công Ca Trực{% endblock %}
+{% block page_title %}Quản Lý Phân Công Ca Trực{% endblock %}
+
+{% block content %}
+<div class="grid-container">
+    <div class="card" style="align-self: start;">
+        <h3>+ Gán Ca Trực (Thủ công)</h3>
+        <form id="assignForm">
+            <div class="form-group">
+                <label>Nhân viên*</label>
+                <select id="empSelect" required></select>
+            </div>
+            <div class="form-group">
+                <label>Ca trực*</label>
+                <select id="shiftSelect" required></select>
+            </div>
+            <div class="form-group" style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label>Ngày trực*</label>
+                    <input type="date" id="shiftDate" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Người giao ca</label>
+                <input type="text" id="assigner" placeholder="VD: Trưởng Khoa A..." autocomplete="off">
+            </div>
+            <button type="submit" class="btn-primary">LƯU PHÂN CÔNG</button>
+        </form>
+
+        <h3 style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">📥 Import từ Excel</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+            Tải file mẫu về, danh sách nhân viên đã được điền sẵn. Bạn chỉ việc nhập mã ca trực và ngày, sau đó upload lên hệ thống.
+        </p>
+        
+        <div style="display: flex; gap: 10px; flex-direction: column;">
+            <button class="btn-primary" style="background: var(--success); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.location.href='/api/assignments/export_template'">
+                <span>⬇️</span> 1. TẢI FILE MẪU EXCEL
+            </button>
+            
+            <input type="file" id="excelFile" accept=".xlsx, .xls" style="padding: 10px; border: 1.5px dashed var(--primary); background: #f8fafc; cursor: pointer;">
+            <button class="btn-primary" style="background: var(--warning); color: #854d0e; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="uploadExcel()">
+                <span>⬆️</span> 2. UPLOAD LÊN HỆ THỐNG
+            </button>
+        </div>
+    </div>
+
+    <div class="card" style="overflow-x: auto;">
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>📅 Lịch trực của tháng:</label>
+                <input type="month" id="monthSelect" onchange="fetchAssignments()">
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>NGÀY TRỰC</th>
+                    <th>NHÂN VIÊN</th>
+                    <th>CA TRỰC</th>
+                    <th>NGƯỜI GIAO</th>
+                    <th>THAO TÁC</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="5" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const today = new Date();
+    document.getElementById('monthSelect').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    document.getElementById('shiftDate').value = today.toISOString().split('T')[0];
+    
+    // Tự động lấy tên người dùng hiện tại (nếu có đăng nhập) để điền sẵn vào ô Người giao
+    const currentUserName = localStorage.getItem("hrm_name");
+    if (currentUserName) {
+        document.getElementById('assigner').value = currentUserName;
+    }
+
+    // Load Dropdown Nhân viên và Ca trực
+    async function loadDropdowns() {
+        try {
+            const [empRes, shiftRes] = await Promise.all([ fetch('/api/employees'), fetch('/api/shifts') ]);
+            const emps = await empRes.json();
+            const shifts = await shiftRes.json();
+            
+            const empSel = document.getElementById('empSelect');
+            const shiftSel = document.getElementById('shiftSelect');
+            
+            emps.forEach(e => {
+                if(e.status === 'active') { // Chỉ hiển thị nhân viên đang làm việc
+                    empSel.innerHTML += `<option value="${e.username}">${e.full_name} (${e.username})</option>`;
+                }
+            });
+            
+            shifts.forEach(s => {
+                shiftSel.innerHTML += `<option value="${s.shift_code}">${s.shift_name} (${s.shift_code})</option>`;
+            });
+        } catch(e) { console.error("Lỗi tải Dropdown", e); }
+    }
+
+    // Load Bảng phân công
+    async function fetchAssignments() {
+        const monthVal = document.getElementById('monthSelect').value;
+        if(!monthVal) return;
+        
+        const [year, month] = monthVal.split('-');
+        try {
+            const res = await fetch(`/api/assignments?month=${parseInt(month)}&year=${year}`);
+            const data = await res.json();
+            
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Tháng này chưa có lịch phân công nào.</td></tr>';
+                return;
+            }
+
+            // Sắp xếp theo ngày tăng dần
+            data.sort((a,b) => new Date(a.shift_date) - new Date(b.shift_date)).forEach(item => {
+                // Tách phần ngày/tháng để hiển thị cho đẹp
+                const dateObj = new Date(item.shift_date);
+                const dateStr = `${String(dateObj.getDate()).padStart(2,'0')}/${String(dateObj.getMonth()+1).padStart(2,'0')}`;
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${dateStr}</strong></td>
+                        <td>${item.full_name} <br><small style="color:var(--text-muted);">(${item.username})</small></td>
+                        <td><span style="background:#e0f2fe; color:#0284c7; padding:4px 8px; border-radius:6px; font-weight:bold; font-size:0.8rem; border: 1px solid #bae6fd;">${item.shift_name}</span></td>
+                        <td><span style="color:#475569; font-size:0.9rem;">${item.assigner || '---'}</span></td>
+                        <td>
+                            <button onclick="deleteAssign(${item.id})" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold; transition:0.2s;">🗑️ Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        } catch(e) { console.error("Lỗi lấy danh sách", e); }
+    }
+
+    // Lưu Gán Ca lẻ thủ công
+    document.getElementById('assignForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            username: document.getElementById('empSelect').value,
+            shift_code: document.getElementById('shiftSelect').value,
+            shift_date: document.getElementById('shiftDate').value,
+            assigner: document.getElementById('assigner').value.trim()
+        };
+        
+        try {
+            const res = await fetch('/api/assignments', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload) 
+            });
+            if(res.ok) {
+                alert("Đã gán ca thành công!");
+                fetchAssignments();
+            } else {
+                alert("Có lỗi xảy ra khi gán ca!");
+            }
+        } catch(e) { alert("Lỗi mạng!"); }
+    });
+
+    // Upload Excel
+    async function uploadExcel() {
+        const fileInput = document.getElementById('excelFile');
+        if(!fileInput.files[0]) return alert("Vui lòng chọn file Excel trước!");
+        
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            const res = await fetch('/api/assignments/import', { method: 'POST', body: formData });
+            const result = await res.json();
+            if(res.ok) { 
+                alert(result.message); 
+                fileInput.value = ""; // Xóa tên file đã chọn
+                fetchAssignments(); 
+            } 
+            else { alert(result.detail); }
+        } catch(e) { alert("Lỗi mạng!"); }
+    }
+
+    // Xóa lịch trực
+    async function deleteAssign(id) {
+        if(confirm("Xóa lịch trực này?")) {
+            await fetch(`/api/assignments/${id}`, { method: 'DELETE' });
+            fetchAssignments();
+        }
+    }
+
+    // Khởi tạo
+    loadDropdowns();
+    fetchAssignments();
+</script>
+{% endblock %}
