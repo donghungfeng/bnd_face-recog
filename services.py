@@ -8,7 +8,7 @@ from deepface import DeepFace
 
 from config import DB_PATH, HISTORY_PATH, MODEL_NAME, CACHE_FILE
 from database import SessionLocal
-from models import Attendance, Employee
+from models import AppConfig, Attendance, Employee
 
 # --- BIẾN RAM CACHE ĐÃ ĐƯỢC NÂNG CẤP LÊN MA TRẬN NUMPY ---
 known_file_keys = [] # Quản lý tên file thực tế: ['NV001', 'NV001_2', 'NV002_1']
@@ -77,7 +77,22 @@ def decode_base64(data: str):
     nparr = np.frombuffer(img_bytes, np.uint8)
     return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-def background_logging(user_id: str, img_full: np.ndarray, confidence: float):
+import os
+import cv2
+import numpy as np
+from datetime import datetime
+# Nhớ import các module Database của bác (SessionLocal, Attendance, Employee...)
+
+def background_logging(
+    user_id: str, 
+    img_full: np.ndarray, 
+    confidence: float,
+    # === BỔ SUNG 4 THAM SỐ MỚI (Có giá trị mặc định để không lỗi code cũ) ===
+    client_ip: str = None, 
+    latitude: float = None, 
+    longitude: float = None, 
+    attendance_type: str = "Tập trung" 
+):
     db = SessionLocal() 
     try:
         now = datetime.now()
@@ -93,7 +108,12 @@ def background_logging(user_id: str, img_full: np.ndarray, confidence: float):
         timestamp_str = now.strftime("%Y%m%d_%H%M%S")
         success_filename = f"{user_id}_{timestamp_str}.jpg"
         success_filepath = os.path.join(HISTORY_PATH, success_filename)
-        cv2.imwrite(success_filepath, img_full)
+        
+        # [Fix lỗi cũ] Rào chắn bảo vệ OpenCV trước khi lưu ảnh
+        if img_full is not None and getattr(img_full, 'size', 0) > 0:
+            cv2.imwrite(success_filepath, img_full)
+        else:
+            print(f"⚠️ Bỏ qua lưu file ảnh cho {user_id} vì dữ liệu ảnh rỗng.")
 
         employee = db.query(Employee).filter(Employee.username == user_id).first()
         full_name = employee.full_name if employee else "Chưa cập nhật tên"
@@ -111,12 +131,23 @@ def background_logging(user_id: str, img_full: np.ndarray, confidence: float):
         image_web_path = f"/data/history_db/{success_filename}"
 
         if len(records_today) < 2:
+            # ---> LƯU MỚI: Truyền thêm 4 thông số vào Database
             new_log = Attendance(
-                username=user_id, full_name=full_name, check_in_time=now,
-                image_path=image_web_path, late_minutes=late_min, early_minutes=early_min, confidence=round(confidence*100, 2)
+                username=user_id, 
+                full_name=full_name, 
+                check_in_time=now,
+                image_path=image_web_path, 
+                late_minutes=late_min, 
+                early_minutes=early_min, 
+                confidence=round(confidence*100, 2),
+                client_ip=client_ip,                   # MỚI
+                latitude=latitude,                     # MỚI
+                longitude=longitude,                   # MỚI
+                attendance_type=attendance_type        # MỚI
             )
             db.add(new_log)
         else:
+            # ---> CẬP NHẬT: Ghi đè cả vị trí và IP mới nếu nhân viên chấm lần 2 (Ra về)
             latest_record = records_today[1] 
             if latest_record.image_path:
                 old_img_path = "." + latest_record.image_path 
@@ -127,6 +158,11 @@ def background_logging(user_id: str, img_full: np.ndarray, confidence: float):
             latest_record.late_minutes = late_min
             latest_record.early_minutes = early_min
             latest_record.confidence = round(confidence*100, 2)
+            
+            latest_record.client_ip = client_ip                 # MỚI
+            latest_record.latitude = latitude                   # MỚI
+            latest_record.longitude = longitude                 # MỚI
+            latest_record.attendance_type = attendance_type     # MỚI
 
             if len(records_today) > 2:
                 for extra_record in records_today[2:]:
@@ -139,3 +175,28 @@ def background_logging(user_id: str, img_full: np.ndarray, confidence: float):
         print(f"Lỗi ghi log ngầm: {e}")
     finally:
         db.close()
+
+
+sys_configs = {
+    "FACE_THRESHOLD": "0.75",       # Giá trị mặc định
+    "ENABLE_ANTI_SPOOFING": "true",
+    "MIN_FACE_RATIO": "0.08"
+}
+
+def load_system_configs():
+    """Tải cấu hình từ DB lên RAM khi khởi động Server"""
+    global sys_configs
+    db = SessionLocal()
+    try:
+        configs = db.query(AppConfig).all()
+        for c in configs:
+            sys_configs[c.config_key] = c.config_value
+        print(f"-> Đã nạp {len(configs)} cấu hình hệ thống vào RAM.")
+    except Exception as e:
+        print(f"Lỗi nạp cấu hình: {e}")
+    finally:
+        db.close()
+
+def get_config(key: str, default_value: any):
+    """Hàm lấy cấu hình siêu tốc từ RAM"""
+    return sys_configs.get(key, default_value)

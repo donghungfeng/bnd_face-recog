@@ -1,9 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 fastapi
 uvicorn[standard]
 pydantic
 python-multipart
 requests
-numpy
+numpy==1.26.4
 opencv-python-headless
 mediapipe
 # Thư viện AI chính

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, Integer, String, Date, Time, DateTime, Text
+from sqlalchemy import Column, Float, Integer, String, Date, Time, DateTime, Text, Boolean
 from datetime import datetime
 from database import Base
 from sqlalchemy import ForeignKey
@@ -59,6 +59,14 @@ class Attendance(Base):
     explanation_reason = Column(Text, nullable=True)
 
     confidence = Column(Float, nullable=True)
+    is_fraud = Column(Boolean, default=False)
+    fraud_note = Column(String(255), nullable=True)
+
+    client_ip = Column(String(50), nullable=True)  
+    latitude = Column(Float, nullable=True)        
+    longitude = Column(Float, nullable=True)       
+    attendance_type = Column(String(50), default="Tập trung")
+    
 
 class LeaveRequest(Base):
     __tablename__ = "leave_requests"
@@ -86,3 +94,13 @@ class OrganizationUnit(Base):
 
     # Relationship để truy vấn con/cha dễ dàng nếu cần
     children = relationship("OrganizationUnit", backref="parent", remote_side=[id])
+
+class AppConfig(Base):
+    __tablename__ = "app_configs"
+
+    # config_key làm Khóa chính luôn (VD: "FACE_THRESHOLD", "ANTI_SPOOFING")
+    config_key = Column(String(50), primary_key=True, index=True) 
+    config_value = Column(String(255), nullable=False)             
+    description = Column(String(255), nullable=True)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+

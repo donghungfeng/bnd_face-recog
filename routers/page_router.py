@@ -37,3 +37,19 @@ def read_login(request: Request):
 @router.get("/faces")
 def read_faces(request: Request): 
     return templates.TemplateResponse("faces.html", {"request": request})
+
+@router.get("/admin_logs")
+def read_admin_logs(request: Request):
+    return templates.TemplateResponse("admin_logs.html", {"request": request})
+
+@router.get("/configs")
+async def configs_page(request: Request):
+    return templates.TemplateResponse("configs.html", {"request": request})
+
+@router.get("/enroll_personal")
+async def enroll_personal_page(request: Request):
+    return templates.TemplateResponse("enroll_personal.html", {"request": request})
+
+@router.get("/verify_personal")
+async def verify_personal_page(request: Request):
+    return templates.TemplateResponse("verify_personal.html", {"request": request})

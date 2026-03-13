@@ -325,7 +325,7 @@
 
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <span>BND FACE RECOGNITION</span>
+            <span>HRM BV Bệnh Nhiệt Đới</span>
             <button class="close-sidebar-btn" onclick="toggleSidebar()">✖</button>
         </div>
         <div class="sidebar-menu">
@@ -338,7 +338,7 @@
             <a href="/calendar" id="nav-calendar">📅 Lịch Chấm công</a>
             <a href="/payroll" id="nav-payroll" style="color: var(--warning);">💰 Bảng Tính Lương</a>
             <a href="/faces" id="nav-faces" style="color: #60a5fa;">🧠 Quản lý AI Core</a>
-            <a href="/verify" id="nav-ipad" target="_blank"
+            <a href="/verify_personal" id="nav-ipad" target="_blank"
                 style="margin-top: auto; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.1); color: var(--success);">📷
                 Mở iPad Chấm Công</a>
         </div>
@@ -429,6 +429,7 @@
                 localStorage.removeItem("hrm_token");
                 localStorage.removeItem("hrm_role");
                 localStorage.removeItem("hrm_name");
+                localStorage.removeItem("hrm_username");
                 window.location.href = "/login";
             }
         }

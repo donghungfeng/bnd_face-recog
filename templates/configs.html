@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Cài Đặt Hệ Thống{% endblock %}
+{% block page_title %}⚙️ Quản Lý Cấu Hình (System Configs){% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- BỐ CỤC CHUNG --- */
+    .config-container { display: grid; grid-template-columns: 1fr 2fr; gap: 25px; align-items: start; }
+    @media (max-width: 992px) { .config-container { grid-template-columns: 1fr; } }
+
+    /* --- THẺ CARD --- */
+    .config-card { background: white; padding: 25px; border-radius: 12px; border: 1px solid var(--border, #e2e8f0); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .card-header { margin-top: 0; margin-bottom: 20px; color: var(--theme-dark, #1e293b); border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; font-size: 1.25rem; font-weight: 700; }
+
+    /* --- FORM NHẬP LIỆU --- */
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 0.9rem; }
+    .form-control { width: 100%; padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; transition: all 0.2s ease; box-sizing: border-box; font-family: inherit; background-color: #f8fafc; }
+    .form-control:focus { outline: none; border-color: #3b82f6; background-color: #ffffff; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+    textarea.form-control { resize: vertical; min-height: 90px; }
+    .help-text { font-size: 0.8rem; color: #94a3b8; margin-top: 6px; display: block; font-style: italic;}
+
+    /* --- NÚT BẤM FORM --- */
+    .btn { padding: 12px 15px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; width: 100%; box-sizing: border-box; gap: 8px; }
+    .btn-primary { background: #3b82f6; color: white; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(59,130,246,0.3);}
+    .btn-primary:hover { background: #2563eb; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(59,130,246,0.4);}
+    .btn-secondary { background: #f1f5f9; color: #475569; }
+    .btn-secondary:hover { background: #e2e8f0; transform: translateY(-2px);}
+
+    /* --- BẢNG DANH SÁCH --- */
+    .config-table-wrapper { overflow-x: auto; }
+    .config-table { width: 100%; border-collapse: collapse; }
+    .config-table th, .config-table td { padding: 15px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: middle;}
+    .config-table th { color: #64748b; font-size: 0.8rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; background-color: #f8fafc;}
+    .config-table tbody tr { transition: 0.2s; }
+    .config-table tbody tr:hover { background-color: #f8fafc; }
+
+    /* --- BADGE TRẠNG THÁI --- */
+    .badge-key { background: #f1f5f9; color: #334155; padding: 6px 10px; border-radius: 6px; font-family: monospace; font-size: 0.9rem; font-weight: 700; border: 1px solid #e2e8f0; display: inline-block; }
+    .badge-val { color: #059669; font-weight: 800; font-size: 1.05rem; background: #ecfdf5; padding: 4px 10px; border-radius: 6px; border: 1px solid #a7f3d0; display: inline-block; }
+
+    /* --- NÚT BẤM BẢNG --- */
+    .btn-edit, .btn-delete { padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px;}
+    .btn-edit { background: #e0f2fe; color: #0284c7; }
+    .btn-edit:hover { background: #bae6fd; transform: scale(1.05); }
+    .btn-delete { background: #fee2e2; color: #dc2626; margin-left: 5px; }
+    .btn-delete:hover { background: #fecaca; transform: scale(1.05); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="config-container">
+    <div class="config-card">
+        <h3 class="card-header">📝 Thêm / Cập Nhật Cấu Hình</h3>
+        <form id="configForm">
+            <div class="form-group">
+                <label>Mã cấu hình (KEY) *</label>
+                <input type="text" id="config_key" class="form-control" required placeholder="VD: FACE_THRESHOLD" style="text-transform: uppercase;">
+                <span class="help-text">Chữ in hoa, không dấu, nối bằng dấu gạch dưới (_). VD: API_TIMEOUT</span>
+            </div>
+            <div class="form-group">
+                <label>Giá trị (VALUE) *</label>
+                <input type="text" id="config_value" class="form-control" required placeholder="VD: 0.75 hoặc true">
+            </div>
+            <div class="form-group">
+                <label>Mô tả / Ghi chú</label>
+                <textarea id="description" class="form-control" placeholder="Giải thích công dụng của biến này để người khác dễ hiểu..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">💾 LƯU CẤU HÌNH</button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">🔄 Làm mới Form</button>
+        </form>
+    </div>
+
+    <div class="config-card">
+        <h3 class="card-header">🗄️ Danh Sách Biến Hệ Thống</h3>
+        <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px;">
+            Các thay đổi sẽ được lưu vào Database và cập nhật trực tiếp vào bộ nhớ RAM của AI ngay lập tức mà không cần khởi động lại Server.
+        </p>
+        
+        <div class="config-table-wrapper">
+            <table class="config-table">
+                <thead>
+                    <tr>
+                        <th>Mã Cấu Hình (Key)</th>
+                        <th>Giá Trị</th>
+                        <th>Mô tả</th>
+                        <th style="text-align: right; min-width: 150px;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="configBody">
+                    <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px;">Đang tải dữ liệu...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    if (localStorage.getItem("hrm_role") !== "admin") {
+        alert("Chỉ Quản trị viên (Admin) mới có quyền truy cập trang này!");
+        window.location.href = "/dashboard";
+    }
+
+    async function fetchConfigs() {
+        try {
+            const res = await fetch('/api/configs/');
+            const data = await res.json();
+            const tbody = document.getElementById('configBody');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px;">Chưa có cấu hình nào. Hãy thêm mới biến hệ thống đầu tiên!</td></tr>';
+                return;
+            }
+
+            data.forEach(item => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><span class="badge-key">${item.config_key}</span></td>
+                        <td><span class="badge-val">${item.config_value}</span></td>
+                        <td style="color: #64748b; font-size: 0.9rem;">${item.description || '---'}</td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <button class="btn-edit" onclick="editConfig('${item.config_key}', '${item.config_value.replace(/'/g, "\\'")}', '${(item.description || '').replace(/'/g, "\\'")}')">✏️ Sửa</button>
+                            <button class="btn-delete" onclick="deleteConfig('${item.config_key}')">🗑️ Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        } catch (e) {
+            console.error("Lỗi tải danh sách cấu hình:", e);
+            document.getElementById('configBody').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ef4444;">Lỗi kết nối máy chủ!</td></tr>';
+        }
+    }
+
+    function editConfig(key, value, desc) {
+        document.getElementById('config_key').value = key;
+        
+        let keyInput = document.getElementById('config_key');
+        keyInput.setAttribute('readonly', true);
+        keyInput.style.backgroundColor = '#e2e8f0';
+        keyInput.style.color = '#64748b';
+        keyInput.style.cursor = 'not-allowed';
+        
+        document.getElementById('config_value').value = value;
+        document.getElementById('description').value = desc;
+        
+        document.querySelector('.config-container').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('config_value').focus();
+    }
+
+    function resetForm() {
+        document.getElementById('configForm').reset();
+        let keyInput = document.getElementById('config_key');
+        keyInput.removeAttribute('readonly');
+        keyInput.style.backgroundColor = '#f8fafc';
+        keyInput.style.color = '#000';
+        keyInput.style.cursor = 'text';
+    }
+
+    // Gửi yêu cầu Thêm/Sửa
+    document.getElementById('configForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const payload = {
+            config_key: document.getElementById('config_key').value.trim().toUpperCase(),
+            config_value: document.getElementById('config_value').value.trim(),
+            description: document.getElementById('description').value.trim()
+        };
+
+        const submitBtn = document.querySelector('#configForm button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '⏳ ĐANG LƯU...';
+        submitBtn.disabled = true;
+
+        try {
+            const res = await fetch('/api/configs/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                submitBtn.style.backgroundColor = '#10b981';
+                submitBtn.innerHTML = '✅ LƯU THÀNH CÔNG';
+                
+                setTimeout(() => {
+                    resetForm();
+                    fetchConfigs(); 
+                    submitBtn.style.backgroundColor = '';
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }, 1000);
+            } else {
+                alert("Lỗi khi lưu cấu hình.");
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        } catch (err) {
+            alert("Lỗi kết nối máy chủ.");
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    });
+
+    // Hàm Xóa Cấu Hình
+    async function deleteConfig(key) {
+        if(confirm(`⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa biến cấu hình [ ${key} ] không?\nAI có thể sẽ quay về sử dụng giá trị mặc định trong code.`)) {
+            try {
+                const res = await fetch(`/api/configs/${key}`, { 
+                    method: 'DELETE' 
+                });
+
+                if (res.ok) {
+                    // Nếu đang mở form để sửa chính cái key này thì reset form luôn
+                    if(document.getElementById('config_key').value === key) {
+                        resetForm();
+                    }
+                    fetchConfigs(); // Load lại bảng
+                } else {
+                    const data = await res.json();
+                    alert("Lỗi: " + (data.detail || "Không thể xóa."));
+                }
+            } catch (e) {
+                alert("Lỗi kết nối đến máy chủ.");
+            }
+        }
+    }
+
+    fetchConfigs();
+</script>
+{% endblock %}

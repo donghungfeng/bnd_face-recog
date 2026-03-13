@@ -7,8 +7,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.concurrency import run_in_threadpool
 from deepface import DeepFace
 from sqlalchemy.orm import Session
-
-from schemas import FaceRequest, SingleFaceDeleteRequest, UnregisterRequest
+from schemas import CheckIPRequest, FaceRequest, SingleFaceDeleteRequest, UnregisterRequest, PersonalVerifyRequest
 from config import DB_PATH, MODEL_NAME, CACHE_FILE
 from database import get_db
 
@@ -72,10 +71,17 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
     # HÀM NÀY ĐƯỢC GIỮ NGUYÊN VÌ LOGIC MA TRẬN ĐÃ TỰ ĐỘNG KHỚP VỚI KIẾN TRÚC MỚI!
     img_crop = services.decode_base64(request.image_base64)
     img_to_save = services.decode_base64(request.full_image_base64) if request.full_image_base64 else img_crop
-    
+    max_sim = 0.0
+    is_anti_spoof_enabled = services.get_config("ENABLE_ANTI_SPOOFING", "true").lower() == "true"
+
     try:
-        results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=False)
+        
+        results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=False,anti_spoofing=is_anti_spoof_enabled)
         if not results: return {"recognized": False, "message": "Không thấy mặt"}
+        
+        if is_anti_spoof_enabled and not results[0].get("is_real", True):
+             return {"recognized": False, "message": "Phát hiện gian lận hình ảnh!"}
+
         
         current_embedding = np.array(results[0]["embedding"])
         
@@ -92,15 +98,27 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
         max_sim = similarities[best_index]
         best_match = services.known_user_ids[best_index] # Sẽ tự động trả về "NV001" dù trúng ảnh "NV001_2"
 
-        THRESHOLD = 0.77
+        THRESHOLD = float(services.get_config("FACE_THRESHOLD", "0.75"))
 
         if max_sim >= THRESHOLD:
-            background_tasks.add_task(services.background_logging, best_match, img_to_save, max_sim)
+            background_tasks.add_task(services.background_logging, best_match, img_to_save, max_sim, request.client_public_ip,0,0,request.attendance_type)
             return {"recognized": True, "user_id": best_match, "match_probability": f"{round(max_sim * 100, 2)}%"}
         
         return {"recognized": False, "message": "Người lạ"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        error_msg = str(e).lower()
+        
+        # Nếu AI của DeepFace ném ra lỗi nhận diện ảnh giả (Spoof)
+        if "spoof detected" in error_msg:
+            return {"recognized": False, "message": "CẢNH BÁO GIAN LẬN!"}
+            
+        # Nếu AI không tìm thấy khuôn mặt nào
+        elif "face could not be detected" in error_msg:
+            return {"recognized": False, "message": "Không tìm thấy khuôn mặt"}
+            
+        # Các lỗi hệ thống khác
+        else:
+            return {"recognized": False, "message": f"Lỗi: {str(e)}"}
 
 @router.post("/unregister")
 async def unregister(request: UnregisterRequest):
@@ -250,3 +268,104 @@ async def delete_single_face(request: SingleFaceDeleteRequest):
         services.save_cache()
         
     return {"status": "success", "message": f"Đã xóa ảnh {filename}"}
+
+
+@router.post("/api/check-ip")
+def check_client_ip(req_data: CheckIPRequest):
+    user_id = req_data.user_id.upper()
+    client_ip = req_data.client_public_ip  # Lấy IP từ Frontend gửi lên
+    
+    allowed_ips_str = services.get_config("ALLOWED_ENROLL_IPS", "*")
+    
+    is_valid = False
+    if allowed_ips_str.strip() == "*":
+        is_valid = True
+    else:
+        allowed_ips = [ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()]
+        is_valid = any(client_ip.startswith(allowed) or client_ip == allowed for allowed in allowed_ips)
+        
+    return {
+        "valid": is_valid,
+        "ip": client_ip,
+        "user_checked": user_id
+    }
+
+@router.post("/api/verify-personal")
+async def verify_personal(data: PersonalVerifyRequest, background_tasks: BackgroundTasks):
+    user_id = data.user_id.upper()
+    client_ip = data.client_public_ip
+    
+    # 1. KIỂM TRA IP (Giữ nguyên để chặn mạng ngoài)
+    allowed_ips_str = services.get_config("ALLOWED_ENROLL_IPS", "*") 
+    if allowed_ips_str.strip() != "*":
+        allowed_ips = [ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()]
+        if not any(client_ip.startswith(allowed) or client_ip == allowed for allowed in allowed_ips):
+            return {"recognized": False, "message": "Sai địa chỉ IP/Mạng lưới Bệnh viện."}
+
+    # 2. KIỂM TRA USER TỒN TẠI
+    if user_id not in services.known_user_ids:
+        return {"recognized": False, "message": "Bạn chưa đăng ký khuôn mặt!"}
+        
+    try:
+        # 3. CHỈ DÙNG img_crop GIỐNG HỆT HÀM RECOGNIZE
+        img_crop = services.decode_base64(data.image_base64)
+        img_full = services.decode_base64(data.full_image_base64) if data.full_image_base64 else None
+        is_anti_spoof_enabled = services.get_config("ENABLE_ANTI_SPOOFING", "true").lower() == "true"
+        
+        # GỌI DEEPFACE
+        results = await run_in_threadpool(
+            DeepFace.represent, 
+            img_path=img_crop, 
+            model_name=MODEL_NAME, 
+            enforce_detection=False, 
+            anti_spoofing=is_anti_spoof_enabled
+        )
+        
+        if not results:
+            return {"recognized": False, "message": "Không thấy mặt"}
+
+        # KIỂM TRA LIVENESS (Chống giả mạo)
+        if is_anti_spoof_enabled and not results[0].get("is_real", True):
+             return {"recognized": False, "message": "Phát hiện gian lận hình ảnh!"}
+
+        current_embedding = np.array(results[0]["embedding"])
+
+        # 4. THUẬT TOÁN XÁC THỰC (Lấy điểm cao nhất trong tối đa 3 ảnh)
+        user_indices = [i for i, uid in enumerate(services.known_user_ids) if uid == user_id]
+        user_embeddings = services.known_embeddings_matrix[user_indices]
+        
+        dot_products = np.dot(user_embeddings, current_embedding)
+        matrix_norms = np.linalg.norm(user_embeddings, axis=1)
+        current_norm = np.linalg.norm(current_embedding)
+        
+        similarities = dot_products / (matrix_norms * current_norm)
+        max_sim = np.max(similarities)
+        
+        THRESHOLD = float(services.get_config("FACE_THRESHOLD", "0.75"))
+        
+        if max_sim >= THRESHOLD:
+            # Code lưu Database ở đây (nếu cần)
+            background_tasks.add_task(services.background_logging, user_id, img_full, max_sim, client_ip,data.latitude,data.longitude,data.attendance_type)
+
+            return {
+                "recognized": True, 
+                "message": "Thành công", 
+                "match_probability": f"{round(max_sim * 100, 2)}%"
+            }
+        else:
+            return {"recognized": False, "message": "Khuôn mặt không khớp với tài khoản"}
+
+    except Exception as e:
+        error_msg = str(e).lower()
+        
+        # Nếu AI của DeepFace ném ra lỗi nhận diện ảnh giả (Spoof)
+        if "spoof detected" in error_msg:
+            return {"recognized": False, "message": "CẢNH BÁO GIAN LẬN!"}
+            
+        # Nếu AI không tìm thấy khuôn mặt nào
+        elif "face could not be detected" in error_msg:
+            return {"recognized": False, "message": "Không tìm thấy khuôn mặt"}
+            
+        # Các lỗi hệ thống khác
+        else:
+            return {"recognized": False, "message": f"Lỗi: {str(e)}"}

@@ -109,7 +109,7 @@
 <body>
 
     <header>
-        <h3>BND Face Recognition</h3>
+        <h3>Chấm công Bệnh viện Bệnh Nhiệt Đới</h3>
         <div id="resultBox" class="info status-scanning">
             <div class="loader"></div> ĐANG KHỞI TẠO CAMERA...
         </div>
@@ -142,6 +142,7 @@
         let isProcessing = false;
         let lastDetection = null;
         let isFaceDetectionRunning = false; // Cờ kiểm soát MediaPipe
+        currentPublicIp = ''
 
         const FACE_MIN_SIZE = 0.30; 
         const FACE_MAX_SIZE = 0.55;
@@ -294,7 +295,7 @@
                 const response = await fetch(`/recognize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_base64: croppedImage, full_image_base64: fullImage })
+                    body: JSON.stringify({ image_base64: croppedImage, full_image_base64: fullImage, client_public_ip: currentPublicIp, attendance_type: 'Tập trung' })
                 });
                 
                 const data = await response.json();
@@ -331,6 +332,7 @@
         }
 
         async function startCamera() {
+            verifyNetwork();
             try {
                 // Ép camera mở ở độ phân giải lý tưởng, tránh bị điện thoại mở 4K làm đơ máy
                 const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -343,6 +345,19 @@
             } catch (err) {
                 resultBox.className = "info status-err";
                 resultBox.innerHTML = "❌ LỖI TRUY CẬP CAMERA";
+            }
+        }
+
+        async function verifyNetwork() {
+            const banner = document.getElementById('networkBanner');
+            try {
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipRes.json();
+                currentPublicIp = ipData.ip;
+
+            } catch(e) {
+                banner.className = 'net-checking'; banner.innerHTML = `⚠️ Lỗi kiểm tra mạng!`;
+                isNetworkValid = false;
             }
         }
 

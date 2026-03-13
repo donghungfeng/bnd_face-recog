@@ -76,7 +76,7 @@
             errorDiv.textContent = "";
 
             const payload = {
-                username: document.getElementById('username').value.trim(),
+                username: document.getElementById('username').value.trim().toUpperCase(),
                 password: document.getElementById('password').value
             };
 

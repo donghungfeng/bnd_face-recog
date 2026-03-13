@@ -6,6 +6,10 @@ class FaceRequest(BaseModel):
     user_id: str = None
     image_base64: str
     full_image_base64: str = None
+    client_public_ip: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    attendance_type: str = "Cá nhân"
 
 class UnregisterRequest(BaseModel):
     user_id: str
@@ -75,3 +79,35 @@ class ReviewExplainRequest(BaseModel):
 
 class SingleFaceDeleteRequest(BaseModel):
     filename: str
+
+class ConfigUpsertRequest(BaseModel):
+    config_key: str
+    config_value: str
+    description: Optional[str] = None
+
+
+class CheckIPRequest(BaseModel):
+    user_id: str
+    client_public_ip: str
+
+class PersonalEnrollRequest(BaseModel):
+    user_id: str
+    image_base64: str
+    client_public_ip: str 
+
+class PersonalVerifyRequest(BaseModel):
+    user_id: str
+    image_base64: str
+    client_public_ip: str
+    full_image_base64: Optional[str] = None
+
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    attendance_type: str = "Cá nhân"
+
+class MarkFraudRequest(BaseModel):
+    id: int
+    is_fraud: bool
+    fraud_note: str = ""
+    role: str = ""
+    

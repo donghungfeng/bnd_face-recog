@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Nhật Ký Chấm Công{% endblock %}
-{% block page_title %}Nhật Ký Quét Khuôn Mặt & Thống Kê{% endblock %}
+{% block title %}Nhật Ký Hệ Thống (Admin){% endblock %}
+{% block page_title %}Quản Trị Logs Chấm Công & Thiết Bị{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -47,7 +47,7 @@
 
     /* --- TABLE CHUẨN UX --- */
     .table-container { background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow-x: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.02); min-height: 400px; display: flex; flex-direction: column; justify-content: space-between;}
-    table { width: 100%; border-collapse: collapse; text-align: left; min-width: 1000px;}
+    table { width: 100%; border-collapse: collapse; text-align: left; min-width: 1100px;}
     th { background: #f8fafc; color: var(--text-muted); font-size: 0.8rem; padding: 15px 20px; font-weight: 800; text-transform: uppercase; white-space: nowrap;}
     td { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
     tr:hover { background: #f8fafc; }
@@ -61,10 +61,14 @@
     .att-thumb:hover { transform: scale(1.2); border-color: var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 10;}
 
     /* --- BADGES & TEXTS --- */
-    .badge { padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent;}
+    .badge { padding: 4px 10px; border-radius: 8px; font-weight: bold; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent;}
     .badge-present { background: #dcfce7; color: #16a34a; border-color: #bbf7d0;}
     .badge-late { background: #fef3c7; color: #d97706; border-color: #fde68a;}
-    .badge-fraud { background: #fee2e2; color: #dc2626; border-color: #fecaca; animation: pulseRed 2s infinite;} /* Badge cảnh báo gian lận */
+    .badge-fraud { background: #fee2e2; color: #dc2626; border-color: #fecaca; animation: pulseRed 2s infinite;}
+    
+    /* Tag Loại chấm công */
+    .badge-type-personal { background: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
+    .badge-type-kiosk { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
     
     @keyframes pulseRed {
         0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
@@ -77,6 +81,11 @@
     .conf-low { color: #ef4444; font-weight: 800; }
     .time-box { font-family: 'Orbitron', monospace; font-size: 1.1rem; font-weight: bold; color: var(--primary); background: #f0fdf4; padding: 4px 8px; border-radius: 6px; border: 1px solid #bbf7d0;}
 
+    /* --- THÔNG TIN THIẾT BỊ LƯỚI --- */
+    .device-info { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: #475569;}
+    .device-info a { color: var(--primary); text-decoration: none; font-weight: 600;}
+    .device-info a:hover { text-decoration: underline;}
+
     /* --- GIẢI TRÌNH & BUTTONS --- */
     .btn-explain { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 5px;}
     .btn-explain:hover { background: #bae6fd; }
@@ -86,13 +95,15 @@
 
     .explain-wrapper { display: flex; flex-direction: column; gap: 5px; align-items: flex-start;}
     .explain-status { font-size: 0.75rem; font-weight: bold; padding: 4px 8px; border-radius: 6px; display: inline-block;}
-    .explain-text { font-size: 0.85rem; color: #475569; font-style: italic; max-width: 250px; line-height: 1.4; word-wrap: break-word; background: #f8fafc; padding: 8px; border-radius: 6px; border-left: 3px solid #cbd5e1;}
+    .explain-text { font-size: 0.85rem; color: #475569; font-style: italic; max-width: 200px; line-height: 1.4; word-wrap: break-word; background: #f8fafc; padding: 8px; border-radius: 6px; border-left: 3px solid #cbd5e1;}
     
     .approve-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;}
     .btn-approve { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: 0.2s;}
     .btn-approve:hover { background: #22c55e; color: white; }
     .btn-reject { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: 0.2s;}
     .btn-reject:hover { background: #ef4444; color: white; }
+    .btn-delete-log { background: #f87171; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 5px;}
+    .btn-delete-log:hover { background: #dc2626; box-shadow: 0 2px 5px rgba(220,38,38,0.3);}
 
     /* --- PHÂN TRANG (PAGINATION) --- */
     .pagination-container {
@@ -110,7 +121,7 @@
     .page-btn:disabled { background: #f1f5f9; color: #cbd5e1; cursor: not-allowed; }
     .page-btn.active { background: var(--primary); color: white; border-color: var(--primary); pointer-events: none;}
 
-    /* --- MODAL (GIẢI TRÌNH, ẢNH, GIAN LẬN) --- */
+    /* --- MODAL --- */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.8); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px);}
     .modal-content { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
     
@@ -120,107 +131,75 @@
     .img-modal-close:hover { background: #dc2626; transform: scale(1.1); }
 
     /* ==========================================================
-       RESPONSIVE: IPAD & MOBILE 
-       ========================================================== */
-    /* ==========================================================
        RESPONSIVE: IPAD & TABLET (< 1024px)
        ========================================================== */
     @media (max-width: 1024px) {
-        /* Mở khóa giới hạn chiều rộng của bảng để không tràn màn hình */
         table { min-width: 100%; }
-        
-        /* Sắp xếp lại bộ lọc (Filter) */
         .filter-bar { flex-direction: column; align-items: stretch; padding: 15px; }
         .filter-group-container { flex-direction: column; width: 100%; gap: 15px; }
         .filter-group { min-width: 100%; flex: 1 !important; }
         .btn-export { width: 100%; margin-top: 5px; }
-
-        /* Khối thống kê thành 2 cột cho iPad */
         .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        
-        /* Modal thu gọn lại */
         .modal-content { max-width: 90%; padding: 20px; }
     }
 
     /* ==========================================================
        RESPONSIVE: SMARTPHONE (< 768px) 
-       Biến Bảng (Table) thành dạng Thẻ (Card)
-       ========================================================== */
-    /* ==========================================================
-       RESPONSIVE: SMARTPHONE (< 768px) 
-       Biến Bảng thành Thẻ (Grid Card) siêu gọn, chuẩn App Mobile
+       Biến Bảng thành Thẻ (Grid Card) siêu gọn
        ========================================================== */
     @media (max-width: 768px) {
-        /* Khối thống kê thành 1 cột */
         .stats-grid { grid-template-columns: 1fr; } 
 
         table, thead, tbody, th, td, tr { display: block; width: 100%; box-sizing: border-box;}
-        thead tr { display: none; } /* Ẩn hoàn toàn thanh tiêu đề ngang */
+        thead tr { display: none; } 
         
-        /* -------------------------------------------
-           BỐ CỤC LƯỚI (GRID) CHO TỪNG DÒNG (TR)
-        ---------------------------------------------*/
         tr { 
-            background: #fff;
-            border: 1px solid #e2e8f0; 
-            border-radius: 12px; 
-            margin-bottom: 12px; 
-            padding: 12px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; 
+            margin-bottom: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
             display: grid;
-            /* Cột 1: 55px (Ảnh) | Cột 2: Co giãn (Tên) | Cột 3: Tự động (Giờ) */
             grid-template-columns: 55px 1fr auto; 
             grid-template-areas:
                 "avatar name time"
                 "avatar status date"
-                "accuracy explain explain";
-            gap: 6px 12px;
-            align-items: center;
+                "accuracy source source"
+                "explain explain explain"
+                "actions actions actions"; /* Khu vực cho Nút Xóa/Duyệt */
+            gap: 6px 12px; align-items: center;
         }
         
         td { border: none; padding: 0; text-align: left; min-height: unset; display: flex;}
-        
-        /* Xóa bỏ toàn bộ các Tiêu đề (Label) gây tốn diện tích */
         td::before { display: none !important; }
 
-        /* --- SẮP XẾP VỊ TRÍ TỪNG Ô (TD) VÀO LƯỚI --- */
-
-        /* 1. NGÀY THÁNG (Góc phải, dưới giờ) */
         td:nth-child(1) { grid-area: date; justify-content: flex-end; }
         td:nth-child(1) strong { font-size: 0.8rem; color: #94a3b8; font-weight: 600;}
 
-        /* 2. NHÂN VIÊN (Giữa, trên cùng) */
         td:nth-child(2) { grid-area: name; flex-direction: column; justify-content: center; line-height: 1.3;}
         td:nth-child(2) strong { font-size: 0.95rem; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;}
 
-        /* 3. ẢNH AI (Trái, trên cùng) */
         td:nth-child(3) { grid-area: avatar; justify-content: center; }
-        .att-thumb { width: 50px; height: 50px; border-radius: 50%; margin: 0; border: 2px solid #f1f5f9; } /* Bo tròn ảnh như Avatar */
+        .att-thumb { width: 50px; height: 50px; border-radius: 50%; margin: 0; border: 2px solid #f1f5f9; } 
 
-        /* 4. GIỜ VÀO (Phải, trên cùng) */
         td:nth-child(4) { grid-area: time; justify-content: flex-end; }
         .time-box { font-size: 1.05rem; padding: 2px 8px; border-radius: 6px; }
 
-        /* 5. ĐỘ CHÍNH XÁC AI (Trái, dưới Avatar) */
         td:nth-child(5) { grid-area: accuracy; justify-content: center; font-size: 0.75rem; background: #f8fafc; padding: 2px 0; border-radius: 6px; margin-top: -5px;}
 
-        /* 6. TRẠNG THÁI (Giữa, dưới Tên) */
-        td:nth-child(6) { grid-area: status; flex-wrap: wrap; gap: 5px; align-items: center; }
-        td:nth-child(6) br { display: none; } /* Ẩn thẻ xuống dòng thừa của nút báo cáo */
-        .btn-fraud-alert { margin-top: 0; padding: 3px 6px; font-size: 0.7rem; } /* Thu nhỏ nút báo cáo */
+        /* [MỚI] Thiết bị & Mạng */
+        td:nth-child(6) { grid-area: source; flex-direction: column; align-items: flex-end; font-size: 0.75rem; gap: 2px;}
 
-        /* 7. GIẢI TRÌNH & XÉT DUYỆT (Trải dài 2 cột ở dưới cùng) */
-        td:nth-child(7) { grid-area: explain; flex-direction: column; width: 100%; }
-        td:nth-child(7) span[style*="color:#cbd5e1"] { display: none; } /* Ẩn dấu "---" khi không có giải trình */
+        td:nth-child(7) { grid-area: status; flex-wrap: wrap; gap: 5px; align-items: center; }
+        td:nth-child(7) br { display: none; }
+        .btn-fraud-alert { margin-top: 0; padding: 3px 6px; font-size: 0.7rem; } 
+
+        /* Giải trình & Action */
+        td:nth-child(8) { grid-area: explain; flex-direction: column; width: 100%; border-top: 1px dashed #e2e8f0; padding-top: 8px;}
+        td:nth-child(8) span[style*="color:#cbd5e1"] { display: none; } 
         
-        .explain-wrapper { width: 100%; border-top: 1px dashed #e2e8f0; padding-top: 10px; margin-top: 5px;}
+        .explain-wrapper { width: 100%; }
         .explain-text { max-width: 100%; width: 100%; box-sizing: border-box; }
-        .btn-explain { width: 100%; justify-content: center; margin-top: 5px;} /* Kéo dài nút viết giải trình 100% */
-        
-        .approve-actions { display: flex; width: 100%; gap: 10px; margin-top: 8px;}
-        .approve-actions button { flex: 1; justify-content: center; }
+        .approve-actions { width: 100%; justify-content: flex-start;}
+        .btn-delete-log { width: 100%; padding: 10px; font-size: 0.85rem;}
 
-        /* Phân trang */
         .pagination-container { flex-direction: column; gap: 12px; }
         .pagination-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px;}
     }
@@ -262,7 +241,7 @@
         <div class="stat-card"><h4>Tổng số ca</h4><p class="num blue" id="statTotal">0</p></div>
         <div class="stat-card"><h4>Đúng giờ</h4><p class="num green" id="statPresent">0</p></div>
         <div class="stat-card"><h4>Đi muộn</h4><p class="num orange" id="statLate">0</p></div>
-        <div class="stat-card"><h4>Nghi vấn Gian lận</h4><p class="num red" id="statFraud">0</p></div>
+        <div class="stat-card"><h4>Gian lận bị gắn cờ</h4><p class="num red" id="statFraud">0</p></div>
         <div class="stat-card" style="background: #f8fafc;"><h4>Tỷ lệ xác thực (TB)</h4><p class="num purple" id="statConf">--%</p></div>
     </div>
 
@@ -273,55 +252,36 @@
                     <tr>
                         <th>NGÀY</th>
                         <th>NHÂN VIÊN</th>
-                        <th>ẢNH CHỤP AI</th> 
+                        <th>ẢNH CHỤP</th> 
                         <th>GIỜ VÀO</th>
                         <th>ĐỘ CHÍNH XÁC</th>
-                        <th>TRẠNG THÁI</th>
-                        <th>GIẢI TRÌNH & XÉT DUYỆT</th>
-                    </tr>
+                        <th>THÔNG TIN THIẾT BỊ</th> <th>TRẠNG THÁI</th>
+                        <th>GIẢI TRÌNH & HÀNH ĐỘNG</th> </tr>
                 </thead>
                 <tbody id="attTableBody">
-                    <tr><td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8; font-style: italic;">Đang tải dữ liệu chấm công...</td></tr>
+                    <tr><td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8; font-style: italic;">Đang tải dữ liệu chấm công...</td></tr>
                 </tbody>
             </table>
         </div>
         
         <div class="pagination-container">
             <div class="page-info" id="pageInfo">Đang hiển thị 0 - 0 của 0 bản ghi</div>
-            <div class="pagination-controls" id="paginationControls">
-                </div>
+            <div class="pagination-controls" id="paginationControls"></div>
         </div>
-    </div>
-</div>
-
-<div id="explainModal" class="modal-overlay">
-    <div class="modal-content">
-        <h3 style="margin-top:0; color: var(--theme-dark); border-bottom: 1px solid var(--border); padding-bottom: 15px; font-size: 1.2rem;">✍️ Gửi Giải Trình</h3>
-        <form id="explainForm">
-            <input type="hidden" id="explain_id">
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 8px; font-weight: 700; color: #475569; font-size: 0.9rem;">Lý do (Tắc đường, quên chấm công, thiết bị lỗi...)*</label>
-                <textarea id="explain_reason" rows="4" required style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Nunito', sans-serif; resize: vertical; box-sizing: border-box;" placeholder="Nhập chi tiết lý do của bạn..."></textarea>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button type="button" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: #e2e8f0; color: #475569; font-weight: bold; cursor: pointer;" onclick="closeExplainModal()">HỦY BỎ</button>
-                <button type="submit" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: var(--primary); color: white; font-weight: bold; cursor: pointer;">GỬI QUẢN LÝ</button>
-            </div>
-        </form>
     </div>
 </div>
 
 <div id="fraudModal" class="modal-overlay">
     <div class="modal-content" style="border-top: 5px solid #dc2626;">
         <h3 style="margin-top:0; color: #dc2626; padding-bottom: 10px; font-size: 1.2rem;">🚨 Báo cáo Nghi ngờ Gian lận</h3>
-        <p style="font-size: 0.9rem; color: #475569; margin-bottom: 15px;">Bạn đang đánh dấu bản ghi này có dấu hiệu gian lận (chấm công hộ, dùng ảnh giả...). Vui lòng ghi chú lý do để lưu lại bằng chứng.</p>
+        <p style="font-size: 0.9rem; color: #475569; margin-bottom: 15px;">Gắn cờ cảnh báo cho bản ghi này kèm lý do để làm bằng chứng.</p>
         <form id="fraudForm">
             <input type="hidden" id="fraud_att_id">
             <div style="margin-bottom: 15px;">
-                <textarea id="fraud_note" rows="3" required style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Nunito', sans-serif; resize: vertical; box-sizing: border-box;" placeholder="VD: Khuôn mặt trong ảnh không khớp, nghi ngờ dùng điện thoại chụp lại..."></textarea>
+                <textarea id="fraud_note" rows="3" required style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; resize: vertical; box-sizing: border-box;" placeholder="VD: Sai vị trí, dùng ảnh giả..."></textarea>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button type="button" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: #e2e8f0; color: #475569; font-weight: bold; cursor: pointer;" onclick="closeFraudModal()">HỦY BỎ</button>
+                <button type="button" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: #e2e8f0; font-weight: bold; cursor: pointer;" onclick="closeFraudModal()">HỦY BỎ</button>
                 <button type="submit" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: #dc2626; color: white; font-weight: bold; cursor: pointer;">XÁC NHẬN GIAN LẬN</button>
             </div>
         </form>
@@ -339,52 +299,54 @@
 
 {% block extra_js %}
 <script>
-    // --- BIẾN TOÀN CỤC & PHÂN TRANG ---
-    let allAttendance = []; // Dữ liệu thô từ Server (Giới hạn tối đa 500-1000 bản ghi để tối ưu mem)
-    let filteredData = [];  // Dữ liệu sau khi Lọc
+    // --- CHẶN TRUY CẬP TRÁI PHÉP ---
+    const currentUserRole = localStorage.getItem("hrm_role") || "user"; 
+    const currentUsername = localStorage.getItem("hrm_username") || "";
+
+    if (currentUserRole !== "admin" && currentUserRole !== "manager") {
+        alert("BẠN KHÔNG CÓ QUYỀN TRUY CẬP TRANG QUẢN TRỊ NÀY!");
+        window.location.href = "/dashboard";
+    }
+
+    let allAttendance = []; 
+    let filteredData = []; 
     let currentPage = 1;
     let rowsPerPage = 10;
     
-    const currentUserRole = localStorage.getItem("hrm_role") || "admin"; 
-    const currentUsername = localStorage.getItem("hrm_username") || "";
-
-    if (currentUserRole === "user") {
-        document.getElementById("searchGroup").style.display = "none";
-    }
-
-    // --- 1. TẢI DỮ LIỆU TỪ SERVER ---
     async function fetchAttendance() {
-        // Lấy nhiều dữ liệu một chút (VD 500) rồi tự phân trang bằng JS cho mượt
-        const fetchLimit = 500; 
+        const fetchLimit = 1000; // Tăng limit lên 1000 cho Admin xem
         const apiUrl = `/api/attendance?limit=${fetchLimit}&role=${currentUserRole}&username=${currentUsername}`;
         
         try {
-            document.getElementById('attTableBody').innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">Đang tải dữ liệu...</td></tr>';
+            document.getElementById('attTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">Đang tải dữ liệu Logs...</td></tr>';
             const res = await fetch(apiUrl);
             allAttendance = await res.json();
             
-            // Giả lập dữ liệu trạng thái Gian lận nếu DB chưa có (Để Test giao diện)
-            // Trong thực tế, DB của bạn cần có cột `is_fraud` (boolean)
-            allAttendance = allAttendance.map(item => ({...item, is_fraud: item.is_fraud || false, fraud_note: item.fraud_note || ""}));
+            allAttendance = allAttendance.map(item => ({
+                ...item, 
+                is_fraud: item.is_fraud || false, 
+                fraud_note: item.fraud_note || "",
+                client_ip: item.client_ip || "",
+                latitude: item.latitude || null,
+                longitude: item.longitude || null,
+                attendance_type: item.attendance_type || "Tập trung"
+            }));
 
-            applyFilters(); // Lọc và Render
+            applyFilters();
         } catch (error) { 
-            console.error("Lỗi tải dữ liệu:", error); 
-            document.getElementById('attTableBody').innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Lỗi kết nối máy chủ!</td></tr>';
+            document.getElementById('attTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Lỗi kết nối máy chủ!</td></tr>';
         }
     }
 
-    // --- 2. BỘ LỌC DỮ LIỆU (TÌM KIẾM & TRẠNG THÁI) ---
     function applyFilters() {
         const keyword = document.getElementById('searchInput').value.toLowerCase();
         const statusFilter = document.getElementById('statusFilter').value;
 
         filteredData = allAttendance.filter(item => {
-            // Lọc theo keyword
             const matchKeyword = (item.full_name && item.full_name.toLowerCase().includes(keyword)) || 
-                                 (item.username && item.username.toLowerCase().includes(keyword));
+                                 (item.username && item.username.toLowerCase().includes(keyword)) ||
+                                 (item.client_ip && item.client_ip.includes(keyword)); // Cho phép search bằng IP
             
-            // Lọc theo trạng thái
             let matchStatus = true;
             if (statusFilter === 'fraud') matchStatus = item.is_fraud === true;
             else if (statusFilter === 'late') matchStatus = item.late_minutes > 0 && !item.is_fraud;
@@ -393,24 +355,19 @@
             return matchKeyword && matchStatus;
         });
 
-        currentPage = 1; // Reset về trang 1 khi lọc
+        currentPage = 1; 
         calculateStats(filteredData);
         renderTable();
     }
 
-    // --- 3. THỐNG KÊ (Dựa trên dữ liệu đang lọc) ---
     function calculateStats(data) {
         let total = data.length, present = 0, late = 0, fraud = 0;
         let totalConfidence = 0, validConfCount = 0;
 
         data.forEach(item => {
-            if (item.is_fraud) {
-                fraud++;
-            } else if (item.late_minutes > 0 && item.explanation_status !== 'Đã duyệt') {
-                late++;
-            } else {
-                present++; 
-            }
+            if (item.is_fraud) { fraud++; } 
+            else if (item.late_minutes > 0 && item.explanation_status !== 'Đã duyệt') { late++; } 
+            else { present++; }
 
             if (item.confidence && item.confidence > 0) {
                 totalConfidence += parseFloat(item.confidence);
@@ -425,16 +382,8 @@
         document.getElementById('statLate').innerText = late;
         document.getElementById('statFraud').innerText = fraud;
         document.getElementById('statConf').innerText = avgConf !== "--" ? avgConf + '%' : '--%';
-        
-        const confElement = document.getElementById('statConf');
-        if (avgConf !== "--") {
-            if (avgConf >= 85) confElement.style.color = "#10b981";
-            else if (avgConf >= 70) confElement.style.color = "#f59e0b";
-            else confElement.style.color = "#ef4444";
-        } else { confElement.style.color = "#8b5cf6"; }
     }
 
-    // --- 4. RENDER BẢNG (CÓ PHÂN TRANG) ---
     function changeLimit() {
         rowsPerPage = parseInt(document.getElementById('limitSelect').value);
         currentPage = 1;
@@ -451,12 +400,11 @@
         tbody.innerHTML = '';
 
         if(filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">Không tìm thấy dữ liệu phù hợp.</td></tr>'; 
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">Không tìm thấy dữ liệu phù hợp.</td></tr>'; 
             renderPagination(0);
             return;
         }
 
-        // Logic cắt mảng dữ liệu cho trang hiện tại
         const startIndex = (currentPage - 1) * rowsPerPage;
         const endIndex = startIndex + rowsPerPage;
         const paginatedData = filteredData.slice(startIndex, endIndex);
@@ -471,17 +419,11 @@
             
             // Xử lý Trạng thái Chính
             let statusBadge = `<span class="badge badge-present">✔️ Hợp lệ</span>`;
-            let isLate = false;
-
             if (item.is_fraud) {
                 statusBadge = `<span class="badge badge-fraud" title="Đã bị Quản lý đánh dấu nghi ngờ">🚨 NGHI VẤN GIAN LẬN</span>`;
             } else if (item.late_minutes > 0) {
-                 isLate = true;
-                 if(item.explanation_status === 'Đã duyệt') {
-                     statusBadge = `<span class="badge badge-present" title="Đã được duyệt giải trình">✔️ Đã duyệt muộn</span>`;
-                 } else {
-                     statusBadge = `<span class="badge badge-late">⚠️ Đi muộn</span>`;
-                 }
+                 if(item.explanation_status === 'Đã duyệt') statusBadge = `<span class="badge badge-present">✔️ Đã duyệt muộn</span>`;
+                 else statusBadge = `<span class="badge badge-late">⚠️ Đi muộn</span>`;
             }
 
             // Tỷ lệ xác thực AI
@@ -500,34 +442,43 @@
                 imgHtml = `<img src="${item.image_path}?t=${Date.now()}" class="att-thumb" onclick="openImageModal('${item.image_path}', '${item.full_name} - ${item.scan_time}')" title="Bấm để xem ảnh gốc">`;
             }
 
-            // CỘT GIẢI TRÌNH & XÉT DUYỆT CỦA ADMIN
+            // --- [CỘT MỚI] THÔNG TIN THIẾT BỊ ---
+            let typeBadge = item.attendance_type === 'Cá nhân' ? 'badge-type-personal' : 'badge-type-kiosk';
+            let ipHtml = item.client_ip ? `IP: <strong>${item.client_ip}</strong>` : `IP: N/A`;
+            let gpsHtml = `GPS: Không có`;
+            if (item.latitude && item.longitude) {
+                const mapLink = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`;
+                gpsHtml = `GPS: <a href="${mapLink}" target="_blank" title="Xem trên Google Maps">📍 ${item.latitude.toFixed(4)}, ${item.longitude.toFixed(4)}</a>`;
+            }
+
+            let deviceInfoHtml = `
+                <div class="device-info">
+                    <span class="badge ${typeBadge}" style="width: fit-content; padding: 2px 6px;">📱 ${item.attendance_type}</span>
+                    <span>${ipHtml}</span>
+                    <span>${gpsHtml}</span>
+                </div>
+            `;
+
+            // --- CỘT GIẢI TRÌNH & HÀNH ĐỘNG ---
             let explainHtml = '';
             
             if (item.is_fraud) {
-                // Nếu bị đánh dấu gian lận -> Hiển thị lý do của Admin và Nút Gỡ
                 explainHtml = `
                     <div class="explain-wrapper" style="width: 100%;">
-                        <span class="explain-status" style="color: #dc2626; background: #fee2e2;">Admin Ghi chú:</span>
+                        <span class="explain-status" style="color: #dc2626; background: #fee2e2;">Lý do Gian lận:</span>
                         <div class="explain-text" style="border-left-color: #fca5a5; width: 100%;">" ${item.fraud_note} "</div>
+                        <button class="btn-approve" style="margin-top: 5px; border-color: #cbd5e1; color: #475569; background: white;" onclick="removeFraud(${item.id})">↩️ Gỡ nhãn</button>
+                    </div>
                 `;
-                if (currentUserRole === 'admin' || currentUserRole === 'manager') {
-                    explainHtml += `<button class="btn-approve" style="margin-top: 5px; border-color: #cbd5e1; color: #475569; background: white;" onclick="removeFraud(${item.id})">↩️ Gỡ nhãn Gian lận</button>`;
-                }
-                explainHtml += `</div>`;
-
             } else if (item.explanation_status && item.explanation_reason) {
-                // Đã có giải trình đi muộn
                 let statusColor = item.explanation_status === 'Đã duyệt' ? '#10b981' : (item.explanation_status === 'Từ chối' ? '#ef4444' : '#f59e0b');
-                
                 explainHtml = `
                     <div class="explain-wrapper">
                         <span class="explain-status" style="color: ${statusColor}; border: 1px solid ${statusColor}40; background: ${statusColor}10;">${item.explanation_status}</span>
                         <div class="explain-text">" ${item.explanation_reason} "</div>
                     </div>
                 `;
-
-                if ((currentUserRole === 'admin' || currentUserRole === 'manager') && 
-                    (item.explanation_status === 'Chờ duyệt' || item.explanation_status === 'Đã gửi')) {
+                if (item.explanation_status === 'Chờ duyệt' || item.explanation_status === 'Đã gửi') {
                      explainHtml += `
                         <div class="approve-actions">
                             <button class="btn-approve" onclick="reviewExplain(${item.id}, 'Đã duyệt')">✔️ Duyệt</button>
@@ -535,18 +486,21 @@
                         </div>
                      `;
                 }
-            } else if (isLate) {
-                // Đi muộn nhưng chưa giải trình
-                explainHtml = `<button class="btn-explain" onclick="openExplainModal(${item.id})">✍️ Viết Giải trình</button>`;
             } else {
-                explainHtml = `<span style="color:#cbd5e1;">---</span>`;
+                explainHtml = `<span style="color:#cbd5e1; font-size: 0.8rem;">Không có giải trình</span>`;
             }
 
-            // [MỚI] NÚT CẢNH BÁO GIAN LẬN DÀNH CHO ADMIN NẰM DƯỚI CÙNG CỦA Ô TRẠNG THÁI
             let fraudBtnHtml = "";
-            if (!item.is_fraud && (currentUserRole === 'admin' || currentUserRole === 'manager')) {
-                fraudBtnHtml = `<br><button class="btn-fraud-alert" onclick="openFraudModal(${item.id})">🚩 Báo cáo Gian lận</button>`;
+            if (!item.is_fraud) {
+                fraudBtnHtml = `<br><button class="btn-fraud-alert" onclick="openFraudModal(${item.id})">🚩 Gắn cờ vi phạm</button>`;
             }
+
+            // NÚT XÓA BẢN GHI CHO ADMIN
+            let deleteBtnHtml = `
+                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
+                    <button class="btn-delete-log" onclick="deleteRecord(${item.id}, '${item.full_name}')">🗑️ Xóa bản ghi</button>
+                </div>
+            `;
 
             tbody.innerHTML += `
                 <tr>
@@ -558,11 +512,15 @@
                     <td data-label="ẢNH CHỤP AI">${imgHtml}</td> 
                     <td data-label="GIỜ VÀO"><span class="time-box">${item.scan_time}</span></td>
                     <td data-label="ĐỘ CHÍNH XÁC">${confHtml}</td>
+                    <td data-label="THÔNG TIN THIẾT BỊ">${deviceInfoHtml}</td> 
                     <td data-label="TRẠNG THÁI">
                         ${statusBadge}
                         ${fraudBtnHtml}
                     </td>
-                    <td data-label="GIẢI TRÌNH & XÉT DUYỆT">${explainHtml}</td>
+                    <td data-label="GIẢI TRÌNH & HÀNH ĐỘNG">
+                        ${explainHtml}
+                        ${deleteBtnHtml}
+                    </td>
                 </tr>
             `;
         });
@@ -572,99 +530,97 @@
 
     function renderPagination(totalItems, start, end) {
         const totalPages = Math.ceil(totalItems / rowsPerPage);
-        
-        // Cập nhật text Info
         const actualEnd = end > totalItems ? totalItems : end;
-        if(totalItems === 0) {
-            document.getElementById('pageInfo').innerText = `Không có bản ghi nào`;
-        } else {
-            document.getElementById('pageInfo').innerHTML = `Đang hiển thị <strong style="color:var(--primary)">${start + 1} - ${actualEnd}</strong> trong tổng số <strong>${totalItems}</strong> bản ghi`;
-        }
+        
+        if(totalItems === 0) document.getElementById('pageInfo').innerText = `Không có bản ghi nào`;
+        else document.getElementById('pageInfo').innerHTML = `Đang hiển thị <strong style="color:var(--primary)">${start + 1} - ${actualEnd}</strong> trong tổng số <strong>${totalItems}</strong> bản ghi`;
 
-        // Render nút bấm
         let html = '';
         if (totalPages > 1) {
             html += `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="changePage(${currentPage - 1})">❮</button>`;
-            
-            // Logic hiển thị tối đa 5 nút số gần nhất cho gọn
             let startPage = Math.max(1, currentPage - 2);
             let endPage = Math.min(totalPages, currentPage + 2);
-            
             for (let i = startPage; i <= endPage; i++) {
                 html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
             }
-            
             html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="changePage(${currentPage + 1})">❯</button>`;
         }
         document.getElementById('paginationControls').innerHTML = html;
     }
 
-
-    // --- 5. LOGIC XỬ LÝ MODAL GIẢI TRÌNH (CHO NHÂN VIÊN) ---
-    function openExplainModal(id) {
-        document.getElementById('explain_id').value = id;
-        document.getElementById('explain_reason').value = '';
-        document.getElementById('explainModal').style.display = 'flex';
-    }
-
-    function closeExplainModal() { document.getElementById('explainModal').style.display = 'none'; }
-
-    document.getElementById('explainForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = {
-            id: parseInt(document.getElementById('explain_id').value),
-            reason: document.getElementById('explain_reason').value.trim()
-        };
-
-        try {
-            const res = await fetch('/api/attendance/explain', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-            });
-            if(res.ok) {
-                alert("Đã gửi giải trình thành công!");
-                closeExplainModal();
-                fetchAttendance(); 
-            } else { alert("Có lỗi xảy ra, vui lòng thử lại."); }
-        } catch(err) { alert("Lỗi kết nối máy chủ!"); }
-    });
-
+    // --- CÁC HÀM TƯƠNG TÁC (DUYỆT, GIAN LẬN, XÓA, ẢNH) ---
     async function reviewExplain(id, status) {
         if(!confirm(`Bạn chắc chắn muốn ${status.toUpperCase()} giải trình này?`)) return;
-        const payload = { id: id, status: status, role: currentUserRole };
         try {
             const res = await fetch('/api/attendance/review_explain', { 
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) 
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id, status: status, role: currentUserRole }) 
             });
-            if(res.ok) { fetchAttendance(); } 
-            else { alert("Lỗi khi cập nhật."); }
-        } catch(err) { alert("Lỗi kết nối máy chủ khi phê duyệt!"); }
+            if(res.ok) fetchAttendance(); 
+            else alert("Lỗi khi cập nhật.");
+        } catch(err) { alert("Lỗi kết nối máy chủ!"); }
     }
 
-
-    // --- 6. LOGIC XỬ LÝ GIAN LẬN (CHO ADMIN) ---
-    // [CẦN BACKEND HỖ TRỢ API TƯƠNG ỨNG: PUT /api/attendance/mark_fraud]
     function openFraudModal(id) {
         document.getElementById('fraud_att_id').value = id;
         document.getElementById('fraud_note').value = '';
         document.getElementById('fraudModal').style.display = 'flex';
     }
-
     function closeFraudModal() { document.getElementById('fraudModal').style.display = 'none'; }
 
-    function removeFraud(id) {
+    document.getElementById('fraudForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const attId = document.getElementById('fraud_att_id').value;
+        const note = document.getElementById('fraud_note').value.trim();
+        
+        if(confirm("Xác nhận gắn cờ gian lận?")) {
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.innerText = "ĐANG XỬ LÝ..."; submitBtn.disabled = true;
+            try {
+                const res = await fetch('/api/attendance/mark_fraud', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: parseInt(attId), is_fraud: true, fraud_note: note, role: currentUserRole })
+                });
+                if(res.ok) { closeFraudModal(); fetchAttendance(); } 
+                else { alert("Lỗi không thể lưu dữ liệu"); }
+            } catch (err) { alert("Lỗi kết nối máy chủ!"); } 
+            finally { submitBtn.innerText = "XÁC NHẬN GIAN LẬN"; submitBtn.disabled = false; }
+        }
+    });
+
+    async function removeFraud(id) {
         if(confirm("Gỡ bỏ cờ gian lận và khôi phục trạng thái cũ?")) {
-            // Tương tự, đây là đoạn giả lập gọi API gỡ Fraud
-            let record = allAttendance.find(x => x.id == id);
-            if(record) {
-                record.is_fraud = false;
-                record.fraud_note = "";
-            }
-            applyFilters();
+            try {
+                const res = await fetch('/api/attendance/mark_fraud', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: parseInt(id), is_fraud: false, fraud_note: "", role: currentUserRole })
+                });
+                if(res.ok) fetchAttendance(); else alert("Lỗi khi gỡ bỏ.");
+            } catch (err) { alert("Lỗi kết nối máy chủ!"); }
         }
     }
 
+    // --- [MỚI] TÍNH NĂNG XÓA BẢN GHI (DÀNH RIÊNG CHO ADMIN) ---
+    async function deleteRecord(id, name) {
+        const confirmMsg = `⚠️ CẢNH BÁO NGUY HIỂM ⚠️\n\nBạn có chắc chắn muốn XÓA VĨNH VIỄN bản ghi chấm công của [${name}] không?\nHành động này sẽ xóa cả ảnh trong ổ cứng và không thể hoàn tác!`;
+        
+        if(confirm(confirmMsg)) {
+            try {
+                // Gọi API DELETE xuống Backend
+                const res = await fetch(`/api/attendance/${id}?role=${currentUserRole}`, { method: 'DELETE' });
+                
+                if(res.ok) {
+                    alert("🗑️ Đã xóa bản ghi thành công!");
+                    fetchAttendance(); // Tải lại bảng
+                } else {
+                    const errorData = await res.json();
+                    alert("Lỗi khi xóa: " + (errorData.detail || "Không thể thực hiện"));
+                }
+            } catch(e) {
+                alert("Lỗi kết nối đến máy chủ khi thực hiện lệnh xóa!");
+            }
+        }
+    }
 
-    // --- 7. MODAL XEM ẢNH ---
     function openImageModal(src, title) {
         document.getElementById('previewImage').src = src;
         document.getElementById('previewName').innerText = title;
@@ -675,76 +631,6 @@
         document.getElementById('previewImage').src = ""; 
     }
 
-    // --- LOGIC XỬ LÝ GIAN LẬN (ĐÃ KẾT NỐI API THẬT) ---
-    document.getElementById('fraudForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const attId = document.getElementById('fraud_att_id').value;
-        const note = document.getElementById('fraud_note').value.trim();
-        
-        if(confirm("Hành động này sẽ gắn cờ vi phạm cho nhân viên. Bạn có chắc chắn?")) {
-            // Nút load hiệu ứng
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerText;
-            submitBtn.innerText = "ĐANG XỬ LÝ...";
-            submitBtn.disabled = true;
-
-            try {
-                // GỌI API THẬT XUỐNG DATABASE
-                const res = await fetch('/api/attendance/mark_fraud', {
-                    method: 'PUT', 
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        id: parseInt(attId), 
-                        is_fraud: true, 
-                        fraud_note: note, 
-                        role: currentUserRole 
-                    })
-                });
-                
-                if(res.ok) {
-                    alert("Đã lưu cảnh báo gian lận thành công!");
-                    closeFraudModal();
-                    fetchAttendance(); // Tải lại bảng dữ liệu mới nhất từ Server
-                } else {
-                    const errData = await res.json();
-                    alert("Lỗi: " + (errData.detail || "Không thể lưu dữ liệu"));
-                }
-            } catch (err) {
-                alert("Lỗi kết nối máy chủ!");
-            } finally {
-                submitBtn.innerText = originalText;
-                submitBtn.disabled = false;
-            }
-        }
-    });
-
-    async function removeFraud(id) {
-        if(confirm("Gỡ bỏ cờ gian lận và khôi phục trạng thái cũ?")) {
-            try {
-                // GỌI API THẬT ĐỂ GỠ GIAN LẬN
-                const res = await fetch('/api/attendance/mark_fraud', {
-                    method: 'PUT', 
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        id: parseInt(id), 
-                        is_fraud: false, 
-                        fraud_note: "", 
-                        role: currentUserRole 
-                    })
-                });
-                
-                if(res.ok) {
-                    fetchAttendance(); // Tải lại bảng dữ liệu mới nhất
-                } else {
-                    alert("Lỗi khi gỡ bỏ gian lận.");
-                }
-            } catch (err) {
-                alert("Lỗi kết nối máy chủ!");
-            }
-        }
-    }
-
-    // Khởi chạy khi load trang
     fetchAttendance();
 </script>
 {% endblock %}

@@ -16,7 +16,7 @@ from typing import Optional
 
 from database import get_db
 from models import Employee, Attendance, LeaveRequest, ShiftCategory
-from schemas import EmployeeCreate, LeaveSubmit, ExplainRequest, ReviewExplainRequest
+from schemas import EmployeeCreate, LeaveSubmit, ExplainRequest, ReviewExplainRequest, MarkFraudRequest
 from config import DB_PATH
 
 router = APIRouter()
@@ -66,7 +66,13 @@ def get_attendance(
             "confidence": att.confidence,
             "image_path": att.image_path,
             "explanation_status": att.explanation_status,
-            "explanation_reason": att.explanation_reason
+            "explanation_reason": att.explanation_reason,
+            "is_fraud": bool(att.is_fraud), 
+            "fraud_note": att.fraud_note or "",
+            "client_ip": att.client_ip or "",
+            "latitude": att.latitude,
+            "longitude": att.longitude,
+            "attendance_type": att.attendance_type
         })
         
     return result
@@ -174,3 +180,21 @@ def review_explanation(req: ReviewExplainRequest, db: Session = Depends(get_db))
         "status": "success", 
         "message": f"Đã {req.status.lower()} giải trình thành công!"
     }
+
+@router.put("/api/attendance/mark_fraud")
+def mark_fraud(req: MarkFraudRequest, db: Session = Depends(get_db)):
+    # Chỉ Admin hoặc Manager mới được phép đánh dấu gian lận
+    if req.role not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Không có quyền thực hiện")
+        
+    # Tìm bản ghi chấm công
+    record = db.query(Attendance).filter(Attendance.id == req.id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi")
+        
+    # Cập nhật trạng thái
+    record.is_fraud = req.is_fraud
+    record.fraud_note = req.fraud_note if req.is_fraud else ""
+    
+    db.commit()
+    return {"status": "success", "message": "Đã cập nhật trạng thái gian lận"}
