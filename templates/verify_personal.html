@@ -179,9 +179,8 @@
                         lng: position.coords.longitude 
                     };
                     
-                    // Ném tọa độ hiện tại và mảng 4 góc vào thuật toán
                     let isInsideArea = isPointInPolygon(currentPoint, HOSPITAL_ZONE);
-                    isInsideArea = true;
+                    // isInsideArea = true;
                     if (isInsideArea) {
                         isLocationValid = true;
                         banner.className = 'net-valid';
