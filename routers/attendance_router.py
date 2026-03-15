@@ -1,5 +1,5 @@
 # Sửa dòng import này (Thêm Request)
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 
 # Thêm 2 dòng này để hỗ trợ trả về giao diện HTML (nếu bạn để các hàm render HTML ở file này)
 from fastapi.templating import Jinja2Templates
@@ -72,7 +72,8 @@ def get_attendance(
             "client_ip": att.client_ip or "",
             "latitude": att.latitude,
             "longitude": att.longitude,
-            "attendance_type": att.attendance_type
+            "attendance_type": att.attendance_type,
+            "note": att.note or ""
         })
         
     return result
@@ -198,3 +199,39 @@ def mark_fraud(req: MarkFraudRequest, db: Session = Depends(get_db)):
     
     db.commit()
     return {"status": "success", "message": "Đã cập nhật trạng thái gian lận"}
+
+
+@router.delete("/api/attendance/{record_id}")
+def delete_attendance_record(
+    record_id: int, 
+    role: str = Query(..., description="Quyền của người đang thao tác"), 
+    db: Session = Depends(get_db)
+):
+    # 1. Chặn cửa: Chỉ Admin/Manager mới được phép gọi lệnh Delete
+    if role not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Truy cập bị từ chối: Chỉ Quản lý hoặc Admin mới được phép xóa!")
+
+    # 2. Tìm bản ghi trong Database
+    record = db.query(Attendance).filter(Attendance.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi này trong cơ sở dữ liệu.")
+
+    # 3. Trảm file ảnh vật lý dưới ổ cứng (Nếu có)
+    if record.image_path:
+        physical_img_path = "." + record.image_path
+        try:
+            if os.path.exists(physical_img_path):
+                os.remove(physical_img_path)
+                print(f"✅ Đã dọn rác ổ cứng: Xóa file {physical_img_path}")
+        except Exception as e:
+            print(f"⚠️ Không thể xóa file ảnh vật lý (có thể file đã mất): {e}")
+
+    # 4. Trảm dữ liệu trong Database
+    try:
+        db.delete(record)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Lỗi SQL khi xóa bản ghi.")
+
+    return {"status": "success", "message": f"Đã xóa vĩnh viễn bản ghi ID {record_id}"}

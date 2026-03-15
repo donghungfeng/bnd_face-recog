@@ -104,6 +104,7 @@ class PersonalVerifyRequest(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     attendance_type: str = "Cá nhân"
+    note: Optional[str] = ""
 
 class MarkFraudRequest(BaseModel):
     id: int

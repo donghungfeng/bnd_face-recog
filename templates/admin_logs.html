@@ -184,7 +184,6 @@
 
         td:nth-child(5) { grid-area: accuracy; justify-content: center; font-size: 0.75rem; background: #f8fafc; padding: 2px 0; border-radius: 6px; margin-top: -5px;}
 
-        /* [MỚI] Thiết bị & Mạng */
         td:nth-child(6) { grid-area: source; flex-direction: column; align-items: flex-end; font-size: 0.75rem; gap: 2px;}
 
         td:nth-child(7) { grid-area: status; flex-wrap: wrap; gap: 5px; align-items: center; }
@@ -255,8 +254,10 @@
                         <th>ẢNH CHỤP</th> 
                         <th>GIỜ VÀO</th>
                         <th>ĐỘ CHÍNH XÁC</th>
-                        <th>THÔNG TIN THIẾT BỊ</th> <th>TRẠNG THÁI</th>
-                        <th>GIẢI TRÌNH & HÀNH ĐỘNG</th> </tr>
+                        <th>THÔNG TIN THIẾT BỊ</th> 
+                        <th>TRẠNG THÁI</th>
+                        <th>GIẢI TRÌNH & HÀNH ĐỘNG</th> 
+                    </tr>
                 </thead>
                 <tbody id="attTableBody">
                     <tr><td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8; font-style: italic;">Đang tải dữ liệu chấm công...</td></tr>
@@ -314,7 +315,7 @@
     let rowsPerPage = 10;
     
     async function fetchAttendance() {
-        const fetchLimit = 1000; // Tăng limit lên 1000 cho Admin xem
+        const fetchLimit = 1000; 
         const apiUrl = `/api/attendance?limit=${fetchLimit}&role=${currentUserRole}&username=${currentUsername}`;
         
         try {
@@ -329,7 +330,9 @@
                 client_ip: item.client_ip || "",
                 latitude: item.latitude || null,
                 longitude: item.longitude || null,
-                attendance_type: item.attendance_type || "Tập trung"
+                attendance_type: item.attendance_type || "Tập trung",
+                // [CẬP NHẬT] Đảm bảo map biến note từ DB
+                note: item.note || "" 
             }));
 
             applyFilters();
@@ -345,7 +348,7 @@
         filteredData = allAttendance.filter(item => {
             const matchKeyword = (item.full_name && item.full_name.toLowerCase().includes(keyword)) || 
                                  (item.username && item.username.toLowerCase().includes(keyword)) ||
-                                 (item.client_ip && item.client_ip.includes(keyword)); // Cho phép search bằng IP
+                                 (item.client_ip && item.client_ip.includes(keyword)); 
             
             let matchStatus = true;
             if (statusFilter === 'fraud') matchStatus = item.is_fraud === true;
@@ -410,14 +413,12 @@
         const paginatedData = filteredData.slice(startIndex, endIndex);
 
         paginatedData.forEach(item => {
-            // Ngày tháng
             let dateStr = "---";
             if(item.date) {
                 const [y, m, d] = item.date.split('-');
                 dateStr = `${d}/${m}/${y}`;
             }
             
-            // Xử lý Trạng thái Chính
             let statusBadge = `<span class="badge badge-present">✔️ Hợp lệ</span>`;
             if (item.is_fraud) {
                 statusBadge = `<span class="badge badge-fraud" title="Đã bị Quản lý đánh dấu nghi ngờ">🚨 NGHI VẤN GIAN LẬN</span>`;
@@ -426,7 +427,6 @@
                  else statusBadge = `<span class="badge badge-late">⚠️ Đi muộn</span>`;
             }
 
-            // Tỷ lệ xác thực AI
             let confHtml = `<span style="color:#94a3b8;">---</span>`;
             if (item.confidence) {
                 let confVal = parseFloat(item.confidence).toFixed(2); 
@@ -436,13 +436,12 @@
                 confHtml = `<span class="${confClass}">${icon} ${confVal}%</span>`;
             }
 
-            // Ảnh Thumbnail
             let imgHtml = `<span style="color:#cbd5e1; font-size: 0.8rem; font-style:italic;">Không có ảnh</span>`;
             if (item.image_path && item.image_path !== "") {
                 imgHtml = `<img src="${item.image_path}?t=${Date.now()}" class="att-thumb" onclick="openImageModal('${item.image_path}', '${item.full_name} - ${item.scan_time}')" title="Bấm để xem ảnh gốc">`;
             }
 
-            // --- [CỘT MỚI] THÔNG TIN THIẾT BỊ ---
+            // --- [CẬP NHẬT] THÔNG TIN THIẾT BỊ VÀ GHI CHÚ ---
             let typeBadge = item.attendance_type === 'Cá nhân' ? 'badge-type-personal' : 'badge-type-kiosk';
             let ipHtml = item.client_ip ? `IP: <strong>${item.client_ip}</strong>` : `IP: N/A`;
             let gpsHtml = `GPS: Không có`;
@@ -450,18 +449,24 @@
                 const mapLink = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`;
                 gpsHtml = `GPS: <a href="${mapLink}" target="_blank" title="Xem trên Google Maps">📍 ${item.latitude.toFixed(4)}, ${item.longitude.toFixed(4)}</a>`;
             }
+            
+            // Xử lý render Ghi chú (Note)
+            let noteHtml = '';
+            if (item.note) {
+                noteHtml = `<span style="margin-top: 4px; padding: 3px 6px; background: #fffbeb; color: #b45309; border: 1px dashed #fde047; border-radius: 4px; font-size: 0.7rem; white-space: normal; word-wrap: break-word; line-height: 1.3;">⏱️ ${item.note}</span>`;
+            }
 
             let deviceInfoHtml = `
                 <div class="device-info">
-                    <span class="badge ${typeBadge}" style="width: fit-content; padding: 2px 6px;">📱 ${item.attendance_type}</span>
+                    <span class="badge ${typeBadge}" style="width: fit-content; padding: 2px 6px; margin-bottom: 2px;">📱 ${item.attendance_type}</span>
                     <span>${ipHtml}</span>
                     <span>${gpsHtml}</span>
+                    ${noteHtml}
                 </div>
             `;
 
             // --- CỘT GIẢI TRÌNH & HÀNH ĐỘNG ---
             let explainHtml = '';
-            
             if (item.is_fraud) {
                 explainHtml = `
                     <div class="explain-wrapper" style="width: 100%;">
@@ -495,7 +500,6 @@
                 fraudBtnHtml = `<br><button class="btn-fraud-alert" onclick="openFraudModal(${item.id})">🚩 Gắn cờ vi phạm</button>`;
             }
 
-            // NÚT XÓA BẢN GHI CHO ADMIN
             let deleteBtnHtml = `
                 <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
                     <button class="btn-delete-log" onclick="deleteRecord(${item.id}, '${item.full_name}')">🗑️ Xóa bản ghi</button>
@@ -548,7 +552,6 @@
         document.getElementById('paginationControls').innerHTML = html;
     }
 
-    // --- CÁC HÀM TƯƠNG TÁC (DUYỆT, GIAN LẬN, XÓA, ẢNH) ---
     async function reviewExplain(id, status) {
         if(!confirm(`Bạn chắc chắn muốn ${status.toUpperCase()} giải trình này?`)) return;
         try {
@@ -599,18 +602,16 @@
         }
     }
 
-    // --- [MỚI] TÍNH NĂNG XÓA BẢN GHI (DÀNH RIÊNG CHO ADMIN) ---
     async function deleteRecord(id, name) {
         const confirmMsg = `⚠️ CẢNH BÁO NGUY HIỂM ⚠️\n\nBạn có chắc chắn muốn XÓA VĨNH VIỄN bản ghi chấm công của [${name}] không?\nHành động này sẽ xóa cả ảnh trong ổ cứng và không thể hoàn tác!`;
         
         if(confirm(confirmMsg)) {
             try {
-                // Gọi API DELETE xuống Backend
                 const res = await fetch(`/api/attendance/${id}?role=${currentUserRole}`, { method: 'DELETE' });
                 
                 if(res.ok) {
                     alert("🗑️ Đã xóa bản ghi thành công!");
-                    fetchAttendance(); // Tải lại bảng
+                    fetchAttendance();
                 } else {
                     const errorData = await res.json();
                     alert("Lỗi khi xóa: " + (errorData.detail || "Không thể thực hiện"));

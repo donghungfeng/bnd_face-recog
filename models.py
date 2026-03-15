@@ -66,7 +66,7 @@ class Attendance(Base):
     latitude = Column(Float, nullable=True)        
     longitude = Column(Float, nullable=True)       
     attendance_type = Column(String(50), default="Tập trung")
-    
+    note = Column(Text, nullable=True)
 
 class LeaveRequest(Base):
     __tablename__ = "leave_requests"

@@ -101,10 +101,10 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
         THRESHOLD = float(services.get_config("FACE_THRESHOLD", "0.75"))
 
         if max_sim >= THRESHOLD:
-            background_tasks.add_task(services.background_logging, best_match, img_to_save, max_sim, request.client_public_ip,0,0,request.attendance_type)
+            background_tasks.add_task(services.background_logging, best_match, img_to_save, max_sim, request.client_public_ip,0,0,request.attendance_type,'')
             return {"recognized": True, "user_id": best_match, "match_probability": f"{round(max_sim * 100, 2)}%"}
         
-        return {"recognized": False, "message": "Người lạ"}
+        return {"recognized": False, "message": "Người lạ","match_probability": f"{round(max_sim * 100, 2)}%"}
     except Exception as e:
         error_msg = str(e).lower()
         
@@ -341,11 +341,11 @@ async def verify_personal(data: PersonalVerifyRequest, background_tasks: Backgro
         similarities = dot_products / (matrix_norms * current_norm)
         max_sim = np.max(similarities)
         
-        THRESHOLD = float(services.get_config("FACE_THRESHOLD", "0.75"))
+        THRESHOLD = float(services.get_config("FACE_THRESHOLD_PERSONAL", "0.75"))
         
         if max_sim >= THRESHOLD:
             # Code lưu Database ở đây (nếu cần)
-            background_tasks.add_task(services.background_logging, user_id, img_full, max_sim, client_ip,data.latitude,data.longitude,data.attendance_type)
+            background_tasks.add_task(services.background_logging, user_id, img_full, max_sim, client_ip,data.latitude,data.longitude,data.attendance_type,data.note)
 
             return {
                 "recognized": True, 
@@ -353,7 +353,7 @@ async def verify_personal(data: PersonalVerifyRequest, background_tasks: Backgro
                 "match_probability": f"{round(max_sim * 100, 2)}%"
             }
         else:
-            return {"recognized": False, "message": "Khuôn mặt không khớp với tài khoản"}
+            return {"recognized": False, "message": "⚠️ VUI LÒNG GIỮ THẲNG KHUÔN MẶT, VÀ GIỮ Ở GIỮA KHUNG HÌNH", "match_probability": f"{round(max_sim * 100, 2)}%"}
 
     except Exception as e:
         error_msg = str(e).lower()

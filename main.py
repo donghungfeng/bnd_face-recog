@@ -7,7 +7,7 @@ from sqlalchemy import text # Thêm để chạy lệnh SQL thuần
 
 # Khai báo thêm SessionLocal để dùng lúc đóng DB
 from database import engine, Base, SessionLocal 
-from services import load_embeddings
+from services import load_embeddings, load_system_configs
 from routers import attendance_router, auth_router, config_router, department_router, employee_router, page_router, face_router, admin_router, shift_router
 
 # ==========================================
@@ -20,6 +20,8 @@ async def lifespan(app: FastAPI):
     print("🧠 Đang nạp AI Embeddings vào bộ nhớ (Cache)...")
     load_embeddings()
     print("✅ Hệ thống AI đã sẵn sàng!")
+    load_system_configs()
+    print("✅ Cấu hình hệ thống đã sẵn sàng!")
     
     # Ứng dụng sẽ hoạt động tại đây
     yield 

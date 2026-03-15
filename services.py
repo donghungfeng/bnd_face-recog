@@ -91,7 +91,8 @@ def background_logging(
     client_ip: str = None, 
     latitude: float = None, 
     longitude: float = None, 
-    attendance_type: str = "Tập trung" 
+    attendance_type: str = "Tập trung",
+    note: str = ""
 ):
     db = SessionLocal() 
     try:
@@ -131,7 +132,6 @@ def background_logging(
         image_web_path = f"/data/history_db/{success_filename}"
 
         if len(records_today) < 2:
-            # ---> LƯU MỚI: Truyền thêm 4 thông số vào Database
             new_log = Attendance(
                 username=user_id, 
                 full_name=full_name, 
@@ -140,10 +140,11 @@ def background_logging(
                 late_minutes=late_min, 
                 early_minutes=early_min, 
                 confidence=round(confidence*100, 2),
-                client_ip=client_ip,                   # MỚI
-                latitude=latitude,                     # MỚI
-                longitude=longitude,                   # MỚI
-                attendance_type=attendance_type        # MỚI
+                client_ip=client_ip,                   
+                latitude=latitude,                     
+                longitude=longitude,                   
+                attendance_type=attendance_type,        
+                note=note                            
             )
             db.add(new_log)
         else:
@@ -163,6 +164,7 @@ def background_logging(
             latest_record.latitude = latitude                   # MỚI
             latest_record.longitude = longitude                 # MỚI
             latest_record.attendance_type = attendance_type     # MỚI
+            latest_record.note = note                         # MỚI
 
             if len(records_today) > 2:
                 for extra_record in records_today[2:]:

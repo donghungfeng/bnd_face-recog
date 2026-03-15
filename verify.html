@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BND Face Recognition</title>
+    <title>BND Kiosk - Face Recognition</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
     
@@ -29,10 +29,10 @@
         h2 { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--primary); margin: 5px 0 15px 0; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
 
         .info { 
-            font-family: 'Orbitron', sans-serif; font-size: 1rem; padding: 15px; 
+            font-family: 'Orbitron', sans-serif; font-size: 0.95rem; padding: 15px; 
             border-radius: 12px; background: var(--card); border: 1px solid rgba(255,255,255,0.1); 
             transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; 
-            font-weight: bold;
+            font-weight: bold; text-align: center; line-height: 1.4;
         }
 
         .distance-meter { width: 100%; height: 6px; background: #334155; border-radius: 10px; margin-top: 15px; overflow: hidden; position: relative; }
@@ -62,11 +62,12 @@
         .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
         .status-warning { color: var(--warning); border-color: var(--warning); }
         .status-err { color: var(--error); border-color: var(--error); background: rgba(255, 68, 68, 0.1); }
+        .status-sleep { color: #94a3b8; border-color: #475569; background: #1e293b; }
 
         .loader { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* ================= BẢNG LỊCH SỬ (HIỂN THỊ CHUẨN 5 NGƯỜI) ================= */
+        /* ================= BẢNG LỊCH SỬ ================= */
         .history-container {
             width: 100%; max-width: 700px; margin-top: 15px; 
             background: var(--card); border: 1px solid rgba(255,255,255,0.1); 
@@ -86,7 +87,7 @@
         }
         
         .history-item {
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
             padding: 10px 5px; background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
             text-align: center; animation: popIn 0.3s ease;
@@ -100,10 +101,64 @@
         }
         
         .history-time { color: #cbd5e1; font-family: monospace; font-size: 0.75rem; }
-        .history-name { font-weight: bold; color: var(--success); font-size: 0.95rem; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .history-prob { color: var(--primary); font-size: 0.75rem; background: rgba(0, 242, 255, 0.1); padding: 2px 8px; border-radius: 10px; }
+        
+        .history-name { 
+            font-weight: bold; color: var(--success); font-size: 0.85rem; width: 100%; 
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; 
+            overflow: hidden; text-overflow: ellipsis; line-height: 1.3;
+            word-wrap: break-word; min-height: 2.6em; 
+        }
+
+        .history-prob { color: var(--primary); font-size: 0.75rem; background: rgba(0, 242, 255, 0.1); padding: 2px 8px; border-radius: 10px; margin-top: 2px;}
 
         @keyframes popIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* ================= POPUP XIN CHÀO ================= */
+        .popup-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.9); display: none;
+            align-items: center; justify-content: center; z-index: 10000;
+            backdrop-filter: blur(8px);
+        }
+        .popup-content {
+            background: var(--card); border: 2px solid var(--success);
+            padding: 30px 40px; border-radius: 20px; text-align: center;
+            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.3);
+            animation: popIn 0.3s ease-out; position: relative;
+            max-width: 80%;
+        }
+        .popup-close {
+            position: absolute; top: 10px; right: 15px;
+            background: none; border: none; color: #94a3b8; font-size: 1.5rem;
+            cursor: pointer; transition: 0.2s;
+        }
+        .popup-close:hover { color: #fff; transform: scale(1.1); }
+        .popup-icon { font-size: 3.5rem; margin-bottom: 10px; }
+        .popup-title { color: #fff; font-size: 1.1rem; margin: 0 0 5px 0; font-weight: normal;}
+        .popup-name { 
+            color: var(--success); font-size: 1.8rem; font-family: 'Orbitron', sans-serif; 
+            margin: 0; text-shadow: 0 0 15px rgba(0, 255, 136, 0.5); font-weight: bold;
+        }
+
+        /* ================= MÀN HÌNH NGỦ ĐÔNG ================= */
+        #sleepOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); z-index: 50;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+        .btn-wake {
+            background: var(--primary); color: #000; border: none;
+            padding: 18px 35px; font-size: 1.2rem; font-family: 'Orbitron', sans-serif;
+            font-weight: bold; border-radius: 40px; cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); transition: 0.3s;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .btn-wake:hover { transform: scale(1.05); box-shadow: 0 0 35px rgba(0, 242, 255, 0.8); }
+        .sleep-text { color: #94a3b8; margin-top: 20px; font-size: 0.95rem; font-style: italic;}
+        .icon-sleep { font-size: 3rem; margin-bottom: 15px; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
     </style>
 </head>
 <body>
@@ -119,6 +174,12 @@
     </header>
     
     <div class="main-wrapper">
+        <div id="sleepOverlay">
+            <div class="icon-sleep">💤</div>
+            <button class="btn-wake" onclick="wakeUp()">👋 CHẠM ĐỂ KHỞI ĐỘNG</button>
+            <!-- <div class="sleep-text">Camera đang tạm nghỉ để tiết kiệm điện & RAM</div> -->
+        </div>
+
         <div class="guide-overlay" id="guideCircle"></div>
         <div class="scan-bar"></div>
         <video id="webcam" autoplay playsinline></video>
@@ -128,6 +189,15 @@
     <div class="history-container">
         <div class="history-title"><span style="color:var(--success)">●</span> Danh sách chấm công thành công</div>
         <ul class="history-list" id="historyList"></ul>
+    </div>
+
+    <div class="popup-overlay" id="successPopup" onclick="closePopup()">
+        <div class="popup-content" onclick="event.stopPropagation()">
+            <button class="popup-close" onclick="closePopup()">✖</button>
+            <div class="popup-icon">✅</div>
+            <p class="popup-title">CHẤM CÔNG THÀNH CÔNG</p>
+            <p class="popup-name" id="popupUserName">...</p>
+        </div>
     </div>
 
     <script>
@@ -141,8 +211,14 @@
         let lastProcessingTime = 0;
         let isProcessing = false;
         let lastDetection = null;
-        let isFaceDetectionRunning = false; // Cờ kiểm soát MediaPipe
-        currentPublicIp = ''
+        let isFaceDetectionRunning = false; 
+        let currentPublicIp = '';
+        let popupTimer = null; 
+
+        // --- BIẾN NGỦ ĐÔNG ---
+        let sleepTimer = null;
+        let isSleeping = false;
+        const IDLE_TIMEOUT = 5 * 60 * 1000; // Mặc định 5 phút (300,000 ms). Đổi thành 10000 để test 10 giây.
 
         const FACE_MIN_SIZE = 0.30; 
         const FACE_MAX_SIZE = 0.55;
@@ -158,9 +234,12 @@
         faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.7 });
 
         faceDetection.onResults((results) => {
-            isFaceDetectionRunning = false; // Giải phóng cờ để frame tiếp theo được chạy
+            isFaceDetectionRunning = false; 
 
             if (results.detections.length > 0) {
+                // ĐẶT LẠI GIỜ NGỦ ĐÔNG KHI THẤY KHUÔN MẶT
+                resetSleepTimer();
+
                 lastDetection = results.detections[0].boundingBox;
                 const faceSize = lastDetection.width;
                 const faceX = lastDetection.xCenter;
@@ -205,13 +284,62 @@
                 lastDetection = null;
                 distanceFill.style.width = "0%";
                 guideCircle.classList.remove('guide-active');
-                if (!isProcessing) {
+                if (!isProcessing && !isSleeping) {
                     resultBox.className = "info status-scanning";
                     resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
                 }
             }
         });
 
+        // ==========================================
+        // LOGIC NGỦ ĐÔNG (SLEEP MODE)
+        // ==========================================
+        function resetSleepTimer() {
+            if (sleepTimer) clearTimeout(sleepTimer);
+            if (!isSleeping) {
+                sleepTimer = setTimeout(enterSleepMode, IDLE_TIMEOUT);
+            }
+        }
+
+        function enterSleepMode() {
+            console.log("Hệ thống nhàn rỗi -> Vào chế độ ngủ đông!");
+            isSleeping = true;
+            
+            // 1. Tắt luồng Video (Giải phóng Camera & RAM)
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            
+            // 2. Hiển thị Màn hình Ngủ
+            document.getElementById('sleepOverlay').style.display = 'flex';
+            document.getElementById('resultBox').className = "info status-sleep";
+            document.getElementById('resultBox').innerHTML = "💤 HỆ THỐNG ĐANG TẠM NGHỈ";
+            
+            // 3. Dọn dẹp UI
+            guideCircle.classList.remove('guide-active');
+            distanceFill.style.width = "0%";
+        }
+
+        async function wakeUp() {
+            console.log("Đánh thức hệ thống!");
+            isSleeping = false;
+            
+            // 1. Ẩn Màn hình Ngủ
+            document.getElementById('sleepOverlay').style.display = 'none';
+            document.getElementById('resultBox').className = "info status-scanning";
+            document.getElementById('resultBox').innerHTML = `<div class="loader"></div> ĐANG KHỞI ĐỘNG LẠI CAMERA...`;
+            
+            // 2. Bật lại Camera & Vòng lặp AI
+            await startCamera();
+            
+            // 3. Kích hoạt lại bộ đếm giờ
+            resetSleepTimer();
+        }
+
+        // ==========================================
+        // XỬ LÝ HÌNH ẢNH & API
+        // ==========================================
         function captureCroppedFace() {
             if (!lastDetection) return null;
 
@@ -241,7 +369,6 @@
             return cropCanvas.toDataURL('image/jpeg', 0.85);
         }
 
-        // TỐI ƯU HÓA: Ép khung hình Full-frame xuống tối đa 640px để cứu RAM điện thoại
         function captureFullFrame() {
             const tempCanvas = document.createElement('canvas');
             const maxWidth = 640; 
@@ -255,7 +382,7 @@
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
             
-            return tempCanvas.toDataURL('image/jpeg', 0.7); // Nén mạnh hơn xuống 70%
+            return tempCanvas.toDataURL('image/jpeg', 0.7); 
         }
 
         function addHistoryItem(userId, probability) {
@@ -275,8 +402,25 @@
             }
         }
 
+        // --- XỬ LÝ POPUP XIN CHÀO ---
+        function triggerSuccessPopup(name) {
+            const popup = document.getElementById('successPopup');
+            document.getElementById('popupUserName').innerText = name;
+            popup.style.display = 'flex';
+            
+            if (popupTimer) clearTimeout(popupTimer);
+            
+            popupTimer = setTimeout(() => {
+                closePopup();
+            }, 1500);
+        }
+
+        function closePopup() {
+            document.getElementById('successPopup').style.display = 'none';
+        }
+
         async function sendToAPI() {
-            isProcessing = true; // KHÓA GIAO DỊCH
+            isProcessing = true; 
             resultBox.className = "info status-scanning";
             resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
             
@@ -289,6 +433,7 @@
                     return;
                 }
 
+                // Nhớ đổi lại URL nếu chạy trên mạng LAN hoặc Domain thật
                 const API_URL = "https://hrm.benhnhietdoi.vn";
                 //const API_URL = "http://localhost:8000"; 
                 
@@ -304,27 +449,33 @@
                     resultBox.className = "info status-ok";
                     resultBox.innerHTML = `✅ XIN CHÀO: ${data.user_id.toUpperCase()}`;
                     
-                    // Thêm hàm lấy log để hiển thị tên thay vì username (nếu có API)
                     addHistoryItem(data.user_id, data.match_probability);
+                    triggerSuccessPopup(data.user_id.toUpperCase());
 
                 } else {
-                    resultBox.className = "info status-err";
-                    resultBox.innerHTML = `❌ ${data.message.toUpperCase()}`;
+                    resultBox.className = "info status-warning";
+                    if(data.match_probability) {
+                        resultBox.innerHTML = `⚠️ VUI LÒNG GIỮ THẲNG KHUÔN MẶT, VÀ GIỮ Ở GIỮA KHUNG HÌNH (${data.match_probability})`;
+                    } else {
+                        resultBox.innerHTML = `⚠️ VUI LÒNG GIỮ THẲNG KHUÔN MẶT, VÀ GIỮ Ở GIỮA KHUNG HÌNH`;
+                    }
                 }
             } catch (e) {
                 resultBox.className = "info status-err";
                 resultBox.innerHTML = `⚠️ LỖI KẾT NỐI SERVER`;
             } finally {
-                // TỐI ƯU HÓA: Đảm bảo biến isProcessing luôn được giải phóng sau 1.5 giây dù thành công hay lỗi
                 setTimeout(() => { 
                     isProcessing = false; 
                 }, 1500);
             }
         }
 
-        // TỐI ƯU HÓA: Thay vì setInterval 100ms mù quáng, dùng requestAnimationFrame để đồng bộ với khả năng xử lý của máy
+        // ==========================================
+        // KHỞI ĐỘNG HỆ THỐNG
+        // ==========================================
         async function processVideoFrame() {
-            if (video.readyState >= 2 && !isFaceDetectionRunning) {
+            // Chỉ gửi frame lên AI nếu hệ thống không ngủ đông
+            if (!isSleeping && video.readyState >= 2 && !isFaceDetectionRunning) {
                 isFaceDetectionRunning = true;
                 await faceDetection.send({ image: video });
             }
@@ -334,13 +485,12 @@
         async function startCamera() {
             verifyNetwork();
             try {
-                // Ép camera mở ở độ phân giải lý tưởng, tránh bị điện thoại mở 4K làm đơ máy
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } 
                 });
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
-                    processVideoFrame(); // Khởi động vòng lặp thông minh
+                    processVideoFrame(); 
                 }
             } catch (err) {
                 resultBox.className = "info status-err";
@@ -349,19 +499,18 @@
         }
 
         async function verifyNetwork() {
-            const banner = document.getElementById('networkBanner');
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipRes.json();
                 currentPublicIp = ipData.ip;
-
             } catch(e) {
-                banner.className = 'net-checking'; banner.innerHTML = `⚠️ Lỗi kiểm tra mạng!`;
-                isNetworkValid = false;
+                console.warn("Không lấy được IP mạng: ", e);
             }
         }
 
+        // Bắt đầu chạy
         startCamera();
+        resetSleepTimer(); // Kích hoạt đồng hồ đếm ngược 5 phút
     </script>
 </body>
 </html>
