@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng Ký Khuôn Mặt Bằng Ảnh - BND</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #00f2ff; --success: #00ff88; --danger: #ff4757; --warning: #ffb800;
+            --purple: #8b5cf6; --bg: #0f172a; --card: #1e293b;
+        }
+
+        body { 
+            font-family: 'Roboto', sans-serif; background: var(--bg); color: #f8fafc; 
+            margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center;
+        }
+
+        .container {
+            width: 100%; max-width: 600px; background: var(--card); padding: 30px;
+            border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1); margin-top: 20px;
+        }
+
+        h2 { font-family: 'Orbitron', sans-serif; color: var(--primary); text-align: center; margin-top: 0; margin-bottom: 25px; font-size: 1.5rem; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3);}
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #cbd5e1; font-size: 0.9rem;}
+        
+        input[type="text"] {
+            width: 100%; padding: 12px 15px; border-radius: 8px; border: 1px solid #334155;
+            background: #0f172a; color: white; font-size: 1.1rem; box-sizing: border-box;
+            font-family: monospace; font-weight: bold; letter-spacing: 1px;
+        }
+        input[type="text"]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);}
+
+        .upload-area {
+            border: 2px dashed #475569; border-radius: 12px; padding: 30px; text-align: center;
+            background: rgba(15, 23, 42, 0.5); transition: 0.3s; cursor: pointer;
+        }
+        .upload-area:hover { border-color: var(--purple); background: rgba(139, 92, 246, 0.1); }
+        .upload-area p { margin: 0 0 15px 0; color: #94a3b8; font-size: 0.95rem; }
+        input[type="file"] { display: none; }
+
+        .btn-select {
+            background: var(--purple); color: white; border: none; padding: 10px 20px;
+            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        .btn-select:hover { background: #7c3aed; }
+
+        /* Vùng hiển thị kết quả Crop */
+        .preview-section {
+            display: none; margin-top: 25px; padding-top: 25px; border-top: 1px solid #334155;
+        }
+        .preview-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;
+        }
+        .preview-card { text-align: center; }
+        .preview-card p { margin: 0 0 8px 0; font-size: 0.85rem; font-weight: bold; color: #cbd5e1;}
+        
+        #sourceImage { max-width: 100%; max-height: 200px; border-radius: 8px; border: 2px solid #334155; object-fit: contain; background: #000;}
+        #croppedImage { width: 150px; height: 150px; border-radius: 8px; border: 2px solid var(--success); object-fit: cover; box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);}
+
+        .status-box {
+            padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 0.9rem; margin-bottom: 20px;
+        }
+        .status-wait { background: #334155; color: #cbd5e1; }
+        .status-ok { background: rgba(0, 255, 136, 0.1); border: 1px solid var(--success); color: var(--success); }
+        .status-err { background: rgba(255, 71, 87, 0.1); border: 1px solid var(--danger); color: var(--danger); }
+
+        .btn-submit {
+            width: 100%; background: var(--primary); color: #000; border: none; padding: 15px;
+            border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s;
+            font-family: 'Orbitron', sans-serif; letter-spacing: 1px;
+        }
+        .btn-submit:hover:not(:disabled) { background: #00e0ec; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); transform: translateY(-2px);}
+        .btn-submit:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+
+        .btn-back {
+            position: absolute; top: 15px; left: 15px; background: rgba(255, 255, 255, 0.1);
+            color: #cbd5e1; text-decoration: none; padding: 8px 15px; border-radius: 8px;
+            font-weight: bold; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;
+            transition: 0.2s; border: 1px solid rgba(255,255,255,0.05);
+        }
+        .btn-back:hover { background: rgba(255, 255, 255, 0.2); color: white; }
+    </style>
+</head>
+<body>
+
+    <a href="/employees" class="btn-back">⬅ Đóng</a>
+
+    <div class="container">
+        <h2>ĐĂNG KÝ BẰNG ẢNH</h2>
+
+        <div class="form-group">
+            <label for="userId">MÃ NHÂN VIÊN (USER ID):</label>
+            <input type="text" id="userId" placeholder="Nhập mã nhân viên..." autocomplete="off">
+        </div>
+
+        <div class="upload-area" onclick="document.getElementById('imageUpload').click()">
+            <p>Kéo thả ảnh toàn cảnh vào đây hoặc bấm để chọn</p>
+            <button class="btn-select">📂 CHỌN ẢNH</button>
+            <input type="file" id="imageUpload" accept="image/*">
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <div id="statusBox" class="status-box status-wait">Đang nạp ảnh...</div>
+            
+            <div class="preview-grid">
+                <div class="preview-card">
+                    <p>ẢNH GỐC TẢI LÊN</p>
+                    <img id="sourceImage" alt="Ảnh gốc">
+                </div>
+                <div class="preview-card">
+                    <p style="color: var(--success);">KẾT QUẢ AI SẼ LƯU</p>
+                    <img id="croppedImage" alt="Ảnh đã xén">
+                </div>
+            </div>
+
+            <canvas id="cropCanvas" style="display: none;"></canvas>
+
+            <button id="btnSubmit" class="btn-submit" disabled onclick="submitRegistration()">GỬI LÊN HỆ THỐNG</button>
+        </div>
+    </div>
+
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const sourceImage = document.getElementById('sourceImage');
+        const croppedImage = document.getElementById('croppedImage');
+        const cropCanvas = document.getElementById('cropCanvas');
+        const previewSection = document.getElementById('previewSection');
+        const statusBox = document.getElementById('statusBox');
+        const btnSubmit = document.getElementById('btnSubmit');
+        const userIdInput = document.getElementById('userId');
+
+        let finalBase64String = null; // Biến lưu chuỗi Base64 của ảnh đã crop
+
+        // Tự động điền ID nếu có tham số trên URL (?id=NV01)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('id')) {
+            userIdInput.value = urlParams.get('id').toUpperCase();
+        }
+
+        // Khởi tạo MediaPipe Face Detection cục bộ (chỉ chạy khi có ảnh up lên)
+        const faceDetection = new FaceDetection({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+        });
+        // Ép chuẩn tin cậy 0.85 để tránh rác
+        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.85 });
+
+        // Logic xử lý khi MediaPipe tìm thấy mặt trong ảnh
+        faceDetection.onResults((results) => {
+            if (results.detections.length > 0) {
+                const detection = results.detections[0];
+                const boundingBox = detection.boundingBox;
+
+                // THUẬT TOÁN GỌT LỀ (CROP) Y HỆT APP CHẤM CÔNG
+                const imgW = sourceImage.naturalWidth;
+                const imgH = sourceImage.naturalHeight;
+                let { xCenter, yCenter, width, height } = boundingBox;
+                
+                const padding = 0.25; // LỀ CHUẨN 25%
+                
+                let cropW = width * (1 + padding) * imgW;
+                let cropH = height * (1 + padding) * imgH;
+                
+                let startX = Math.max(0, (xCenter * imgW) - (cropW / 2));
+                let startY = Math.max(0, (yCenter * imgH) - (cropH / 2));
+                cropW = Math.min(imgW - startX, cropW);
+                cropH = Math.min(imgH - startY, cropH);
+
+                // Vẽ lên Canvas (Chuẩn hóa 224x224)
+                cropCanvas.width = 224; 
+                cropCanvas.height = 224;
+                const ctx = cropCanvas.getContext('2d');
+                
+                // Cảnh báo: Ảnh upload thì KHÔNG được lật ngược (như camera), nên vẽ trực tiếp luôn
+                ctx.drawImage(sourceImage, startX, startY, cropW, cropH, 0, 0, 224, 224);
+                
+                // Trích xuất Base64
+                const fullBase64 = cropCanvas.toDataURL('image/jpeg', 0.9);
+                finalBase64String = fullBase64.split(',')[1]; // Chỉ lấy phần data thuần
+
+                // Hiển thị Preview
+                croppedImage.src = fullBase64;
+                croppedImage.style.display = 'inline-block';
+                
+                // Bật nút Submit
+                statusBox.className = "status-box status-ok";
+                statusBox.innerText = "✅ Đã xén khuôn mặt thành công. Sẵn sàng lưu!";
+                btnSubmit.disabled = false;
+            } else {
+                // Không tìm thấy mặt
+                statusBox.className = "status-box status-err";
+                statusBox.innerText = "❌ Lỗi: Không tìm thấy khuôn mặt rõ nét trong ảnh này!";
+                croppedImage.removeAttribute('src');
+                btnSubmit.disabled = true;
+                finalBase64String = null;
+            }
+        });
+
+        // Lắng nghe sự kiện người dùng chọn File
+        imageUpload.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Reset UI
+            previewSection.style.display = 'block';
+            statusBox.className = "status-box status-wait";
+            statusBox.innerText = "⏳ Đang dùng AI phân tích ảnh gốc...";
+            btnSubmit.disabled = true;
+            croppedImage.removeAttribute('src');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                sourceImage.onload = async () => {
+                    // Đẩy ảnh tĩnh (sourceImage) vào MediaPipe để nó dò tìm
+                    await faceDetection.send({image: sourceImage});
+                };
+                sourceImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Gửi API Đăng ký
+        async function submitRegistration() {
+            const userId = userIdInput.value.trim().toUpperCase();
+            if (!userId) {
+                alert("Bạn quên nhập Mã Nhân Viên (User ID) kìa!");
+                userIdInput.focus();
+                return;
+            }
+            if (!finalBase64String) {
+                alert("Lỗi hình ảnh bị rỗng!");
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = "⏳ ĐANG LƯU VÀO DB...";
+
+            try {
+                // Nhớ đổi tên miền nếu deploy thật
+                const response = await fetch(`/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, image_base64: finalBase64String })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusBox.className = "status-box status-ok";
+                    statusBox.innerText = `🎉 THÀNH CÔNG: ${data.message}`;
+                    btnSubmit.innerText = "✔️ ĐÃ ĐĂNG KÝ";
+                    
+                    // Xóa trắng form sau 2 giây
+                    setTimeout(() => {
+                        userIdInput.value = "";
+                        imageUpload.value = "";
+                        previewSection.style.display = "none";
+                        btnSubmit.innerText = "GỬI LÊN HỆ THỐNG";
+                    }, 2000);
+                } else {
+                    statusBox.className = "status-box status-err";
+                    statusBox.innerText = `❌ THẤT BẠI: ${data.detail || data.message}`;
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerText = "GỬI LẠI";
+                }
+            } catch (err) {
+                statusBox.className = "status-box status-err";
+                statusBox.innerText = "❌ Lỗi: Không thể kết nối tới Server Backend!";
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = "GỬI LẠI";
+            }
+        }
+    </script>
+</body>
+</html>
