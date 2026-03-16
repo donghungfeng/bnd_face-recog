@@ -6,7 +6,7 @@ class FaceRequest(BaseModel):
     user_id: str = None
     image_base64: str
     full_image_base64: str = None
-    client_public_ip: str
+    client_public_ip: str = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     attendance_type: str = "Cá nhân"
@@ -111,4 +111,7 @@ class MarkFraudRequest(BaseModel):
     is_fraud: bool
     fraud_note: str = ""
     role: str = ""
+
+class TestFaceRequest(BaseModel):
+    image_base64: str
     

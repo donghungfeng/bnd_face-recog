@@ -55,7 +55,7 @@ def load_embeddings():
                 print(f"-> Phát hiện ảnh mới [{file_key}], đang mã hóa...")
                 img_path = os.path.join(DB_PATH, filename)
                 try:
-                    embedding = DeepFace.represent(img_path=img_path, model_name=MODEL_NAME, enforce_detection=False)[0]["embedding"]
+                    embedding = DeepFace.represent(img_path=img_path, model_name=MODEL_NAME, enforce_detection=False, detector_backend="skip")[0]["embedding"]
                     temp_dict[file_key] = np.array(embedding)
                     changed = True
                 except Exception as e:

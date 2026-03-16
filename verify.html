@@ -177,8 +177,7 @@
         <div id="sleepOverlay">
             <div class="icon-sleep">💤</div>
             <button class="btn-wake" onclick="wakeUp()">👋 CHẠM ĐỂ KHỞI ĐỘNG</button>
-            <!-- <div class="sleep-text">Camera đang tạm nghỉ để tiết kiệm điện & RAM</div> -->
-        </div>
+            </div>
 
         <div class="guide-overlay" id="guideCircle"></div>
         <div class="scan-bar"></div>
@@ -215,32 +214,33 @@
         let currentPublicIp = '';
         let popupTimer = null; 
 
-        // --- BIẾN NGỦ ĐÔNG ---
         let sleepTimer = null;
         let isSleeping = false;
-        const IDLE_TIMEOUT = 5 * 60 * 1000; // Mặc định 5 phút (300,000 ms). Đổi thành 10000 để test 10 giây.
+        const IDLE_TIMEOUT = 5 * 60 * 1000; 
 
         const FACE_MIN_SIZE = 0.30; 
         const FACE_MAX_SIZE = 0.55;
-        const CENTER_X_MIN = 0.35; 
-        const CENTER_X_MAX = 0.65;
-        const CENTER_Y_MIN = 0.35; 
-        const CENTER_Y_MAX = 0.65;
+        const CENTER_X_MIN = 0.4; 
+        const CENTER_X_MAX = 0.6;
+        const CENTER_Y_MIN = 0.38; 
+        const CENTER_Y_MAX = 0.62;
 
         const faceDetection = new FaceDetection({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
         });
 
-        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.7 });
+        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.85 });
 
         faceDetection.onResults((results) => {
             isFaceDetectionRunning = false; 
 
             if (results.detections.length > 0) {
-                // ĐẶT LẠI GIỜ NGỦ ĐÔNG KHI THẤY KHUÔN MẶT
                 resetSleepTimer();
 
-                lastDetection = results.detections[0].boundingBox;
+                const detection = results.detections[0];
+                lastDetection = detection.boundingBox;
+                const landmarks = detection.landmarks;
+
                 const faceSize = lastDetection.width;
                 const faceX = lastDetection.xCenter;
                 const faceY = lastDetection.yCenter;
@@ -250,6 +250,32 @@
                 const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && 
                                    (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
 
+                let isStraight = true;
+                let poseWarning = "";
+
+                if (landmarks && landmarks.length >= 3) {
+                    const eyeR = landmarks[0]; 
+                    const eyeL = landmarks[1]; 
+                    const nose = landmarks[2]; 
+
+                    const eyeDistX = Math.abs(eyeL.x - eyeR.x);
+                    const eyeDistY = Math.abs(eyeL.y - eyeR.y);
+
+                    if (eyeDistY / eyeDistX > 0.25) {
+                        isStraight = false;
+                        poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
+                    } 
+                    else {
+                        const noseDistL = Math.abs(nose.x - eyeL.x);
+                        const noseDistR = Math.abs(nose.x - eyeR.x);
+                        
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.35) {
+                            isStraight = false;
+                            poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
+                        }
+                    }
+                }
+
                 if (!isCentered) {
                     guideCircle.classList.remove('guide-active');
                     if (!isProcessing) {
@@ -257,6 +283,13 @@
                         resultBox.innerHTML = `⚠️ HÃY ĐƯA MẶT VÀO GIỮA KHUNG`;
                     }
                 } 
+                else if (!isStraight) {
+                    guideCircle.classList.remove('guide-active');
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = poseWarning;
+                    }
+                }
                 else if (faceSize < FACE_MIN_SIZE) {
                     guideCircle.classList.remove('guide-active');
                     if (!isProcessing) {
@@ -291,9 +324,6 @@
             }
         });
 
-        // ==========================================
-        // LOGIC NGỦ ĐÔNG (SLEEP MODE)
-        // ==========================================
         function resetSleepTimer() {
             if (sleepTimer) clearTimeout(sleepTimer);
             if (!isSleeping) {
@@ -305,18 +335,15 @@
             console.log("Hệ thống nhàn rỗi -> Vào chế độ ngủ đông!");
             isSleeping = true;
             
-            // 1. Tắt luồng Video (Giải phóng Camera & RAM)
             if (video.srcObject) {
                 video.srcObject.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
             }
             
-            // 2. Hiển thị Màn hình Ngủ
             document.getElementById('sleepOverlay').style.display = 'flex';
             document.getElementById('resultBox').className = "info status-sleep";
             document.getElementById('resultBox').innerHTML = "💤 HỆ THỐNG ĐANG TẠM NGHỈ";
             
-            // 3. Dọn dẹp UI
             guideCircle.classList.remove('guide-active');
             distanceFill.style.width = "0%";
         }
@@ -324,22 +351,15 @@
         async function wakeUp() {
             console.log("Đánh thức hệ thống!");
             isSleeping = false;
-            
-            // 1. Ẩn Màn hình Ngủ
+
             document.getElementById('sleepOverlay').style.display = 'none';
             document.getElementById('resultBox').className = "info status-scanning";
             document.getElementById('resultBox').innerHTML = `<div class="loader"></div> ĐANG KHỞI ĐỘNG LẠI CAMERA...`;
-            
-            // 2. Bật lại Camera & Vòng lặp AI
+
             await startCamera();
-            
-            // 3. Kích hoạt lại bộ đếm giờ
             resetSleepTimer();
         }
 
-        // ==========================================
-        // XỬ LÝ HÌNH ẢNH & API
-        // ==========================================
         function captureCroppedFace() {
             if (!lastDetection) return null;
 
@@ -347,7 +367,7 @@
             const videoH = video.videoHeight;
             let { xCenter, yCenter, width, height } = lastDetection;
 
-            const padding = 0.3; 
+            const padding = 0.25; 
             let cropW = width * (1 + padding) * videoW;
             let cropH = height * (1 + padding) * videoH;
             
@@ -366,7 +386,7 @@
             ctx.translate(224, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(video, startX, startY, cropW, cropH, 0, 0, 224, 224);
-            return cropCanvas.toDataURL('image/jpeg', 0.85);
+            return cropCanvas.toDataURL('image/jpeg', 0.9);
         }
 
         function captureFullFrame() {
@@ -402,7 +422,6 @@
             }
         }
 
-        // --- XỬ LÝ POPUP XIN CHÀO ---
         function triggerSuccessPopup(name) {
             const popup = document.getElementById('successPopup');
             document.getElementById('popupUserName').innerText = name;
@@ -433,9 +452,7 @@
                     return;
                 }
 
-                // Nhớ đổi lại URL nếu chạy trên mạng LAN hoặc Domain thật
                 const API_URL = "https://hrm.benhnhietdoi.vn";
-                //const API_URL = "http://localhost:8000"; 
                 
                 const response = await fetch(`/recognize`, {
                     method: 'POST',
@@ -470,11 +487,7 @@
             }
         }
 
-        // ==========================================
-        // KHỞI ĐỘNG HỆ THỐNG
-        // ==========================================
         async function processVideoFrame() {
-            // Chỉ gửi frame lên AI nếu hệ thống không ngủ đông
             if (!isSleeping && video.readyState >= 2 && !isFaceDetectionRunning) {
                 isFaceDetectionRunning = true;
                 await faceDetection.send({ image: video });
@@ -508,9 +521,30 @@
             }
         }
 
-        // Bắt đầu chạy
+        // ==========================================
+        // TỰ ĐỘNG RELOAD LÚC 6H SÁNG ĐỂ BẢO TRÌ RAM
+        // ==========================================
+        function scheduleMorningReload() {
+            const now = new Date();
+            let reloadTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0, 0); // 6h00'00"
+
+            // Nếu bây giờ đã qua 6h sáng, thì hẹn giờ cho 6h sáng ngày mai
+            if (now.getTime() > reloadTime.getTime()) {
+                reloadTime.setDate(reloadTime.getDate() + 1);
+            }
+
+            const msUntilReload = reloadTime.getTime() - now.getTime();
+
+            setTimeout(() => {
+                console.log("Bảo trì hệ thống: Đang tải lại trang...");
+                window.location.reload(true);
+            }, msUntilReload);
+        }
+
+        // Khởi động hệ thống
         startCamera();
-        resetSleepTimer(); // Kích hoạt đồng hồ đếm ngược 5 phút
+        resetSleepTimer();
+        scheduleMorningReload(); // Kích hoạt bộ đếm giờ tự động Reload
     </script>
 </body>
 </html>

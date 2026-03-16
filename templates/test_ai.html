@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BND - Debug Luồng Crop Thực Tế</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h2 { color: #00f2ff; border-bottom: 1px solid #334155; padding-bottom: 10px;}
+        .upload-box { border: 2px dashed #475569; padding: 30px; text-align: center; border-radius: 10px; margin-bottom: 20px; background: #0f172a;}
+        input[type="file"] { display: none; }
+        .btn { background: #00f2ff; color: #000; padding: 12px 25px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: 0.3s;}
+        .btn:hover { background: #00e0ec; box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);}
+        
+        .images-grid { display: flex; gap: 20px; justify-content: center; margin-top: 15px; flex-wrap: wrap;}
+        .img-card { text-align: center; background: #334155; padding: 10px; border-radius: 8px;}
+        .preview { max-width: 100%; max-height: 300px; border-radius: 4px; display: none; border: 2px solid #94a3b8;}
+        #cropPreview { width: 224px; height: 224px; border-color: #00ff88; object-fit: cover;}
+        
+        pre { background: #000; color: #00ff88; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 0.95rem; border: 1px solid #334155; min-height: 100px;}
+        .loading { display: none; color: #ffb800; font-weight: bold; margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🛠️ Mô phỏng Crop 100% Luồng Thực Tế</h2>
+    <p style="color: #94a3b8;">Hệ thống sẽ dùng MediaPipe xén mặt (Padding 0.15) và gửi ảnh xén lên Backend (detector_backend="skip").</p>
+
+    <div class="upload-box">
+        <label for="imageInput" class="btn">📂 Chọn ảnh toàn cảnh...</label>
+        <input type="file" id="imageInput" accept="image/*">
+        
+        <div class="images-grid">
+            <div class="img-card">
+                <p style="margin:0 0 5px 0; font-size: 0.85rem;">Ảnh Gốc</p>
+                <img id="sourceImage" class="preview" alt="Source">
+            </div>
+            <div class="img-card">
+                <p style="margin:0 0 5px 0; font-size: 0.85rem; color: #00ff88;">Ảnh Gửi Lên Backend</p>
+                <img id="cropPreview" class="preview" alt="Crop">
+            </div>
+        </div>
+    </div>
+
+    <canvas id="cropCanvas" style="display:none;"></canvas>
+
+    <div style="text-align: center;">
+        <button class="btn" style="background: #00ff88;" onclick="sendTest()">🚀 Gửi Ảnh Crop lên AI</button>
+    </div>
+
+    <div id="loadingText" class="loading">⏳ Đang lấy kết quả (Có thể mất 2-3 giây)...</div>
+    
+    <h3 style="margin-top: 30px; color: #cbd5e1;">📊 Kết quả AI trả về:</h3>
+    <pre id="jsonOutput">Vui lòng chọn ảnh...</pre>
+</div>
+
+<script>
+    let croppedBase64String = "";
+    const sourceImage = document.getElementById('sourceImage');
+    const jsonOutput = document.getElementById('jsonOutput');
+
+    // 1. KHỞI TẠO MEDIAPIPE Y HỆT APP CHẤM CÔNG
+    const faceDetection = new FaceDetection({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+    });
+    faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.85 });
+
+    // 2. LOGIC CROP KHI TÌM THẤY MẶT
+    faceDetection.onResults((results) => {
+        if (results.detections.length > 0) {
+            const detection = results.detections[0];
+            const boundingBox = detection.boundingBox;
+            
+            const imgW = sourceImage.naturalWidth;
+            const imgH = sourceImage.naturalHeight;
+            
+            let { xCenter, yCenter, width, height } = boundingBox;
+            
+            // PADDING CHUẨN THỰC TẾ ĐANG DÙNG LÀ 0.15
+            const padding = 0.25; 
+
+            let cropW = width * (1 + padding) * imgW;
+            let cropH = height * (1 + padding) * imgH;
+            
+            let startX = Math.max(0, (xCenter * imgW) - (cropW / 2));
+            let startY = Math.max(0, (yCenter * imgH) - (cropH / 2));
+            cropW = Math.min(imgW - startX, cropW);
+            cropH = Math.min(imgH - startY, cropH);
+
+            const canvas = document.getElementById('cropCanvas');
+            canvas.width = 224; 
+            canvas.height = 224;
+            const ctx = canvas.getContext('2d');
+            
+            // Xén và vẽ ảnh lên Canvas
+            ctx.drawImage(sourceImage, startX, startY, cropW, cropH, 0, 0, 224, 224);
+            
+            // Lấy Base64 của ảnh đã xén
+            const fullBase64 = canvas.toDataURL('image/jpeg', 0.85);
+            croppedBase64String = fullBase64.split(',')[1];
+            
+            // Hiển thị Preview
+            document.getElementById('cropPreview').src = fullBase64;
+            document.getElementById('cropPreview').style.display = 'inline-block';
+            
+            jsonOutput.innerText = "✅ Đã Crop xong bằng MediaPipe! Ảnh ở bên trên chính là bức ảnh sẽ được ném cho AI. Bấm Gửi để xem kết quả.";
+        } else {
+            jsonOutput.innerText = "❌ MediaPipe không tìm thấy khuôn mặt nào trong bức ảnh này (Confidence > 0.85).";
+            document.getElementById('cropPreview').style.display = 'none';
+            croppedBase64String = "";
+        }
+    });
+
+    // 3. XỬ LÝ UPLOAD ẢNH VÀ KÍCH HOẠT MEDIAPIPE
+    document.getElementById('imageInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        jsonOutput.innerText = "Đang xử lý ảnh...";
+        document.getElementById('cropPreview').style.display = 'none';
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            sourceImage.onload = async () => {
+                // Đẩy ảnh vào MediaPipe để xén
+                await faceDetection.send({image: sourceImage});
+            };
+            sourceImage.src = e.target.result;
+            sourceImage.style.display = 'inline-block';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // 4. GỬI LÊN BACKEND
+    async function sendTest() {
+        if (!croppedBase64String) {
+            alert("Vui lòng chọn ảnh có khuôn mặt rõ nét trước!");
+            return;
+        }
+
+        document.getElementById('loadingText').style.display = 'block';
+        jsonOutput.innerText = "Đang chạy DeepFace.represent() với detector_backend='skip'...";
+
+        try {
+            const response = await fetch('/api/test-real-flow', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_base64: croppedBase64String })
+            });
+
+            const data = await response.json();
+            jsonOutput.innerText = JSON.stringify(data, null, 4);
+        } catch (error) {
+            jsonOutput.innerText = "Lỗi kết nối Server:\n" + error;
+        } finally {
+            document.getElementById('loadingText').style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>

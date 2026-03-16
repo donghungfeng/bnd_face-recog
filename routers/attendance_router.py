@@ -45,7 +45,7 @@ def get_attendance(
     result = []
     for att, emp in records:
         date_str = att.check_in_time.strftime("%Y-%m-%d") if att.check_in_time else ""
-        time_str = att.check_in_time.strftime("%H:%M") if att.check_in_time else "--:--"
+        time_str = att.check_in_time.strftime("%H:%M:%S") if att.check_in_time else "--:--"
         display_name = emp.full_name if emp else (att.full_name or "Người lạ / Chưa ĐK")
         
         # Nội suy trạng thái

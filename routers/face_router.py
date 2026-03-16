@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.concurrency import run_in_threadpool
 from deepface import DeepFace
 from sqlalchemy.orm import Session
-from schemas import CheckIPRequest, FaceRequest, SingleFaceDeleteRequest, UnregisterRequest, PersonalVerifyRequest
+from schemas import CheckIPRequest, FaceRequest, SingleFaceDeleteRequest, UnregisterRequest, PersonalVerifyRequest, TestFaceRequest
 from config import DB_PATH, MODEL_NAME, CACHE_FILE
 from database import get_db
 
@@ -20,7 +20,6 @@ async def register(request: FaceRequest):
     img = services.decode_base64(request.image_base64)
     user_id = request.user_id
     
-    # --- LOGIC TÌM SỐ THỨ TỰ TIẾP THEO ---
     existing_files = glob.glob(os.path.join(DB_PATH, f"{user_id}_*.jpg"))
     old_file = os.path.join(DB_PATH, f"{user_id}.jpg")
     if os.path.exists(old_file):
@@ -52,7 +51,6 @@ async def register(request: FaceRequest):
         results = await run_in_threadpool(DeepFace.represent, img_path=img, model_name=MODEL_NAME, enforce_detection=False)
         embedding = np.array(results[0]["embedding"])
         
-        # Thêm mới vào Ma trận RAM (Append) thay vì ghi đè
         services.known_file_keys.append(file_key)
         services.known_user_ids.append(user_id)
         if services.known_embeddings_matrix.size == 0:
@@ -68,7 +66,7 @@ async def register(request: FaceRequest):
 
 @router.post("/recognize")
 async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
-    # HÀM NÀY ĐƯỢC GIỮ NGUYÊN VÌ LOGIC MA TRẬN ĐÃ TỰ ĐỘNG KHỚP VỚI KIẾN TRÚC MỚI!
+
     img_crop = services.decode_base64(request.image_base64)
     img_to_save = services.decode_base64(request.full_image_base64) if request.full_image_base64 else img_crop
     max_sim = 0.0
@@ -76,7 +74,7 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
 
     try:
         
-        results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=False,anti_spoofing=is_anti_spoof_enabled)
+        results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=True,detector_backend="skip",anti_spoofing=is_anti_spoof_enabled)
         if not results: return {"recognized": False, "message": "Không thấy mặt"}
         
         if is_anti_spoof_enabled and not results[0].get("is_real", True):
@@ -108,15 +106,12 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
     except Exception as e:
         error_msg = str(e).lower()
         
-        # Nếu AI của DeepFace ném ra lỗi nhận diện ảnh giả (Spoof)
         if "spoof detected" in error_msg:
             return {"recognized": False, "message": "CẢNH BÁO GIAN LẬN!"}
             
-        # Nếu AI không tìm thấy khuôn mặt nào
         elif "face could not be detected" in error_msg:
             return {"recognized": False, "message": "Không tìm thấy khuôn mặt"}
             
-        # Các lỗi hệ thống khác
         else:
             return {"recognized": False, "message": f"Lỗi: {str(e)}"}
 
@@ -124,7 +119,6 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
 async def unregister(request: UnregisterRequest):
     user_id = request.user_id
     
-    # Quét dọn toàn bộ file của User này trên ổ cứng
     files_to_delete = glob.glob(os.path.join(DB_PATH, f"{user_id}_*.jpg"))
     old_file = os.path.join(DB_PATH, f"{user_id}.jpg")
     if os.path.exists(old_file): files_to_delete.append(old_file)
@@ -133,12 +127,10 @@ async def unregister(request: UnregisterRequest):
         try: os.remove(f)
         except: pass
         
-    # Xóa toàn bộ các dòng thuộc User này trong Ma trận RAM
     indices_to_delete = [i for i, uid in enumerate(services.known_user_ids) if uid == user_id]
     
     if indices_to_delete:
         services.known_embeddings_matrix = np.delete(services.known_embeddings_matrix, indices_to_delete, axis=0)
-        # Xóa list từ dưới lên để không làm hỏng index
         for i in sorted(indices_to_delete, reverse=True):
             services.known_file_keys.pop(i)
             services.known_user_ids.pop(i)
@@ -177,12 +169,10 @@ async def reload_ram_api():
 @router.get("/api/faces/image/{filename}")
 def get_face_image(filename: str):
     import os
-    # Trả về đích danh file được yêu cầu (vd: NV001_2)
     file_path = os.path.join(DB_PATH, f"{filename}.jpg")
     if os.path.exists(file_path):
         return FileResponse(file_path)
         
-    # Fallback (nếu frontend vô tình gọi mã gốc)
     possible_files = [f"{filename}.jpg", f"{filename}_1.jpg", f"{filename}_2.jpg"]
     for pf in possible_files:
         pf_path = os.path.join(DB_PATH, pf)
@@ -197,7 +187,6 @@ def get_faces_overview(db: Session = Depends(get_db)):
     from models import Employee
     from sqlalchemy.orm import joinedload
     
-    # 1. Quét toàn bộ ảnh và gom nhóm MẢNG các file theo mã nhân viên
     file_map = {}
     if os.path.exists(DB_PATH):
         for f in os.listdir(DB_PATH):
@@ -214,13 +203,11 @@ def get_faces_overview(db: Session = Depends(get_db)):
                     file_map[uid_upper] = []
                 file_map[uid_upper].append(exact_name) # Push thêm ảnh vào danh sách
                 
-    # 2. Lấy danh sách NV từ DB
     emps = db.query(Employee).options(joinedload(Employee.department)).all()
     emp_dict_upper = {e.username.upper(): e for e in emps}
     
     results = []
     
-    # 3. Nối danh sách ảnh vào nhân viên đã có
     for e in emps:
         username_upper = e.username.upper()
         has_face = username_upper in file_map
@@ -233,7 +220,6 @@ def get_faces_overview(db: Session = Depends(get_db)):
             "images": file_map.get(username_upper, []) # Trả về mảng chứa [NV001_1, NV001_2]
         })
         
-    # 4. Tìm các ảnh bị "mồ côi" (Chưa có thông tin trong DB)
     for upper_name, file_names in file_map.items():
         if upper_name not in emp_dict_upper:
             results.append({
@@ -251,11 +237,9 @@ async def delete_single_face(request: SingleFaceDeleteRequest):
     filename = request.filename
     file_path = os.path.join(DB_PATH, f"{filename}.jpg")
     
-    # 1. Xóa file vật lý trên ổ cứng
     if os.path.exists(file_path):
         os.remove(file_path)
         
-    # 2. Xóa chính xác dòng dữ liệu của ảnh này trong Ma trận RAM
     if filename in services.known_file_keys:
         idx = services.known_file_keys.index(filename)
         
@@ -295,24 +279,20 @@ async def verify_personal(data: PersonalVerifyRequest, background_tasks: Backgro
     user_id = data.user_id.upper()
     client_ip = data.client_public_ip
     
-    # 1. KIỂM TRA IP (Giữ nguyên để chặn mạng ngoài)
     allowed_ips_str = services.get_config("ALLOWED_ENROLL_IPS", "*") 
     if allowed_ips_str.strip() != "*":
         allowed_ips = [ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()]
         if not any(client_ip.startswith(allowed) or client_ip == allowed for allowed in allowed_ips):
             return {"recognized": False, "message": "Sai địa chỉ IP/Mạng lưới Bệnh viện."}
 
-    # 2. KIỂM TRA USER TỒN TẠI
     if user_id not in services.known_user_ids:
         return {"recognized": False, "message": "Bạn chưa đăng ký khuôn mặt!"}
         
     try:
-        # 3. CHỈ DÙNG img_crop GIỐNG HỆT HÀM RECOGNIZE
         img_crop = services.decode_base64(data.image_base64)
         img_full = services.decode_base64(data.full_image_base64) if data.full_image_base64 else None
         is_anti_spoof_enabled = services.get_config("ENABLE_ANTI_SPOOFING", "true").lower() == "true"
-        
-        # GỌI DEEPFACE
+
         results = await run_in_threadpool(
             DeepFace.represent, 
             img_path=img_crop, 
@@ -324,13 +304,11 @@ async def verify_personal(data: PersonalVerifyRequest, background_tasks: Backgro
         if not results:
             return {"recognized": False, "message": "Không thấy mặt"}
 
-        # KIỂM TRA LIVENESS (Chống giả mạo)
         if is_anti_spoof_enabled and not results[0].get("is_real", True):
              return {"recognized": False, "message": "Phát hiện gian lận hình ảnh!"}
 
         current_embedding = np.array(results[0]["embedding"])
 
-        # 4. THUẬT TOÁN XÁC THỰC (Lấy điểm cao nhất trong tối đa 3 ảnh)
         user_indices = [i for i, uid in enumerate(services.known_user_ids) if uid == user_id]
         user_embeddings = services.known_embeddings_matrix[user_indices]
         
@@ -344,7 +322,6 @@ async def verify_personal(data: PersonalVerifyRequest, background_tasks: Backgro
         THRESHOLD = float(services.get_config("FACE_THRESHOLD_PERSONAL", "0.75"))
         
         if max_sim >= THRESHOLD:
-            # Code lưu Database ở đây (nếu cần)
             background_tasks.add_task(services.background_logging, user_id, img_full, max_sim, client_ip,data.latitude,data.longitude,data.attendance_type,data.note)
 
             return {
@@ -358,14 +335,59 @@ async def verify_personal(data: PersonalVerifyRequest, background_tasks: Backgro
     except Exception as e:
         error_msg = str(e).lower()
         
-        # Nếu AI của DeepFace ném ra lỗi nhận diện ảnh giả (Spoof)
         if "spoof detected" in error_msg:
             return {"recognized": False, "message": "CẢNH BÁO GIAN LẬN!"}
             
-        # Nếu AI không tìm thấy khuôn mặt nào
         elif "face could not be detected" in error_msg:
             return {"recognized": False, "message": "Không tìm thấy khuôn mặt"}
             
-        # Các lỗi hệ thống khác
         else:
             return {"recognized": False, "message": f"Lỗi: {str(e)}"}
+        
+
+@router.post("/api/test-real-flow")
+async def test_real_flow(request: TestFaceRequest):
+    try:
+        # Nhận ảnh ĐÃ CẮT từ Frontend
+        img_crop = services.decode_base64(request.image_base64)
+        
+        # Chạy DeepFace với setting GIỐNG HỆT lúc chấm công thật
+        results = await run_in_threadpool(
+            DeepFace.represent, 
+            img_path=img_crop, 
+            model_name=MODEL_NAME, 
+            enforce_detection=True, 
+            detector_backend="skip", # Ép AI tin tưởng tuyệt đối vào ảnh crop
+            anti_spoofing=False # Tắt kiểm tra Fake/Real để tập trung xem độ giống
+        )
+        
+        if not results:
+            return {"status": "error", "message": "Backend không thể trích xuất Vector từ bức ảnh này."}
+            
+        current_embedding = np.array(results[0]["embedding"])
+        top_matches = []
+        
+        if len(services.known_user_ids) > 0:
+            # So sánh ma trận Vector
+            dot_products = np.dot(services.known_embeddings_matrix, current_embedding)
+            matrix_norms = np.linalg.norm(services.known_embeddings_matrix, axis=1)
+            current_norm = np.linalg.norm(current_embedding)
+            
+            similarities = dot_products / (matrix_norms * current_norm)
+            
+            # Lấy Top 3 người giống nhất
+            top_3_indices = np.argsort(similarities)[-3:][::-1]
+            for i in top_3_indices:
+                top_matches.append({
+                    "user_id": services.known_user_ids[i],
+                    "similarity": round(float(similarities[i]) * 100, 2)
+                })
+                
+        return {
+            "status": "success",
+            "message": "Phân tích Vector dựa trên ảnh Crop thành công",
+            "top_3_matches": top_matches
+        }
+        
+    except Exception as e:
+        return {"status": "error", "message": f"Lỗi hệ thống: {str(e)}"}
