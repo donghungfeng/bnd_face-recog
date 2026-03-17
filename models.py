@@ -38,21 +38,13 @@ class ShiftCategory(Base):
     status = Column(String, default="active")
     notes = Column(Text, nullable=True)
 
-    # CÁC TRƯỜNG BỔ SUNG:
-    checkin_from = Column(Time, nullable=True)
-    checkin_to = Column(Time, nullable=True)
-    checkout_from = Column(Time, nullable=True)
-    checkout_to = Column(Time, nullable=True)
-    work_hours = Column(Float, nullable=True)
-    work_days = Column(Float, nullable=True)
-    day_coefficient = Column(Float, nullable=True)
-
 class ShiftAssignment(Base):
     __tablename__ = "shift_assignments"
     id = Column(Integer, primary_key=True, index=True)
-    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    username = Column(String, index=True)      # Mã nhân viên
     shift_code = Column(String, index=True)    # Mã ca trực
     shift_date = Column(Date, index=True)      # Ngày trực
+    assigner = Column(String, nullable=True)
 
 class Attendance(Base):
     __tablename__ = "attendance"

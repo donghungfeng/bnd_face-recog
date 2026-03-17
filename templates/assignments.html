@@ -4,577 +4,201 @@
 {% block page_title %}Quản Lý Phân Công Ca Trực{% endblock %}
 
 {% block content %}
-<style>
-    /* 1. Ép nội dung chính không cuộn ở trang (base.html đã có main-wrapper scroll) */
-    html,
-    body {
-        overflow: hidden !important;
-        height: 100vh;
-    }
-
-    .main-wrapper {
-        overflow: hidden !important;
-    }
-
-    .content {
-        height: calc(100vh - 60px);
-        display: flex;
-        flex-direction: column;
-        padding: 15px !important;
-        box-sizing: border-box;
-    }
-
-    .card {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        padding: 15px;
-    }
-
-    .matrix-wrapper {
-        flex: 1;
-        overflow: auto;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px 8px 0 0;
-        background: #fff;
-        position: relative;
-    }
-
-    .matrix-table {
-        border-collapse: separate;
-        border-spacing: 0;
-        width: max-content;
-        /* Quan trọng: Ép bảng rộng theo số ngày, không bị co */
-        min-width: 100%;
-        font-size: 0.85rem;
-        table-layout: fixed;
-    }
-
-    .matrix-table th,
-    .matrix-table td {
-        border-bottom: 1px solid #e2e8f0;
-        border-right: 1px solid #e2e8f0;
-        padding: 8px;
-        text-align: center;
-        vertical-align: middle;
-        white-space: nowrap;
-    }
-
-    /* 2. Cố định Header phía trên */
-    .matrix-table thead th {
-        position: sticky;
-        top: 0;
-        background: #f8fafc;
-        z-index: 10;
-        font-weight: bold;
-        color: #1e293b;
-    }
-
-    /* 3. Cố định 5 cột thông tin bên trái */
-    .sticky-col {
-        position: sticky;
-        background: #ffffff !important;
-        z-index: 5;
-    }
-
-    /* Độ rộng cố định từng cột để không bị vỡ */
-    .col-stt {
-        width: 50px;
-        left: 0;
-    }
-
-    .col-name {
-        width: 200px;
-        left: 50px;
-        text-align: left !important;
-    }
-
-    .col-dob {
-        width: 100px;
-        left: 250px;
-    }
-
-    .col-unit {
-        width: 150px;
-        left: 350px;
-    }
-
-    .col-dept {
-        width: 180px;
-        left: 500px;
-        border-right: 2px solid #cbd5e1 !important;
-    }
-
-    /* 4. Giao điểm của Header và Cột Sticky (Z-index cao nhất) */
-    thead .sticky-col {
-        z-index: 20 !important;
-        background: #f1f5f9 !important;
-    }
-
-    /* Màu sắc bổ trợ */
-    .weekend-cell {
-        background: #fef2f2 !important;
-        color: #dc2626;
-    }
-
-    .today-cell {
-        background: #fffbeb !important;
-        outline: 2px solid #fbbf24 inset;
-    }
-
-    .cell-empty:hover {
-        background: #eff6ff !important;
-        cursor: pointer;
-        border: 1px dashed #3b82f6;
-    }
-
-    /* Tùy chỉnh thanh cuộn cho đẹp */
-    .matrix-wrapper::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-
-    .matrix-wrapper::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-    }
-</style>
-
-<div class="card">
-    <div class="filter-bar"
-        style="display: flex; gap: 15px; align-items: flex-end; justify-content: space-between; margin-bottom: 15px; padding: 10px;">
-        <div style="display: flex; gap: 15px; align-items: flex-end;">
-            <div class="form-group" style="margin: 0;">
-                <label>Từ ngày:</label>
-                <input type="date" id="startDateFilter" class="form-control">
+<div class="grid-container">
+    <div class="card" style="align-self: start;">
+        <h3>+ Gán Ca Trực (Thủ công)</h3>
+        <form id="assignForm">
+            <div class="form-group">
+                <label>Nhân viên*</label>
+                <select id="empSelect" required></select>
             </div>
-            <div class="form-group" style="margin: 0;">
-                <label>Đến ngày:</label>
-                <input type="date" id="endDateFilter" class="form-control">
+            <div class="form-group">
+                <label>Ca trực*</label>
+                <select id="shiftSelect" required></select>
             </div>
-            <button class="btn-primary" onclick="fetchAssignments()">XEM LỊCH</button>
-        </div>
+            <div class="form-group" style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label>Ngày trực*</label>
+                    <input type="date" id="shiftDate" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Người giao ca</label>
+                <input type="text" id="assigner" placeholder="VD: Trưởng Khoa A..." autocomplete="off">
+            </div>
+            <button type="submit" class="btn-primary">LƯU PHÂN CÔNG</button>
+        </form>
 
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-primary" style="background: var(--success);" onclick="downloadTemplate()">⬇️ TẢI
-                MẪU</button>
-            <input type="file" id="excelFile" accept=".xlsx, .xls" style="max-width: 180px;">
-            <button class="btn-primary" style="background: var(--warning); color:#000" onclick="uploadExcel()">⬆️
-                UPLOAD</button>
+        <h3 style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">📥 Import từ Excel</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+            Tải file mẫu về, danh sách nhân viên đã được điền sẵn. Bạn chỉ việc nhập mã ca trực và ngày, sau đó upload lên hệ thống.
+        </p>
+        
+        <div style="display: flex; gap: 10px; flex-direction: column;">
+            <button class="btn-primary" style="background: var(--success); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.location.href='/api/assignments/export_template'">
+                <span>⬇️</span> 1. TẢI FILE MẪU EXCEL
+            </button>
+            
+            <input type="file" id="excelFile" accept=".xlsx, .xls" style="padding: 10px; border: 1.5px dashed var(--primary); background: #f8fafc; cursor: pointer;">
+            <button class="btn-primary" style="background: var(--warning); color: #854d0e; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="uploadExcel()">
+                <span>⬆️</span> 2. UPLOAD LÊN HỆ THỐNG
+            </button>
         </div>
     </div>
 
-    <div class="matrix-wrapper">
-        <table class="matrix-table" id="assignmentMatrix">
-            <colgroup id="matrixColGroup"></colgroup>
-            <thead id="matrixHead"></thead>
-            <tbody id="matrixBody">
+    <div class="card" style="overflow-x: auto;">
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>📅 Lịch trực của tháng:</label>
+                <input type="month" id="monthSelect" onchange="fetchAssignments()">
+            </div>
+        </div>
+        <table>
+            <thead>
                 <tr>
-                    <td colspan="20" style="padding: 50px; text-align: center;">Đang nạp dữ liệu...</td>
+                    <th>NGÀY TRỰC</th>
+                    <th>NHÂN VIÊN</th>
+                    <th>CA TRỰC</th>
+                    <th>NGƯỜI GIAO</th>
+                    <th>THAO TÁC</th>
                 </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="5" style="text-align: center;">Đang tải dữ liệu...</td></tr>
             </tbody>
         </table>
     </div>
-
-    <!-- Pagination Controls -->
-    <div id="paginationControls"
-        style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #fff; border: 1px solid #e2e8f0; border-top: 2px solid #cbd5e1; border-radius: 0 0 8px 8px; font-size: 0.85rem; box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.1);">
-        <div style="display: flex; align-items: center; gap: 5px;">
-            <button class="btn-pagination" id="btnFirst" onclick="jumpToPage(1)" title="Trang đầu">⏮️</button>
-            <button class="btn-pagination" id="btnPrev" onclick="changePage(-1)" title="Trang trước">◀️</button>
-            <span style="margin: 0 10px;">
-                Trang <input type="number" id="pageInput" value="1" min="1" onchange="jumpToPage(this.value)"
-                    style="width: 45px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px;">
-                / <span id="totalPageDisplay">1</span>
-            </span>
-            <button class="btn-pagination" id="btnNext" onclick="changePage(1)" title="Trang sau">▶️</button>
-            <button class="btn-pagination" id="btnLast" onclick="jumpToPage(totalPages)" title="Trang cuối">⏭️</button>
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 15px; color: #64748b;">
-            <span id="totalItemsDisplay">Tổng số: 0</span>
-            <span>
-                Kết quả trên 1 trang:
-                <select id="pageSizeSelect" onchange="updatePageSize(this.value)"
-                    style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px;">
-                    <option value="15">15</option>
-                    <option value="30">30</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-            </span>
-        </div>
-    </div>
 </div>
-
-<style>
-    .btn-pagination {
-        background: #fff;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        padding: 2px 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .btn-pagination:hover:not(:disabled) {
-        background: #f1f5f9;
-        border-color: #94a3b8;
-    }
-
-    .btn-pagination:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-</style>
-
-<div id="assignModal"
-    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-    <div
-        style="background:#fff; border-radius:12px; padding:25px; width:90%; max-width:450px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-        <h3 style="margin-top:0;">📋 Gán Ca Trực</h3>
-        <p id="modalInfo" style="color:#64748b; font-size:0.9rem; margin-bottom: 20px;"></p>
-        <div id="shiftCardList"
-            style="display:grid; grid-template-columns:1fr 1fr; gap:10px; max-height:300px; overflow-y:auto;"></div>
-        <div style="text-align:right; margin-top: 20px;">
-            <button class="btn-primary" style="background:#64748b;" onclick="closeModal()">Đóng</button>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // 1. THIẾT LẬP NGÀY MẶC ĐỊNH (TUẦN HIỆN TẠI)
-    const todayObj = new Date();
-    const dayOfWeek = todayObj.getDay();
-    const diff = todayObj.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-    const monday = new Date(todayObj.setDate(diff));
-    const sunday = new Date(todayObj);
-    sunday.setDate(monday.getDate() + 6);
-
-    document.getElementById('startDateFilter').value = monday.toISOString().split('T')[0];
-    document.getElementById('endDateFilter').value = sunday.toISOString().split('T')[0];
-
-    let allShiftCategories = [];
-    let currentPage = 1;
-    let pageSize = 15;
-    let totalPages = 1;
-    let shiftMapCache = {}; // Cache để dùng cho modal gán/sửa ca
-
-    // 2. TẢI DANH MỤC CA ĐỂ DÙNG TRONG MODAL
-    async function loadShiftCategories() {
-        try {
-            const res = await fetch('/api/shifts');
-            allShiftCategories = await res.json();
-        } catch (e) { console.error("Lỗi tải ca:", e); }
+    const today = new Date();
+    document.getElementById('monthSelect').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    document.getElementById('shiftDate').value = today.toISOString().split('T')[0];
+    
+    // Tự động lấy tên người dùng hiện tại (nếu có đăng nhập) để điền sẵn vào ô Người giao
+    const currentUserName = localStorage.getItem("hrm_name");
+    if (currentUserName) {
+        document.getElementById('assigner').value = currentUserName;
     }
 
-    // 3. HÀM CHÍNH: LẤY DỮ LIỆU VÀ VẼ BẢNG
-    async function fetchAssignments() {
-        const start = document.getElementById('startDateFilter').value;
-        const end = document.getElementById('endDateFilter').value;
-        const tbody = document.getElementById('matrixBody');
-
-        if (!start || !end) return;
-        tbody.innerHTML = '<tr><td colspan="20" style="padding: 50px; text-align: center;">⏳ Đang tải dữ liệu...</td></tr>';
-
+    // Load Dropdown Nhân viên và Ca trực
+    async function loadDropdowns() {
         try {
-            const [empRes, assignRes] = await Promise.all([
-                fetch(`/api/employees?page=${currentPage}&size=${pageSize}`),
-                fetch(`/api/assignments/details?start_date=${start}&end_date=${end}`)
-            ]);
-            const empData = await empRes.json();
-            const assignData = await assignRes.json();
-
-            const employees = empData.items;
-            totalPages = empData.total_pages;
-            renderPagination(empData.page, empData.total_pages, empData.total);
-
-            // Nhóm dữ liệu: employee_id -> date -> record
-            shiftMapCache = {};
-            assignData.forEach(item => {
-                if (!shiftMapCache[item.employee_id]) shiftMapCache[item.employee_id] = {};
-                shiftMapCache[item.employee_id][item.shift_date] = item;
-            });
-
-            // Tạo danh sách ngày để render cột
-            const dateList = [];
-            let curr = new Date(start);
-            const endObj = new Date(end);
-            while (curr <= endObj) {
-                dateList.push(curr.toISOString().split('T')[0]);
-                curr.setDate(curr.getDate() + 1);
-            }
-
-            renderTable(employees, dateList, shiftMapCache);
-        } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="20" style="color:red; padding:20px;">❌ Lỗi: ${e.message}</td></tr>`;
-        }
-    }
-
-    function renderTable(employees, dateList, shiftMap) {
-        const thead = document.getElementById('matrixHead');
-        const tbody = document.getElementById('matrixBody');
-        const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-        const todayStr = new Date().toISOString().split('T')[0];
-
-        // --- RENDER TIÊU ĐỀ (HEADER) & COLGROUP ---
-        const colgroup = document.getElementById('matrixColGroup');
-        let colHtml = `
-            <col style="width: 50px;">
-            <col style="width: 200px;">
-            <col style="width: 100px;">
-            <col style="width: 150px;">
-            <col style="width: 180px;">`;
-
-        let monthGroups = [];
-        let dayHtml = "";
-
-        dateList.forEach(dStr => {
-            colHtml += `<col style="width: 55px;">`;
-            const d = new Date(dStr);
-            const mLabel = `THÁNG ${d.getMonth() + 1}, ${d.getFullYear()}`;
-
-            // Logic gộp tháng chuẩn xác
-            if (monthGroups.length > 0 && monthGroups[monthGroups.length - 1].name === mLabel) {
-                monthGroups[monthGroups.length - 1].span++;
-            } else {
-                monthGroups.push({ name: mLabel, span: 1 });
-            }
-
-            const isWE = (d.getDay() === 0 || d.getDay() === 6);
-            dayHtml += `<th class="${isWE ? 'weekend-cell' : ''} ${dStr === todayStr ? 'today-cell' : ''}">
-                        ${d.getDate()}<br><small>${daysOfWeek[d.getDay()]}</small></th>`;
-        });
-
-        colgroup.innerHTML = colHtml;
-        const monthHtml = monthGroups.map(m => `<th colspan="${m.span}" style="background:#f1f5f9; border-bottom:1px solid #e2e8f0; text-align: left; padding-left: 10px;">${m.name}</th>`).join("");
-
-        thead.innerHTML = `
-            <tr id="matrixHeadRow1">
-                <th rowspan="2" class="sticky-col col-stt">STT</th>
-                <th rowspan="2" class="sticky-col col-name">HỌ VÀ TÊN</th>
-                <th rowspan="2" class="sticky-col col-dob">NGÀY SINH</th>
-                <th rowspan="2" class="sticky-col col-unit">ĐƠN VỊ</th>
-                <th rowspan="2" class="sticky-col col-dept">PHÒNG BAN</th>
-                ${monthHtml}
-            </tr>
-            <tr id="matrixHeadRow2">${dayHtml}</tr>`;
-
-        // Cố định hàng Ngày nằm dưới hàng Tháng
-        setTimeout(() => {
-            const h1 = document.getElementById('matrixHeadRow1').offsetHeight;
-            document.querySelectorAll('#matrixHeadRow2 th').forEach(th => th.style.top = (h1 - 0.5) + 'px');
-        }, 50);
-
-        // --- RENDER DỮ LIỆU (BODY) ---
-        tbody.innerHTML = "";
-        employees.forEach((emp, i) => {
-            let row = `<tr>
-                <td class="sticky-col col-stt">${i + 1}</td>
-                <td class="sticky-col col-name"><b>${emp.full_name.toUpperCase()}</b></td>
-                <td class="sticky-col col-dob">${emp.dob || emp.date_of_birth || ''}</td>
-                <td class="sticky-col col-unit">${emp.ten_don_vi || ''}</td>
-                <td class="sticky-col col-dept">${emp.ten_phong_ban || ''}</td>`;
-
-            dateList.forEach(dStr => {
-                const dObj = new Date(dStr);
-                const isWE = (dObj.getDay() === 0 || dObj.getDay() === 6);
-                const assign = shiftMap[emp.id]?.[dStr];
-
-                if (assign) {
-                    row += `<td class="${isWE ? 'weekend-cell' : ''}" style="background:#e0f2fe; color:#0369a1; cursor:pointer; font-weight:bold" 
-                            onclick="openAssignModal(${emp.id}, '${emp.full_name}', '${dStr}')">${assign.shift_code}</td>`;
-                } else {
-                    row += `<td class="cell-empty ${isWE ? 'weekend-cell' : ''}" onclick="openAssignModal(${emp.id}, '${emp.full_name}', '${dStr}')"></td>`;
+            const [empRes, shiftRes] = await Promise.all([ fetch('/api/employees'), fetch('/api/shifts') ]);
+            const emps = await empRes.json();
+            const shifts = await shiftRes.json();
+            
+            const empSel = document.getElementById('empSelect');
+            const shiftSel = document.getElementById('shiftSelect');
+            
+            emps.forEach(e => {
+                if(e.status === 'active') { // Chỉ hiển thị nhân viên đang làm việc
+                    empSel.innerHTML += `<option value="${e.username}">${e.full_name} (${e.username})</option>`;
                 }
             });
-            row += "</tr>";
-            tbody.innerHTML += row;
-        });
-    }
-
-    // 4. PHÂN TRANG
-    function renderPagination(page, totalPageCount, totalItems) {
-        totalPages = totalPageCount;
-        currentPage = page;
-
-        document.getElementById('pageInput').value = page;
-        document.getElementById('totalPageDisplay').innerText = totalPageCount;
-        document.getElementById('totalItemsDisplay').innerText = `Tổng số: ${totalItems}`;
-
-        document.getElementById('btnFirst').disabled = (page <= 1);
-        document.getElementById('btnPrev').disabled = (page <= 1);
-        document.getElementById('btnNext').disabled = (page >= totalPageCount);
-        document.getElementById('btnLast').disabled = (page >= totalPageCount);
-    }
-
-    function changePage(delta) {
-        const newPage = currentPage + delta;
-        jumpToPage(newPage);
-    }
-
-    function jumpToPage(page) {
-        const pageNum = parseInt(page);
-        if (isNaN(pageNum) || pageNum < 1) {
-            document.getElementById('pageInput').value = currentPage;
-            return;
-        }
-        if (pageNum > totalPages && totalPages > 0) {
-            currentPage = totalPages;
-        } else {
-            currentPage = pageNum;
-        }
-        fetchAssignments();
-    }
-
-    function updatePageSize(newSize) {
-        pageSize = parseInt(newSize);
-        currentPage = 1; // Quay về trang 1 khi đổi size
-        fetchAssignments();
-    }
-
-    // 5. MODAL VÀ XỬ LÝ API
-    let selectedShiftCode = null;
-    let currentModalEmpId = null;
-    let currentModalDate = null;
-
-    function openAssignModal(id, name, date) {
-        currentModalEmpId = id;
-        currentModalDate = date;
-
-        // Tìm xem ngày này nhân viên đã có ca chưa
-        const currentAssign = shiftMapCache[id]?.[date];
-        selectedShiftCode = currentAssign ? currentAssign.shift_code : null;
-
-        document.getElementById('modalInfo').innerHTML = `Nhân viên: <b>${name}</b> | Ngày: <b>${date}</b>`;
-        renderShiftCards();
-        document.getElementById('assignModal').style.display = 'flex';
-    }
-
-    function renderShiftCards() {
-        const list = document.getElementById('shiftCardList');
-        if (allShiftCategories.length === 0) {
-            list.innerHTML = '<div style="grid-column: 1/3; text-align:center; padding:10px;">Chưa có danh mục ca.</div>';
-            return;
-        }
-
-        list.innerHTML = allShiftCategories.map(s => {
-            const isSelected = (s.shift_code === selectedShiftCode);
-            return `
-            <div onclick="selectShift('${s.shift_code}')" 
-                 style="border:2px solid ${isSelected ? '#3b82f6' : '#e2e8f0'}; background:${isSelected ? '#eff6ff' : '#fff'}; padding:12px; border-radius:8px; cursor:pointer; text-align:center; transition: 0.2s;"
-                 onmouseover="this.style.background='#eff6ff'; this.style.borderColor='#3b82f6'"
-                 onmouseout="this.style.background='${isSelected ? '#eff6ff' : '#fff'}'; this.style.borderColor='${isSelected ? '#3b82f6' : '#e2e8f0'}'">
-                <b style="color:#1e40af;">${s.shift_code}</b><br><small>${s.shift_name}</small>
-            </div>`;
-        }).join('') + `
-        <div onclick="saveAssignment()" 
-             style="grid-column: 1 / span 2; background: #3b82f6; color:white; padding:12px; border-radius:8px; cursor:pointer; text-align:center; font-weight:bold; margin-top:20px;">
-             💾 LƯU THAY ĐỔI
-        </div>
-        <div onclick="selectShift(null)" 
-             style="grid-column: 1 / span 2; border:1px solid #94a3b8; color:#64748b; padding:10px; border-radius:8px; cursor:pointer; text-align:center; margin-top:10px;">
-             🚫 BỎ CHỌN CA (XÓA)
-        </div>`;
-    }
-
-    function selectShift(code) {
-        selectedShiftCode = code;
-        renderShiftCards();
-    }
-
-    async function saveAssignment() {
-        const empId = currentModalEmpId;
-        const date = currentModalDate;
-
-        // Nếu đã có ca khác, xóa ca cũ trước
-        const currentAssign = shiftMapCache[empId]?.[date];
-
-        if (!selectedShiftCode) {
-            if (currentAssign) {
-                await deleteAssignSilent(currentAssign.id);
-            }
-            closeModal();
-            fetchAssignments();
-            return;
-        }
-
-        // Ghi đè hoặc tạo mới
-        const res = await fetch('/api/assignments', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ employee_id: empId, shift_code: selectedShiftCode, shift_date: date })
-        });
-
-        if (res.ok) {
-            closeModal();
-            fetchAssignments();
-        } else {
-            alert("Lỗi khi gán ca!");
-        }
-    }
-
-    async function deleteAssignSilent(id) {
-        await fetch(`/api/assignments/${id}`, { method: 'DELETE' });
-    }
-
-
-
-    function closeModal() { document.getElementById('assignModal').style.display = 'none'; }
-
-    async function deleteAssign(id, name, date) {
-        if (confirm(`Xóa lịch của ${name} ngày ${date}?`)) {
-            const res = await fetch(`/api/assignments/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                closeModal();
-                fetchAssignments();
-            }
-        }
-    }
-
-    async function uploadExcel() {
-        const fileInput = document.getElementById('excelFile');
-        if (fileInput.files.length === 0) {
-            alert("Vui lòng chọn file Excel!");
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-
-        try {
-            const resp = await fetch('/api/assignments/import', {
-                method: 'POST',
-                body: formData
+            
+            shifts.forEach(s => {
+                shiftSel.innerHTML += `<option value="${s.shift_code}">${s.shift_name} (${s.shift_code})</option>`;
             });
-            const result = await resp.json();
-            if (result.status === 'success') {
-                alert(result.message);
+        } catch(e) { console.error("Lỗi tải Dropdown", e); }
+    }
+
+    // Load Bảng phân công
+    async function fetchAssignments() {
+        const monthVal = document.getElementById('monthSelect').value;
+        if(!monthVal) return;
+        
+        const [year, month] = monthVal.split('-');
+        try {
+            const res = await fetch(`/api/assignments?month=${parseInt(month)}&year=${year}`);
+            const data = await res.json();
+            
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Tháng này chưa có lịch phân công nào.</td></tr>';
+                return;
+            }
+
+            // Sắp xếp theo ngày tăng dần
+            data.sort((a,b) => new Date(a.shift_date) - new Date(b.shift_date)).forEach(item => {
+                // Tách phần ngày/tháng để hiển thị cho đẹp
+                const dateObj = new Date(item.shift_date);
+                const dateStr = `${String(dateObj.getDate()).padStart(2,'0')}/${String(dateObj.getMonth()+1).padStart(2,'0')}`;
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${dateStr}</strong></td>
+                        <td>${item.full_name} <br><small style="color:var(--text-muted);">(${item.username})</small></td>
+                        <td><span style="background:#e0f2fe; color:#0284c7; padding:4px 8px; border-radius:6px; font-weight:bold; font-size:0.8rem; border: 1px solid #bae6fd;">${item.shift_name}</span></td>
+                        <td><span style="color:#475569; font-size:0.9rem;">${item.assigner || '---'}</span></td>
+                        <td>
+                            <button onclick="deleteAssign(${item.id})" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold; transition:0.2s;">🗑️ Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        } catch(e) { console.error("Lỗi lấy danh sách", e); }
+    }
+
+    // Lưu Gán Ca lẻ thủ công
+    document.getElementById('assignForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            username: document.getElementById('empSelect').value,
+            shift_code: document.getElementById('shiftSelect').value,
+            shift_date: document.getElementById('shiftDate').value,
+            assigner: document.getElementById('assigner').value.trim()
+        };
+        
+        try {
+            const res = await fetch('/api/assignments', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload) 
+            });
+            if(res.ok) {
+                alert("Đã gán ca thành công!");
                 fetchAssignments();
             } else {
-                alert("Lỗi: " + (result.detail || "Không xác định"));
+                alert("Có lỗi xảy ra khi gán ca!");
             }
-        } catch (err) {
-            console.error(err);
-            alert("Lỗi khi upload file!");
+        } catch(e) { alert("Lỗi mạng!"); }
+    });
+
+    // Upload Excel
+    async function uploadExcel() {
+        const fileInput = document.getElementById('excelFile');
+        if(!fileInput.files[0]) return alert("Vui lòng chọn file Excel trước!");
+        
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            const res = await fetch('/api/assignments/import', { method: 'POST', body: formData });
+            const result = await res.json();
+            if(res.ok) { 
+                alert(result.message); 
+                fileInput.value = ""; // Xóa tên file đã chọn
+                fetchAssignments(); 
+            } 
+            else { alert(result.detail); }
+        } catch(e) { alert("Lỗi mạng!"); }
+    }
+
+    // Xóa lịch trực
+    async function deleteAssign(id) {
+        if(confirm("Xóa lịch trực này?")) {
+            await fetch(`/api/assignments/${id}`, { method: 'DELETE' });
+            fetchAssignments();
         }
     }
 
-    function downloadTemplate() {
-        const start = document.getElementById('startDateFilter').value;
-        const end = document.getElementById('endDateFilter').value;
-        window.location.href = `/api/assignments/export_template?start_date=${start}&end_date=${end}`;
-    }
-
-    // Khởi tạo chạy ngay
-    loadShiftCategories();
+    // Khởi tạo
+    loadDropdowns();
     fetchAssignments();
 </script>
 {% endblock %}
