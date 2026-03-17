@@ -24,44 +24,22 @@ def create_employee(emp: EmployeeCreate, db: Session = Depends(get_db)):
     return {"status": "success", "message": "Thêm nhân sự thành công"}
 
 @router.get("/api/employees")
-def get_employees(db: Session = Depends(get_db), page: int = 1, size: int = 15):
-    from sqlalchemy.orm import aliased
-    Dept = aliased(OrganizationUnit)
-    ParentUnit = aliased(OrganizationUnit)
-
-    # Lấy tổng số nhân viên để tính phân trang
-    total = db.query(Employee).count()
-    offset = (page - 1) * size
-
-    rows = db.query(
-        Employee,
-        Dept.unit_name.label("dept_name"),
-        ParentUnit.unit_name.label("parent_name")
-    ).outerjoin(
-        Dept, Employee.department_id == Dept.id
-    ).outerjoin(
-        ParentUnit, Dept.parent_id == ParentUnit.id
-    ).order_by(Employee.id.desc()).offset(offset).limit(size).all()
-
+def get_employees(db: Session = Depends(get_db)):
+    # Dùng joinedload để lấy Tên phòng ban từ bảng OrganizationUnit 
+    emps = db.query(Employee).options(joinedload(Employee.department)).order_by(Employee.id.desc()).all()
+    
     result = []
-    for e, dept_name, parent_name in rows:
+    for e in emps:
         face_path = os.path.join(DB_PATH, f"{e.username}.jpg")
-
-        if parent_name:
-            ten_don_vi = parent_name
-            ten_phong_ban = dept_name or ""
-        else:
-            ten_don_vi = dept_name or ""
-            ten_phong_ban = ""
-
+        
+        # Lấy tên phòng ban nếu có, nếu không thì để trống
+        dept_name = e.department.unit_name if e.department else None
+        
         result.append({
-            "id": e.id,
             "username": e.username,
             "full_name": e.full_name,
-            "department_id": e.department_id,
-            "department_name": dept_name,
-            "ten_don_vi": ten_don_vi,
-            "ten_phong_ban": ten_phong_ban,
+            "department_id": e.department_id,      # Trả về ID để dùng cho form Sửa
+            "department_name": dept_name,          # Trả về Tên để hiển thị lên Bảng
             "phone": e.phone,
             "dob": e.dob,
             "status": e.status,
@@ -70,14 +48,7 @@ def get_employees(db: Session = Depends(get_db), page: int = 1, size: int = 15):
             "date_of_birth": e.date_of_birth,
             "has_face": os.path.exists(face_path)
         })
-    
-    return {
-        "items": result,
-        "total": total,
-        "page": page,
-        "size": size,
-        "total_pages": (total + size - 1) // size
-    }
+    return result
 
 @router.put("/api/employees/{username}")
 def update_employee(username: str, emp: EmployeeCreate, db: Session = Depends(get_db)):
