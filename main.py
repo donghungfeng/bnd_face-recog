@@ -1,10 +1,10 @@
 import uvicorn
+import os # Thêm để kiểm tra loại DB
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-# Không cần import 'text' từ sqlalchemy ở đây nữa vì không cần chạy PRAGMA
 from database import engine, Base
 from services import load_embeddings, load_system_configs
 from routers import (
@@ -18,21 +18,23 @@ from routers import (
 # ==========================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Kiểm tra loại DB đang dùng từ chuỗi kết nối
+    db_type = "SQLite" if engine.url.drivername.startswith("sqlite") else "MySQL"
+    
     # --- CHẠY LÚC START SERVER ---
-    print("🚀 [MySQL Mode] Đang khởi động Server...")
+    print(f"🚀 [{db_type} Mode] Đang khởi động Server...")
     
     # Nạp AI Embeddings và Config
     print("🧠 Đang nạp AI Embeddings vào bộ nhớ...")
     load_embeddings()
     load_system_configs()
-    print("✅ Hệ thống AI và Cấu hình đã sẵn sàng!")
+    print(f"✅ Hệ thống AI và Cấu hình đã sẵn sàng trên {db_type}!")
     
     yield 
     
     # --- CHẠY LÚC STOP SERVER ---
-    print("🛑 Server đang tắt, đang đóng kết nối MySQL Pool...")
+    print(f"🛑 Server đang tắt, đang đóng kết nối {db_type} Pool...")
     try:
-        # MySQL tự quản lý data, ta chỉ cần đóng Connection Pool của SQLAlchemy
         engine.dispose()
         print("✅ Đã ngắt kết nối Database an toàn!")
     except Exception as e:
@@ -41,7 +43,8 @@ async def lifespan(app: FastAPI):
 # ==========================================
 # 1. KHỞI TẠO APP
 # ==========================================
-app = FastAPI(title="BND HRM AI Face Recognition (MySQL)", lifespan=lifespan)
+# Để title động cho chuyên nghiệp
+app = FastAPI(title="BND HRM AI Face Recognition", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,7 +54,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. Tạo Database Tables (Optional: Flyway đã làm việc này, nhưng để đây cũng không sao)
+# 2. Tạo Database Tables 
+# TUYỆT ĐỐI KHÔNG mở dòng này. Để Flyway quản lý 100%.
 # Base.metadata.create_all(bind=engine) 
 
 # 3. Mount Static Files
