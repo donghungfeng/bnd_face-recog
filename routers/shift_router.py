@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import openpyxl
 import io
 from openpyxl.styles import Font, PatternFill
-from sqlalchemy.orm import joinedload # Nhớ import hàm này ở đầu file nếu chưa có
+from sqlalchemy.orm import joinedload
 
 from fastapi.templating import Jinja2Templates
 templates = Jinja2Templates(directory="templates")
 
 from database import get_db
-from models import ShiftCategory, ShiftAssignment, Employee
+from models import ShiftCategory, ShiftAssignment, Employee, OrganizationUnit
 from schemas import ShiftCategoryCreate, ShiftAssignmentCreate
 
 router = APIRouter()
@@ -36,9 +36,52 @@ def create_shift_category(shift: ShiftCategoryCreate, db: Session = Depends(get_
 
 @router.get("/api/shifts")
 def get_shifts(db: Session = Depends(get_db)):
-    return db.query(ShiftCategory).all()
+    shifts = db.query(ShiftCategory).all()
+    result = []
+    for s in shifts:
+        result.append({
+            "id": s.id,
+            "shift_code": s.shift_code,
+            "shift_name": s.shift_name,
+            "start_time": s.start_time.strftime("%H:%M") if s.start_time else None,
+            "end_time": s.end_time.strftime("%H:%M") if s.end_time else None,
+            "is_overnight": s.is_overnight,
+            "status": s.status,
+            "notes": s.notes,
+            "checkin_from": s.checkin_from.strftime("%H:%M") if s.checkin_from else None,
+            "checkin_to": s.checkin_to.strftime("%H:%M") if s.checkin_to else None,
+            "checkout_from": s.checkout_from.strftime("%H:%M") if s.checkout_from else None,
+            "checkout_to": s.checkout_to.strftime("%H:%M") if s.checkout_to else None,
+            "work_hours": s.work_hours,
+            "work_days": s.work_days,
+            "day_coefficient": s.day_coefficient
+        })
+    return result
 
-@router.delete("/api/shifts/{shift_code}")
+@router.put("/api/shifts/{shift_code}")
+def update_shift_category(shift_code: str, shift: ShiftCategoryCreate, db: Session = Depends(get_db)):
+    db_shift = db.query(ShiftCategory).filter(ShiftCategory.shift_code == shift_code).first()
+    if not db_shift:
+        raise HTTPException(status_code=404, detail="Không tìm thấy ca trực")
+    
+    db_shift.shift_name = shift.shift_name
+    db_shift.start_time = shift.start_time
+    db_shift.end_time = shift.end_time
+    db_shift.is_overnight = shift.is_overnight
+    db_shift.status = shift.status
+    db_shift.notes = shift.notes
+    db_shift.checkin_from = shift.checkin_from
+    db_shift.checkin_to = shift.checkin_to
+    db_shift.checkout_from = shift.checkout_from
+    db_shift.checkout_to = shift.checkout_to
+    db_shift.work_hours = shift.work_hours
+    db_shift.work_days = shift.work_days
+    db_shift.day_coefficient = shift.day_coefficient
+
+    db.commit()
+    return {"status": "success", "message": "Cập nhật thành công"}
+
+@router.get("/api/shifts/{shift_code}")
 def delete_shift(shift_code: str, db: Session = Depends(get_db)):
     shift = db.query(ShiftCategory).filter(ShiftCategory.shift_code == shift_code).first()
     if not shift: 
@@ -59,8 +102,8 @@ def get_assignments(month: int, year: int, db: Session = Depends(get_db)):
     else: 
         end_date = date(year, month + 1, 1)
 
-    assignments = db.query(ShiftAssignment, Employee.full_name, ShiftCategory.shift_name).join(
-        Employee, ShiftAssignment.username == Employee.username
+    assignments = db.query(ShiftAssignment, Employee.username, Employee.full_name, ShiftCategory.shift_name).join(
+        Employee, ShiftAssignment.employee_id == Employee.id
     ).join(
         ShiftCategory, ShiftAssignment.shift_code == ShiftCategory.shift_code
     ).filter(
@@ -70,23 +113,25 @@ def get_assignments(month: int, year: int, db: Session = Depends(get_db)):
 
     return [{
         "id": a[0].id, 
-        "username": a[0].username, 
-        "full_name": a[1],
+        "employee_id": a[0].employee_id,
+        "username": a[1], 
+        "full_name": a[2],
         "shift_code": a[0].shift_code, 
-        "shift_name": a[2], 
+        "shift_name": a[3], 
         "shift_date": a[0].shift_date,
-        "assigner": a[0].assigner  # <--- BỔ SUNG DÒNG NÀY VÀO ĐỂ TRẢ VỀ UI
+        "assigner": a[0].assigner
     } for a in assignments]
 
 @router.post("/api/assignments")
 def create_assignment(req: ShiftAssignmentCreate, db: Session = Depends(get_db)):
     existing = db.query(ShiftAssignment).filter(
-        ShiftAssignment.username == req.username, 
+        ShiftAssignment.employee_id == req.employee_id, 
         ShiftAssignment.shift_date == req.shift_date
     ).first()
     
     if existing:
-        existing.shift_code = req.shift_code # Ghi đè nếu đã có lịch ngày đó
+        existing.shift_code = req.shift_code 
+        if req.assigner: existing.assigner = req.assigner
     else:
         db.add(ShiftAssignment(**req.dict()))
     db.commit()
@@ -100,89 +145,192 @@ def delete_assignment(assign_id: int, db: Session = Depends(get_db)):
         db.commit()
     return {"status": "success"}
 
+@router.get("/api/assignments/details")
+def get_assignments_details(start_date: str = None, end_date: str = None, month: int = None, year: int = None, db: Session = Depends(get_db)):
+    from sqlalchemy.orm import aliased
+    Dept = aliased(OrganizationUnit)
+    ParentUnit = aliased(OrganizationUnit)
+
+    query = db.query(
+        ShiftAssignment.id,
+        ShiftAssignment.shift_code,
+        ShiftAssignment.shift_date,
+        Employee.id.label("employee_id"),
+        Employee.full_name,
+        Employee.dob,
+        Employee.date_of_birth,
+        Dept.unit_name.label("ten_phong_ban"),
+        ParentUnit.unit_name.label("ten_don_vi")
+    ).join(
+        Employee, ShiftAssignment.employee_id == Employee.id
+    ).outerjoin(
+        Dept, Employee.department_id == Dept.id
+    ).outerjoin(
+        ParentUnit, Dept.parent_id == ParentUnit.id
+    )
+
+    if start_date and end_date:
+        query = query.filter(
+            ShiftAssignment.shift_date >= datetime.strptime(start_date, "%Y-%m-%d").date(),
+            ShiftAssignment.shift_date <= datetime.strptime(end_date, "%Y-%m-%d").date()
+        )
+    elif month and year:
+        s_date = date(year, month, 1)
+        e_date = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+        query = query.filter(
+            ShiftAssignment.shift_date >= s_date,
+            ShiftAssignment.shift_date < e_date
+        )
+
+    results = query.all()
+
+    data = []
+    for row in results:
+        dob_val = row.dob or row.date_of_birth
+        ten_don_vi = row.ten_don_vi or row.ten_phong_ban or ""
+        ten_phong_ban = row.ten_phong_ban or ""
+
+        data.append({
+            "id": row.id,
+            "employee_id": row.employee_id,
+            "full_name": row.full_name,
+            "date_of_birth": dob_val.strftime("%Y-%m-%d") if dob_val else None,
+            "ten_don_vi": ten_don_vi,
+            "ten_phong_ban": ten_phong_ban,
+            "shift_date": row.shift_date.strftime("%Y-%m-%d") if row.shift_date else None,
+            "shift_code": row.shift_code
+        })
+
+    return data
+
 
 # ==========================================
-# 3. IMPORT / EXPORT EXCEL PHÂN CÔNG
+# 3. IMPORT / EXPORT EXCEL PHÂN CÔNG (MATRIX)
 # ==========================================
 @router.get("/api/assignments/export_template")
-def export_assignment_template(db: Session = Depends(get_db)):
-    wb = openpyxl.Workbook()
+def export_assignment_template(start_date: str = None, end_date: str = None, db: Session = Depends(get_db)):
+    from sqlalchemy.orm import aliased
     
-    # ==========================================
-    # SHEET 1: BẢNG PHÂN CÔNG CA TRỰC
-    # ==========================================
+    if not start_date or not end_date:
+        today = date.today()
+        start = today - timedelta(days=today.weekday())
+        end = start + timedelta(days=6)
+    else:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except Exception:
+            today = date.today()
+            start = today - timedelta(days=today.weekday())
+            end = start + timedelta(days=6)
+    
+    date_list = []
+    curr = start
+    while curr <= end:
+        date_list.append(curr)
+        curr += timedelta(days=1)
+
+    wb = openpyxl.Workbook()
+    header_font = Font(bold=True, color="FFFFFF")
+    blue_fill = PatternFill(start_color="4361EE", fill_type="solid")
+    
     ws1 = wb.active
     ws1.title = "PhanCongCaTruc"
     
-    headers1 = [
-        "MÃ NHÂN VIÊN", 
-        "TÊN NHÂN VIÊN", 
-        "ĐƠN VỊ", 
-        "MÃ CA TRỰC", 
-        "NGÀY TRỰC (YYYY-MM-DD)", 
-        "MÃ NGƯỜI GIAO",
-        "TÊN NGƯỜI GIAO"
-    ]
-    ws1.append(headers1)
+    base_headers = ["STT", "ID", "HỌ VÀ TÊN", "NGÀY SINH", "ĐƠN VỊ", "PHÒNG BAN"]
+    date_headers = [d.strftime("%Y-%m-%d") for d in date_list]
+    ws1.append(base_headers + date_headers)
     
-    # Format Header Sheet 1 (Màu xanh dương)
-    header_font = Font(bold=True, color="FFFFFF")
     for cell in ws1[1]:
         cell.font = header_font
-        cell.fill = PatternFill(start_color="4361EE", fill_type="solid")
+        cell.fill = blue_fill
     
-    ws1.column_dimensions['A'].width = 15
-    ws1.column_dimensions['B'].width = 25
-    ws1.column_dimensions['C'].width = 30
-    ws1.column_dimensions['D'].width = 25
-    ws1.column_dimensions['E'].width = 25
-    ws1.column_dimensions['F'].width = 18
-    ws1.column_dimensions['G'].width = 25
+    Dept = aliased(OrganizationUnit)
+    ParentUnit = aliased(OrganizationUnit)
+    
+    rows = db.query(
+        Employee,
+        Dept.unit_name.label("dept_name"),
+        ParentUnit.unit_name.label("parent_name")
+    ).outerjoin(
+        Dept, Employee.department_id == Dept.id
+    ).outerjoin(
+        ParentUnit, Dept.parent_id == ParentUnit.id
+    ).filter(Employee.status == 'active').order_by(Employee.id.desc()).all()
 
-    # Đổ danh sách nhân viên vào Sheet 1
-    emps = db.query(Employee).options(joinedload(Employee.department)).filter(Employee.status == 'active').all()
-    for emp in emps:
-        dept_name = emp.department.unit_name if emp.department else ""
-        ws1.append([emp.username, emp.full_name, dept_name, "", "", "", ""])
+    current_assigns = db.query(ShiftAssignment).filter(
+        ShiftAssignment.shift_date >= start,
+        ShiftAssignment.shift_date <= end
+    ).all()
+    assign_map = {} 
+    for a in current_assigns:
+        assign_map[(a.employee_id, a.shift_date.strftime("%Y-%m-%d"))] = a.shift_code
 
+    for i, (e, dept_name, parent_name) in enumerate(rows):
+        dob = e.dob or e.date_of_birth
+        dob_str = dob.strftime("%Y-%m-%d") if dob else ""
+        
+        ten_don_vi = parent_name or dept_name or ""
+        ten_phong_ban = dept_name if parent_name else ""
+        
+        row_data = [
+            i + 1,
+            e.id,
+            e.full_name,
+            dob_str,
+            ten_don_vi,
+            ten_phong_ban
+        ]
+        
+        for d in date_list:
+            d_str = d.strftime("%Y-%m-%d")
+            row_data.append(assign_map.get((e.id, d_str), ""))
+            
+        ws1.append(row_data)
 
-    # ==========================================
-    # SHEET 2: DANH MỤC CA TRỰC (Để người dùng tra cứu)
-    # ==========================================
+    ws1.column_dimensions['A'].width = 8   # STT
+    ws1.column_dimensions['B'].width = 12  # ID
+    ws1.column_dimensions['C'].width = 35  # HỌ VÀ TÊN
+    ws1.column_dimensions['D'].width = 15  # NGÀY SINH
+    ws1.column_dimensions['E'].width = 45  # ĐƠN VỊ
+    ws1.column_dimensions['F'].width = 45  # PHÒNG BAN
+
+    # Auto width cho các cột ngày tháng (từ cột G trở đi)
+    for i in range(len(date_list)):
+        col_letter = openpyxl.utils.get_column_letter(7 + i)
+        ws1.column_dimensions[col_letter].width = 15
+
     ws2 = wb.create_sheet(title="DanhMucCaTruc")
-    headers2 = ["MÃ CA TRỰC", "TÊN CA TRỰC", "GIỜ BẮT ĐẦU", "GIỜ KẾT THÚC", "LOẠI CA", "GHI CHÚ"]
-    ws2.append(headers2)
-
-    # Format Header Sheet 2 (Màu xanh lá ngọc cho dễ phân biệt)
+    ws2.append(["MÃ CA TRỰC", "TÊN CA TRỰC", "GIỜ BẮT ĐẦU", "GIỜ KẾT THÚC", "GHI CHÚ"])
     for cell in ws2[1]:
         cell.font = header_font
         cell.fill = PatternFill(start_color="10B981", fill_type="solid")
-        
-    ws2.column_dimensions['A'].width = 20
+    
+    # Độ rộng cột Sheet 2
+    ws2.column_dimensions['A'].width = 15
     ws2.column_dimensions['B'].width = 30
     ws2.column_dimensions['C'].width = 15
     ws2.column_dimensions['D'].width = 15
-    ws2.column_dimensions['E'].width = 20
-    ws2.column_dimensions['F'].width = 35
-
-    # Đổ danh sách Ca trực vào Sheet 2
+    ws2.column_dimensions['E'].width = 50
+        
     shifts = db.query(ShiftCategory).all()
     for s in shifts:
-        shift_type = "🌙 Qua ngày" if s.is_overnight == 1 else "☀️ Trong ngày"
-        start_str = s.start_time.strftime("%H:%M") if s.start_time else ""
-        end_str = s.end_time.strftime("%H:%M") if s.end_time else ""
-        
-        ws2.append([s.shift_code, s.shift_name, start_str, end_str, shift_type, s.notes or ""])
+        ws2.append([
+            s.shift_code, s.shift_name, 
+            s.start_time.strftime("%H:%M") if s.start_time else "",
+            s.end_time.strftime("%H:%M") if s.end_time else "",
+            s.notes or ""
+        ])
 
-    # Lưu và trả về file Excel
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
     
+    filename = f"Mau_Phan_Cong_{start.strftime('%d%m')}_{end.strftime('%d%m')}.xlsx"
     return StreamingResponse(
         output, 
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-        headers={"Content-Disposition": "attachment; filename=Mau_Import_Ca_Truc.xlsx"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
 @router.post("/api/assignments/import")
@@ -191,108 +339,70 @@ async def import_assignments(file: UploadFile = File(...), db: Session = Depends
         contents = await file.read()
         wb = openpyxl.load_workbook(filename=io.BytesIO(contents))
         
-        # Chỉ định rõ đọc dữ liệu từ Sheet "PhanCongCaTruc"
         if "PhanCongCaTruc" not in wb.sheetnames:
             raise HTTPException(status_code=400, detail="File Excel không đúng định dạng mẫu (Thiếu sheet PhanCongCaTruc).")
             
         ws = wb["PhanCongCaTruc"]
-        count = 0
+        rows = list(ws.iter_rows(values_only=True))
+        if len(rows) < 2:
+            return {"status": "success", "message": "File không có dữ liệu."}
         
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            # Cột 0: Mã NV, Cột 3: Mã Ca, Cột 4: Ngày trực
-            if not row[0] or not row[3] or not row[4]: 
-                continue
-            
-            username = str(row[0]).strip()
-            shift_code = str(row[3]).strip()
-            
-            # Xử lý Ngày trực
-            shift_date_val = row[4]
-            if isinstance(shift_date_val, datetime):
-                shift_date = shift_date_val.date()
-            else:
-                try: 
-                    shift_date = datetime.strptime(str(shift_date_val)[:10], "%Y-%m-%d").date()
-                except ValueError: 
+        header = rows[0]
+        try:
+            id_idx = header.index("ID")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Mẫu Excel không hợp lệ (Không tìm thấy cột 'ID').")
+        
+        date_cols = []
+        for i in range(6, len(header)):
+            val = header[i]
+            if val:
+                try:
+                    if isinstance(val, datetime):
+                        date_cols.append((i, val.date()))
+                    else:
+                        d_obj = datetime.strptime(str(val)[:10], "%Y-%m-%d").date()
+                        date_cols.append((i, d_obj))
+                except Exception:
                     continue
 
-            # Xử lý Người giao (Cột 5: Mã, Cột 6: Tên)
-            assigner_code = str(row[5]).strip() if row[5] else ""
-            assigner_name = str(row[6]).strip() if row[6] else ""
-            
-            # Ghép lại thành "Mã - Tên" (VD: NV01 - Nguyễn Văn A) để lưu vào 1 cột cho gọn
-            assigner_full = ""
-            if assigner_code and assigner_name:
-                assigner_full = f"{assigner_code} - {assigner_name}"
-            elif assigner_code or assigner_name:
-                assigner_full = assigner_code or assigner_name
-            else:
-                assigner_full = None
+        valid_shift_codes = {s.shift_code for s in db.query(ShiftCategory).all()}
 
-            # Ghi đè vào CSDL nếu đã có ca trực vào ngày đó
-            existing = db.query(ShiftAssignment).filter(
-                ShiftAssignment.username == username, 
-                ShiftAssignment.shift_date == shift_date
-            ).first()
+        count = 0
+        for row in rows[1:]:
+            emp_id = row[id_idx]
+            if not emp_id: continue
             
-            if existing: 
-                existing.shift_code = shift_code
-                if assigner_full: existing.assigner = assigner_full
-            else: 
-                db.add(ShiftAssignment(
-                    username=username, 
-                    shift_code=shift_code, 
-                    shift_date=shift_date,
-                    assigner=assigner_full
-                ))
+            employee = db.query(Employee).filter(Employee.id == emp_id).first()
+            if not employee: continue
             
-            count += 1
+            for col_idx, s_date in date_cols:
+                val = row[col_idx]
+                shift_code = str(val).strip() if val else None
+                
+                if shift_code and shift_code not in valid_shift_codes:
+                    shift_code = None
+                
+                existing = db.query(ShiftAssignment).filter(
+                    ShiftAssignment.employee_id == employee.id,
+                    ShiftAssignment.shift_date == s_date
+                ).first()
+                
+                if shift_code:
+                    if existing:
+                        existing.shift_code = shift_code
+                    else:
+                        db.add(ShiftAssignment(
+                            employee_id=employee.id,
+                            shift_code=shift_code,
+                            shift_date=s_date
+                        ))
+                    count += 1
+                elif existing:
+                    db.delete(existing)
+                    count += 1
             
         db.commit()
-        return {"status": "success", "message": f"Đã import thành công {count} phân công ca trực!"}
+        return {"status": "success", "message": f"Đã cập nhật thành công {count} ô phân công!"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Lỗi đọc file Excel: {str(e)}")
-
-@router.post("/api/assignments/import")
-async def import_assignments(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    try:
-        contents = await file.read()
-        wb = openpyxl.load_workbook(filename=io.BytesIO(contents))
-        ws = wb.active
-        count = 0
-        
-        # Bắt đầu đọc từ dòng thứ 2 (bỏ qua Header)
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row[0] or not row[1] or not row[2]: 
-                continue
-            
-            username = str(row[0]).strip()
-            shift_code = str(row[1]).strip()
-            
-            # Xử lý ngày tháng an toàn (Excel có thể format là chuỗi hoặc datetime)
-            shift_date_val = row[2]
-            if isinstance(shift_date_val, datetime):
-                shift_date = shift_date_val.date()
-            else:
-                try: 
-                    shift_date = datetime.strptime(str(shift_date_val)[:10], "%Y-%m-%d").date()
-                except ValueError: 
-                    continue
-
-            # Ghi đè nếu trùng ngày
-            existing = db.query(ShiftAssignment).filter(
-                ShiftAssignment.username == username, 
-                ShiftAssignment.shift_date == shift_date
-            ).first()
-            
-            if existing: 
-                existing.shift_code = shift_code
-            else: 
-                db.add(ShiftAssignment(username=username, shift_code=shift_code, shift_date=shift_date))
-            
-            count += 1
-            
-        db.commit()
-        return {"status": "success", "message": f"Đã import thành công {count} phân công!"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Lỗi đọc file: {str(e)}")
