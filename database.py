@@ -1,12 +1,13 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/bnd_face_recog"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./data/hrm.db"
 
+# Cấu hình riêng cho SQLite:
+# connect_args={"check_same_thread": False} bắt buộc phải có để FastAPI (đa luồng) chạy được với SQLite
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=3600
+    SQLALCHEMY_DATABASE_URL, 
+    connect_args={"check_same_thread": False}
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
