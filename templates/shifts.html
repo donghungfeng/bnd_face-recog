@@ -6,7 +6,7 @@
 {% block content %}
 <div class="grid-container">
     <div class="card">
-        <h3>+ Thêm Ca Trực Mới</h3>
+        <h3 id="formTitle">+ Thêm Ca Trực Mới</h3>
         <form id="shiftForm">
             <div class="form-group">
                 <label>Mã Ca (VD: CA_DEM)*</label>
@@ -33,29 +33,80 @@
                     <option value="1">🌙 Qua ngày (Trực xuyên đêm sang sáng)</option>
                 </select>
             </div>
+
+            <div class="form-group" style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label>Giờ Bắt đầu Check-in</label>
+                    <input type="time" id="checkin_from">
+                </div>
+                <div style="flex: 1;">
+                    <label>Giờ Kết thúc Check-in</label>
+                    <input type="time" id="checkin_to">
+                </div>
+            </div>
+            <div class="form-group" style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label>Giờ Bắt đầu Check-out</label>
+                    <input type="time" id="checkout_from">
+                </div>
+                <div style="flex: 1;">
+                    <label>Giờ Kết thúc Check-out</label>
+                    <input type="time" id="checkout_to">
+                </div>
+            </div>
+            <div class="form-group" style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label>Số giờ công (VD: 8.0)</label>
+                    <input type="number" step="0.1" id="work_hours" placeholder="8.0">
+                </div>
+                <div style="flex: 1;">
+                    <label>Số ngày công (VD: 1.0)</label>
+                    <input type="number" step="0.1" id="work_days" placeholder="1.0">
+                </div>
+                <div style="flex: 1;">
+                    <label>Hệ số công (VD: 1.0)</label>
+                    <input type="number" step="0.1" id="day_coefficient" placeholder="1.0">
+                </div>
+            </div>
             <div class="form-group">
                 <label>Ghi chú</label>
                 <input type="text" id="notes" placeholder="Tùy chọn ghi chú thêm...">
             </div>
-            <button type="submit" class="btn-primary">LƯU CA LÀM VIỆC</button>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="submit" class="btn-primary" id="saveBtn">LƯU CA LÀM VIỆC</button>
+                <button type="button" class="btn-secondary" id="cancelEditBtn"
+                    style="display: none; background: #9ca3af; color: white; padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;"
+                    onclick="cancelEdit()">HỦY CẬP NHẬT</button>
+            </div>
         </form>
     </div>
 
-    <div class="card" style="overflow-x: auto;">
+    <div class="card" style="max-width: 100%; overflow: hidden;">
         <h3>Danh Sách Ca Trực</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>MÃ CA</th>
-                    <th>TÊN CA TRỰC</th>
-                    <th>THỜI GIAN</th>
-                    <th>LOẠI CA</th>
-                    <th>THAO TÁC</th>
-                </tr>
-            </thead>
-            <tbody id="shiftTableBody">
+        <div style="width: 100%; overflow-x: auto; white-space: nowrap; padding-bottom: 10px;">
+            <style>
+                /* Tùy chỉnh thanh cuộn ngang cho đẹp */
+                .card > div::-webkit-scrollbar { height: 8px; }
+                .card > div::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+                .card > div::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+            </style>
+            <table style="min-width: 1000px;">
+                <thead>
+                    <tr>
+                        <th style="width: 10%">MÃ CA</th>
+                        <th style="width: 20%">TÊN CA TRỰC</th>
+                        <th style="width: 15%">LỊCH LÀM VIỆC</th>
+                        <th style="width: 15%">GIỜ CHECK-IN</th>
+                        <th style="width: 15%">GIỜ CHECK-OUT</th>
+                        <th style="width: 10%">QUY TẮC TÍNH CÔNG</th>
+                        <th style="width: 10%">LOẠI CA</th>
+                        <th style="width: 5%">THAO TÁC</th>
+                    </tr>
+                </thead>
+                <tbody id="shiftTableBody">
                 </tbody>
-        </table>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -64,6 +115,10 @@
 <script>
     const API_URL = "/api/shifts";
 
+    let isEditMode = false;
+    let currentEditCode = null;
+    window.shiftsData = {};
+
     // 1. TẢI VÀ HIỂN THỊ DANH SÁCH CA TRỰC
     async function fetchShifts() {
         try {
@@ -71,10 +126,11 @@
             const data = await res.json();
             const tbody = document.getElementById('shiftTableBody');
             tbody.innerHTML = '';
-            
+
             data.forEach(shift => {
+                window.shiftsData[shift.shift_code] = shift;
                 // Hiển thị huy hiệu Đêm/Ngày
-                const typeHtml = shift.is_overnight === 1 
+                const typeHtml = shift.is_overnight === 1
                     ? `<span style="background: #fee2e2; color: #dc2626; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.75rem;">🌙 Qua ngày</span>`
                     : `<span style="background: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.75rem;">☀️ Trong ngày</span>`;
 
@@ -85,9 +141,26 @@
                             ${shift.shift_name}<br>
                             <small style="color:var(--text-muted)">${shift.notes || ''}</small>
                         </td>
-                        <td><span style="background: #f3f4f6; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; border: 1px solid #e5e7eb;">${shift.start_time} - ${shift.end_time}</span></td>
+                        <td>
+                            <small style="color: gray;">Vào ca: <b style="background: #f3f4f6; padding: 2px 4px; border-radius: 4px; border: 1px solid #e5e7eb;">${shift.start_time || '--'}</b></small><br>
+                            <small style="color: gray;">Tan ca: <b style="background: #f3f4f6; padding: 2px 4px; border-radius: 4px; border: 1px solid #e5e7eb;">${shift.end_time || '--'}</b></small>
+                        </td>
+                        <td>
+                            <small style="color: gray;">Từ: <b>${shift.checkin_from || '--'}</b></small><br>
+                            <small style="color: gray;">Đến: <b>${shift.checkin_to || '--'}</b></small>
+                        </td>
+                        <td>
+                            <small style="color: gray;">Từ: <b>${shift.checkout_from || '--'}</b></small><br>
+                            <small style="color: gray;">Đến: <b>${shift.checkout_to || '--'}</b></small>
+                        </td>
+                        <td>
+                            <small>Giờ: <b>${shift.work_hours || '--'}</b></small><br>
+                            <small>Ngày: <b>${shift.work_days || '--'}</b></small><br>
+                            <small>Hệ số: <b>${shift.day_coefficient || '--'}</b></small>
+                        </td>
                         <td>${typeHtml}</td>
                         <td>
+                            <button onclick="editShift('${shift.shift_code}')" style="background: #e0f2fe; color: #0284c7; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-bottom: 5px;">✏️ Sửa</button><br>
                             <button onclick="deleteShift('${shift.shift_code}')" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">🗑️ Xóa</button>
                         </td>
                     </tr>
@@ -96,13 +169,62 @@
         } catch (err) { console.error("Lỗi tải ca trực:", err); }
     }
 
-    // 2. THÊM CA TRỰC MỚI
+    function editShift(code) {
+        const shift = window.shiftsData[code];
+        if (!shift) return;
+
+        isEditMode = true;
+        currentEditCode = code;
+
+        document.getElementById('formTitle').innerText = '✏️ Sửa Ca Trực: ' + code;
+        document.getElementById('shift_code').value = shift.shift_code;
+        document.getElementById('shift_code').disabled = true;
+
+        document.getElementById('shift_name').value = shift.shift_name;
+        document.getElementById('start_time').value = shift.start_time;
+        document.getElementById('end_time').value = shift.end_time;
+        document.getElementById('is_overnight').value = shift.is_overnight;
+        document.getElementById('notes').value = shift.notes || '';
+
+        document.getElementById('checkin_from').value = shift.checkin_from || '';
+        document.getElementById('checkin_to').value = shift.checkin_to || '';
+        document.getElementById('checkout_from').value = shift.checkout_from || '';
+        document.getElementById('checkout_to').value = shift.checkout_to || '';
+        document.getElementById('work_hours').value = shift.work_hours || '';
+        document.getElementById('work_days').value = shift.work_days || '';
+        document.getElementById('day_coefficient').value = shift.day_coefficient || '';
+
+        document.getElementById('cancelEditBtn').style.display = 'block';
+        window.scrollTo(0, 0);
+    }
+
+    function cancelEdit() {
+        isEditMode = false;
+        currentEditCode = null;
+        document.getElementById('formTitle').innerText = '+ Thêm Ca Trực Mới';
+        document.getElementById('shift_code').disabled = false;
+        document.getElementById('shiftForm').reset();
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+
+    // 2. THÊM / SỬA CA TRỰC
     document.getElementById('shiftForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         // Thêm ':00' để API backend hiểu đây là định dạng thời gian chuẩn (HH:MM:SS)
-        const start = document.getElementById('start_time').value + ":00";
-        const end = document.getElementById('end_time').value + ":00";
+        let start = document.getElementById('start_time').value;
+        if (start.length === 5) start += ":00";
+        let end = document.getElementById('end_time').value;
+        if (end.length === 5) end += ":00";
+
+        let cf = document.getElementById('checkin_from').value;
+        if (cf && cf.length === 5) cf += ":00";
+        let ct = document.getElementById('checkin_to').value;
+        if (ct && ct.length === 5) ct += ":00";
+        let outf = document.getElementById('checkout_from').value;
+        if (outf && outf.length === 5) outf += ":00";
+        let outt = document.getElementById('checkout_to').value;
+        if (outt && outt.length === 5) outt += ":00";
 
         const payload = {
             shift_code: document.getElementById('shift_code').value.trim().toUpperCase(),
@@ -110,38 +232,48 @@
             start_time: start,
             end_time: end,
             is_overnight: parseInt(document.getElementById('is_overnight').value),
-            notes: document.getElementById('notes').value.trim()
+            notes: document.getElementById('notes').value.trim(),
+            checkin_from: cf || null,
+            checkin_to: ct || null,
+            checkout_from: outf || null,
+            checkout_to: outt || null,
+            work_hours: document.getElementById('work_hours').value ? parseFloat(document.getElementById('work_hours').value) : null,
+            work_days: document.getElementById('work_days').value ? parseFloat(document.getElementById('work_days').value) : null,
+            day_coefficient: document.getElementById('day_coefficient').value ? parseFloat(document.getElementById('day_coefficient').value) : null
         };
 
         try {
-            const res = await fetch(API_URL, {
-                method: 'POST',
+            const url = isEditMode ? API_URL + '/' + currentEditCode : API_URL;
+            const method = isEditMode ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            
+
             if (res.ok) {
-                alert("Thêm ca trực thành công!");
-                document.getElementById('shiftForm').reset();
+                alert(isEditMode ? "Cập nhật ca trực thành công!" : "Thêm ca trực thành công!");
+                cancelEdit();
                 fetchShifts();
             } else {
                 const result = await res.json();
                 alert("Lỗi: " + result.detail);
             }
-        } catch (err) { alert("Lỗi kết nối Server"); }
+        } catch (err) { alert("Lỗi kết nối Server: " + err); }
     });
 
     // 3. XÓA CA TRỰC
     async function deleteShift(shift_code) {
-        if(confirm(`⚠️ Bạn có chắc chắn muốn xóa ca trực [${shift_code}] không?`)) {
+        if (confirm(`⚠️ Bạn có chắc chắn muốn xóa ca trực [${shift_code}] không?`)) {
             try {
                 const res = await fetch(`${API_URL}/${shift_code}`, { method: 'DELETE' });
-                if(res.ok) {
+                if (res.ok) {
                     fetchShifts(); // Refresh bảng
                 } else {
                     alert("Lỗi khi xóa ca trực!");
                 }
-            } catch(e) {
+            } catch (e) {
                 alert("Lỗi kết nối Server");
             }
         }
