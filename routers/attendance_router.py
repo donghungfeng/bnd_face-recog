@@ -28,233 +28,72 @@ def get_attendance(
     limit: int = 50, 
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    username: Optional[str] = Query(None, description="Username nhân viên cần lọc"), # Param bên ngoài là username
+    username: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Lấy thông tin người đang thực hiện request (Admin/Manager/User)
     role = current_user.get("role", "user")
     current_username = current_user.get("username")
     
-    # Gán lại vào biến q_username để xử lý logic bên dưới
-    q_username = username 
-    
     from sqlalchemy import func
-    from datetime import timedelta
-    from models import ShiftAssignment, ShiftCategory
     
     # 1. Khởi tạo điều kiện lọc theo phân quyền
     filter_conditions = []
 
     if role == "user":
-        # Role USER: Bất kể q_username truyền vào là gì, chỉ được xem chính mình
         filter_conditions.append(Attendance.username == current_username)
-
     elif role == "manager":
-        # Role MANAGER: Chỉ được xem nhân viên trong phòng ban của mình
         manager_emp = db.query(Employee).filter(Employee.username == current_username).first()
         if not manager_emp or manager_emp.department_id is None:
-            return [] # Manager "không nơi nương tựa" thì không có quyền xem ai
-
-        # Lấy list username thuộc phòng ban của Manager
-        dept_users_query = db.query(Employee.username).filter(Employee.department_id == manager_emp.department_id).all()
-        dept_users = [u[0] for u in dept_users_query]
-
-        if q_username:
-            # Nếu Manager muốn lọc đích danh 1 người
-            if q_username in dept_users:
-                filter_conditions.append(Attendance.username == q_username)
+            return []
+        dept_users = [u[0] for u in db.query(Employee.username).filter(Employee.department_id == manager_emp.department_id).all()]
+        
+        if username:
+            if username in dept_users:
+                filter_conditions.append(Attendance.username == username)
             else:
-                # Nếu người cần lọc không thuộc phòng mình -> Chặn luôn (trả về rỗng)
-                return [] 
+                return []
         else:
-            # Nếu Manager không lọc đích danh -> Lấy toàn bộ người trong phòng
             filter_conditions.append(Attendance.username.in_(dept_users))
-
     elif role == "admin":
-        # Role ADMIN: Quyền tối thượng
-        if q_username:
-            # Nếu Admin lọc đích danh
-            filter_conditions.append(Attendance.username == q_username)
-        # Nếu Admin không lọc -> filter_conditions để trống => Query toàn công ty
+        if username:
+            filter_conditions.append(Attendance.username == username)
 
-    # 1.1 Lọc theo mốc thời gian (Giữ nguyên logic của bạn)
+    # 1.1 Lọc thời gian
     if start_date:
         filter_conditions.append(func.date(Attendance.check_in_time) >= start_date)
     if end_date:
         filter_conditions.append(func.date(Attendance.check_in_time) <= end_date)
         
-    # 2. Nhóm các bản ghi theo (username, ngày)
-    distinct_pairs = db.query(
-        Attendance.username,
-        func.date(Attendance.check_in_time).label('d_date_str')
-    ).filter(*filter_conditions).group_by(
-        Attendance.username, func.date(Attendance.check_in_time)
-    ).order_by(
-        func.date(Attendance.check_in_time).desc()
-    ).limit(limit).all()
+    # 2. Query trực tiếp từ bảng Attendance (Không cần nhóm theo ngày nữa để xem được mọi lần quét)
+    # Nếu bạn vẫn muốn chỉ hiện "Vào - Ra" gộp thì dùng logic dưới, 
+    # nhưng thường trang Logs Admin nên hiện từng bản ghi một để kiểm soát.
+    
+    query_logs = db.query(Attendance, Employee.full_name).\
+        join(Employee, Attendance.username == Employee.username, isouter=True).\
+        filter(*filter_conditions).\
+        order_by(Attendance.check_in_time.desc()).\
+        limit(limit).all()
     
     result = []
-    for uname, d_date_str in distinct_pairs:
-        if not d_date_str:
-            continue
-            
-        d_date = datetime.strptime(d_date_str, "%Y-%m-%d").date()
-        
-        # 3. Lấy tất cả các lần quét trong ngày của user này (Sắp xếp từ cũ đến mới)
-        day_logs = db.query(Attendance).filter(
-            Attendance.username == uname,
-            func.date(Attendance.check_in_time) == d_date_str
-        ).order_by(Attendance.check_in_time.asc()).all()
-        
-        if not day_logs:
-            continue
-            
-        first_log = day_logs[0] # Lần check-in đầu tiên trong ngày
-        last_log = day_logs[-1] # Lần check-out cuối cùng trong ngày
-        
-        emp = db.query(Employee).filter(Employee.username == uname).first()
-        display_name = emp.full_name if emp else (first_log.full_name or "Người lạ / Chưa ĐK")
-        
-        date_str = d_date_str
-        first_time_str = first_log.check_in_time.strftime("%H:%M:%S") if first_log.check_in_time else "--:--"
-        last_time_str = last_log.check_in_time.strftime("%H:%M:%S") if last_log.check_in_time else "--:--"
-        
-        # Gộp giờ hiển thị: "Giờ_Vào - Giờ_Ra"
-        if first_log.id == last_log.id:
-            time_str = first_time_str
-        else:
-            time_str = f"{first_time_str} - {last_time_str}"
-            
-        calculated_late_minutes = 0
-        calculated_early_minutes = 0
-        is_shift_assigned = False
-        shift_display_code = "X"
-        
-        if emp:
-            shift_assignment = db.query(ShiftAssignment).filter(
-                ShiftAssignment.employee_id == emp.id,
-                ShiftAssignment.shift_date == d_date
-            ).first()
-            
-            if shift_assignment:
-                is_shift_assigned = True
-                shift_code = shift_assignment.shift_code
-            else:
-                is_shift_assigned = False
-                shift_code = 'X'
-                
-                # NẾU LÀ CA X, CHECK XEM HÔM QUA CÓ PHẢI CA T HOẶC K KHÔNG
-                # Nếu hôm qua là ca T/K thì ngày hôm nay thực chất là ngày nghỉ bù/check-out của ca trước
-                prev_date = d_date - timedelta(days=1)
-                prev_shift = db.query(ShiftAssignment).filter(
-                    ShiftAssignment.employee_id == emp.id,
-                    ShiftAssignment.shift_date == prev_date
-                ).first()
-                if prev_shift and prev_shift.shift_code in ['T', 'K']:
-                    continue # Bỏ qua hoàn toàn, không hiển thị thành dòng "Chưa phân ca" nữa
-                
-            shift_display_code = shift_code
-            shift_cat = db.query(ShiftCategory).filter(ShiftCategory.shift_code == shift_code).first()
-            
-            if shift_cat:
-                if shift_code in ['T', 'K']:
-                    # TRƯỜNG HỢP CA "T", "K" (Làm qua đêm / Sang ngày hôm sau)
-                    checkin_to = shift_cat.checkin_to
-                    if checkin_to and first_log.check_in_time:
-                        checkin_to_dt = datetime.combine(d_date, checkin_to)
-                        if shift_cat.checkin_from:
-                            checkin_from_dt = datetime.combine(d_date, shift_cat.checkin_from)
-                            if first_log.check_in_time < checkin_from_dt or first_log.check_in_time > checkin_to_dt:
-                                if first_log.check_in_time > checkin_to_dt:
-                                    calculated_late_minutes = int((first_log.check_in_time - checkin_to_dt).total_seconds() / 60)
-                        else:
-                            if first_log.check_in_time > checkin_to_dt:
-                                calculated_late_minutes = int((first_log.check_in_time - checkin_to_dt).total_seconds() / 60)
-                                
-                    # Tính về sớm và cập nhật hiển thị giờ ra: Xem ngày mai (D+1)
-                    next_date = d_date + timedelta(days=1)
-                    next_date_str = next_date.strftime("%Y-%m-%d")
-                    next_day_logs = db.query(Attendance).filter(
-                        Attendance.username == uname,
-                        func.date(Attendance.check_in_time) == next_date_str
-                    ).order_by(Attendance.check_in_time.desc()).all()
-                    
-                    if not next_day_logs:
-                        calculated_early_minutes = "Waiting"
-                    else:
-                        latest_next_day = next_day_logs[0] # Muộn nhất của ngày hôm sau
-                        # Cập nhật giờ hiển thị Check-out thành giờ của ngày hôm sau
-                        time_str = f"{first_time_str} - {latest_next_day.check_in_time.strftime('%H:%M:%S')} (hsau)"
-                        
-                        checkout_to = shift_cat.checkout_to
-                        if checkout_to and latest_next_day.check_in_time:
-                            checkout_to_dt = datetime.combine(next_date, checkout_to)
-                            if latest_next_day.check_in_time < checkout_to_dt:
-                                calculated_early_minutes = int((checkout_to_dt - latest_next_day.check_in_time).total_seconds() / 60)
-                else:
-                    # CA KHÁC (Ca thường)
-                    std_in = shift_cat.checkin_to or shift_cat.start_time
-                    std_out = shift_cat.checkout_from or shift_cat.end_time
-                    
-                    if std_in and first_log.check_in_time:
-                        std_in_dt = datetime.combine(d_date, std_in)
-                        if first_log.check_in_time > std_in_dt:
-                            calculated_late_minutes = int((first_log.check_in_time - std_in_dt).total_seconds() / 60)
-                            
-                    if std_out and last_log.check_in_time:
-                        std_out_dt = datetime.combine(d_date, std_out)
-                        if len(day_logs) == 1 and d_date == datetime.now().date():
-                            calculated_early_minutes = 0 # Hôm nay có 1 lần chấm -> Đang làm việc, chưa tính về sớm
-                        else:
-                            if last_log.check_in_time < std_out_dt:
-                                calculated_early_minutes = int((std_out_dt - last_log.check_in_time).total_seconds() / 60)
-
-        # Nội suy trạng thái tổng quát (dùng cho backend logic nếu cần)
-        statuses = []
-        if calculated_late_minutes and int(calculated_late_minutes) > 0:
-            statuses.append("Đi muộn")
-            
-        if calculated_early_minutes and calculated_early_minutes != "Waiting" and int(calculated_early_minutes) > 0:
-            statuses.append("Về sớm")
-            
-        if statuses:
-            status = " & ".join(statuses)
-        else:
-            status = "Đúng giờ"
-
-        # Lấy record đại diện có lời giải trình hoặc bị gian lận
-        rep_log = first_log
-        for log in day_logs:
-            if log.is_fraud or log.explanation_status:
-                rep_log = log
-                break
-
-        shift_display_name = shift_cat.shift_name if shift_cat else ""
-
+    for log, full_name in query_logs:
         result.append({
-            "id": rep_log.id,
-            "username": uname,
-            "full_name": display_name,
-            "date": date_str,
-            "scan_time": time_str,
-            "late_minutes": calculated_late_minutes,
-            "early_minutes": calculated_early_minutes,
-            "is_shift_assigned": is_shift_assigned,
-            "shift_display_code": shift_display_code,
-            "shift_display_name": shift_display_name,
-            "status": status,
-            "confidence": rep_log.confidence,
-            "image_path": rep_log.image_path,
-            "explanation_status": rep_log.explanation_status,
-            "explanation_reason": rep_log.explanation_reason,
-            "is_fraud": bool(rep_log.is_fraud), 
-            "fraud_note": rep_log.fraud_note or "",
-            "client_ip": rep_log.client_ip or "",
-            "latitude": rep_log.latitude,
-            "longitude": rep_log.longitude,
-            "attendance_type": rep_log.attendance_type,
-            "note": rep_log.note or ""
+            "id": log.id,
+            "username": log.username,
+            "full_name": full_name or log.full_name or "Chưa danh tính",
+            "date": log.check_in_time.strftime("%Y-%m-%d"),
+            "scan_time": log.check_in_time.strftime("%H:%M:%S"),
+            "confidence": log.confidence,
+            "image_path": log.image_path,
+            "is_fraud": bool(log.is_fraud), 
+            "fraud_note": log.fraud_note or "",
+            "client_ip": log.client_ip or "",
+            "latitude": log.latitude,
+            "longitude": log.longitude,
+            "attendance_type": log.attendance_type,
+            "explanation_status": log.explanation_status,
+            "explanation_reason": log.explanation_reason,
+            "note": log.note or ""
         })
         
     return result
