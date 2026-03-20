@@ -47,12 +47,20 @@ class ShiftCategoryCreate(BaseModel):
     is_overnight: int = 0
     status: str = "active"
     notes: Optional[str] = None
+    
+    # CÁC TRƯỜNG MỚI THÊM:
+    checkin_from: Optional[time] = None
+    checkin_to: Optional[time] = None
+    checkout_from: Optional[time] = None
+    checkout_to: Optional[time] = None
+    work_hours: Optional[float] = None
+    work_days: Optional[float] = None
+    day_coefficient: Optional[float] = None
 
 class ShiftAssignmentCreate(BaseModel):
-    username: str
+    employee_id: int
     shift_code: str
     shift_date: date
-    assigner: Optional[str] = None
 
 class LeaveSubmit(BaseModel):
     username: str

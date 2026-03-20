@@ -1,49 +1,49 @@
 import uvicorn
-from contextlib import asynccontextmanager # Thêm thư viện quản lý vòng đời
+import os # Thêm để kiểm tra loại DB
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import text # Thêm để chạy lệnh SQL thuần
 
-# Khai báo thêm SessionLocal để dùng lúc đóng DB
-from database import engine, Base, SessionLocal 
+from database import engine, Base
 from services import load_embeddings, load_system_configs
-from routers import attendance_router, auth_router, config_router, department_router, employee_router, page_router, face_router, admin_router, shift_router
+from routers import (
+    attendance_router, auth_router, config_router, 
+    department_router, employee_router, page_router, 
+    face_router, admin_router, shift_router
+)
 
 # ==========================================
-# 0. ĐỊNH NGHĨA VÒNG ĐỜI (LIFESPAN) CỦA SERVER
+# 0. ĐỊNH NGHĨA VÒNG ĐỜI (LIFESPAN)
 # ==========================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- CHẠY LÚC START SERVER ---
-    print("🚀 Đang khởi động Server...")
-    print("🧠 Đang nạp AI Embeddings vào bộ nhớ (Cache)...")
-    load_embeddings()
-    print("✅ Hệ thống AI đã sẵn sàng!")
-    load_system_configs()
-    print("✅ Cấu hình hệ thống đã sẵn sàng!")
+    # Kiểm tra loại DB đang dùng từ chuỗi kết nối
+    db_type = "SQLite" if engine.url.drivername.startswith("sqlite") else "MySQL"
     
-    # Ứng dụng sẽ hoạt động tại đây
+    # --- CHẠY LÚC START SERVER ---
+    print(f"🚀 [{db_type} Mode] Đang khởi động Server...")
+    
+    # Nạp AI Embeddings và Config
+    print("🧠 Đang nạp AI Embeddings vào bộ nhớ...")
+    load_embeddings()
+    load_system_configs()
+    print(f"✅ Hệ thống AI và Cấu hình đã sẵn sàng trên {db_type}!")
+    
     yield 
     
-    # --- CHẠY LÚC STOP SERVER (Nhấn Ctrl+C hoặc Docker stop) ---
-    print("🛑 Server đang tắt, tiến hành dọn dẹp SQLite WAL...")
+    # --- CHẠY LÚC STOP SERVER ---
+    print(f"🛑 Server đang tắt, đang đóng kết nối {db_type} Pool...")
     try:
-        db = SessionLocal()
-        # Ép SQLite gộp ngay lập tức file .db-wal vào file .db gốc
-        db.execute(text("PRAGMA wal_checkpoint(TRUNCATE);"))
-        db.commit()
-        db.close()
-        
-        # Đóng toàn bộ Pool kết nối của SQLAlchemy
         engine.dispose()
-        print("✅ Đã dọn dẹp và ngắt kết nối Database an toàn!")
+        print("✅ Đã ngắt kết nối Database an toàn!")
     except Exception as e:
         print(f"⚠️ Lỗi khi đóng Database: {e}")
 
 # ==========================================
-# 1. KHỞI TẠO APP (Gắn Lifespan vào đây)
+# 1. KHỞI TẠO APP
 # ==========================================
+# Để title động cho chuyên nghiệp
 app = FastAPI(title="BND HRM AI Face Recognition", lifespan=lifespan)
 
 app.add_middleware(
@@ -54,24 +54,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. Tạo Database Tables
-Base.metadata.create_all(bind=engine)
+# 2. Tạo Database Tables 
+# TUYỆT ĐỐI KHÔNG mở dòng này. Để Flyway quản lý 100%.
+# Base.metadata.create_all(bind=engine) 
 
 # 3. Mount Static Files
 app.mount("/data/history_db", StaticFiles(directory="data/history_db"), name="history_db")
 
-# 4. Gắn các Router (Gộp các nhánh API lại)
+# 4. Gắn các Router
 app.include_router(page_router.router)
 app.include_router(face_router.router)
 app.include_router(admin_router.router)
 app.include_router(shift_router.router)
-
 app.include_router(department_router.router)
 app.include_router(employee_router.router)
 app.include_router(auth_router.router)
 app.include_router(attendance_router.router)
 app.include_router(config_router.router)
-
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
