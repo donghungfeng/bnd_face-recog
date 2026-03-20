@@ -91,21 +91,48 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
         current_norm = np.linalg.norm(current_embedding)
         
         similarities = dot_products / (matrix_norms * current_norm)
-
-        best_index = np.argmax(similarities)
+        
+        sorted_indices = np.argsort(similarities)[::-1]
+        
+        best_index = sorted_indices[0]
         max_sim = similarities[best_index]
-        best_match = services.known_user_ids[best_index] # Sẽ tự động trả về "NV001" dù trúng ảnh "NV001_2"
-
+        best_match = services.known_user_ids[best_index]
+        
+        # Tìm người giống thứ 2 (Top 2 - Bắt buộc phải KHÁC Mã nhân viên với Top 1)
+        second_best_sim = 0.0
+        second_best_match = None
+        
+        for idx in sorted_indices[1:]:
+            if services.known_user_ids[idx] != best_match:
+                second_best_sim = similarities[idx]
+                second_best_match = services.known_user_ids[idx]
+                break 
+                
+        # Tính khoảng cách tự tin (Margin) quy ra phần trăm
+        margin_percent = (max_sim - second_best_sim) * 100
+        
         THRESHOLD = float(services.get_config("FACE_THRESHOLD", "0.75"))
 
         if max_sim >= THRESHOLD:
-            background_tasks.add_task(services.background_logging, best_match, img_to_save, max_sim, request.client_public_ip,0,0,request.attendance_type,'')
+            if second_best_match and margin_percent < 4.0:
+                # Lưu vào DB lịch sử bị từ chối do nhiễu
+                note_str = f"Từ chối do quá giống {second_best_match} (Lệch {round(margin_percent, 2)}% < 4%)"
+                background_tasks.add_task(services.background_logging, "UNKNOWN", img_to_save, max_sim, request.client_public_ip, 0, 0, request.attendance_type, note_str)
+                
+                return {
+                    "recognized": False, 
+                    "message": f"⚠️ GÓC CHỤP BỊ NHIỄU, VUI LÒNG THỬ LẠI", 
+                    "match_probability": f"{round(max_sim * 100, 2)}%"
+                }
+
+            # Qua mượt cả Threshold lẫn Margin -> Chấm công thành công!
+            background_tasks.add_task(services.background_logging, best_match, img_to_save, max_sim, request.client_public_ip, 0, 0, request.attendance_type, '')
             return {"recognized": True, "user_id": best_match, "match_probability": f"{round(max_sim * 100, 2)}%"}
         
+        # Trường hợp không đủ Threshold (như cũ)
         note_str = f"Nhận dạng thất bại (Giống {best_match} nhất với {round(max_sim * 100, 2)}%)"
         background_tasks.add_task(services.background_logging, "UNKNOWN", img_to_save, max_sim, request.client_public_ip, 0, 0, request.attendance_type, note_str)
-        
-        return {"recognized": False, "message": "Người lạ","match_probability": f"{round(max_sim * 100, 2)}%"}
+        return {"recognized": False, "message": "Người lạ", "match_probability": f"{round(max_sim * 100, 2)}%"}
     except Exception as e:
         error_msg = str(e).lower()
         
