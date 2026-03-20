@@ -316,7 +316,7 @@
     
     async function fetchAttendance() {
         const fetchLimit = 1000;
-        const apiUrl = `/api/attendance?limit=${fetchLimit}&role=${currentUserRole}&username=${currentUsername}`;
+        const apiUrl = `/api/attendance?limit=${fetchLimit}`;
         
         // 1. Lấy token từ localStorage (Đảm bảo lúc login bạn đã lưu với key 'hrm_token')
         const token = localStorage.getItem("hrm_token"); 
@@ -435,117 +435,52 @@
         const paginatedData = filteredData.slice(startIndex, endIndex);
 
         paginatedData.forEach(item => {
-            let dateStr = "---";
-            if(item.date) {
-                const [y, m, d] = item.date.split('-');
-                dateStr = `${d}/${m}/${y}`;
-            }
+            // 1. Định dạng ngày
+            let dateStr = item.date.split('-').reverse().join('/');
             
-            let statusBadge = `<span class="badge badge-present">✔️ Hợp lệ</span>`;
+            // 2. Trạng thái (Chỉ hiển thị Gian lận hoặc Giải trình, không hiện Đi muộn nữa)
+            let statusBadge = `<span class="badge badge-present">✔️ Ghi nhận</span>`;
             if (item.is_fraud) {
-                statusBadge = `<span class="badge badge-fraud" title="Đã bị Quản lý đánh dấu nghi ngờ">🚨 NGHI VẤN GIAN LẬN</span>`;
-            } else if (item.late_minutes > 0) {
-                 if(item.explanation_status === 'Đã duyệt') statusBadge = `<span class="badge badge-present">✔️ Đã duyệt muộn</span>`;
-                 else statusBadge = `<span class="badge badge-late">⚠️ Đi muộn</span>`;
+                statusBadge = `<span class="badge badge-fraud">🚨 GIAN LẬN</span>`;
             }
 
+            // 3. Độ chính xác AI
             let confHtml = `<span style="color:#94a3b8;">---</span>`;
             if (item.confidence) {
                 let confVal = parseFloat(item.confidence).toFixed(2); 
-                let confClass = "conf-high", icon = "🎯";
-                if (confVal < 80) { confClass = "conf-med"; icon = "⚠️"; }
-                if (confVal < 60) { confClass = "conf-low"; icon = "❗"; }
-                confHtml = `<span class="${confClass}">${icon} ${confVal}%</span>`;
+                let confClass = confVal < 80 ? (confVal < 60 ? "conf-low" : "conf-med") : "conf-high";
+                confHtml = `<span class="${confClass}">🎯 ${confVal}%</span>`;
             }
 
-            let imgHtml = `<span style="color:#cbd5e1; font-size: 0.8rem; font-style:italic;">Không có ảnh</span>`;
-            if (item.image_path && item.image_path !== "") {
-                imgHtml = `<img src="${item.image_path}?t=${Date.now()}" class="att-thumb" onclick="openImageModal('${item.image_path}', '${item.full_name} - ${item.scan_time}')" title="Bấm để xem ảnh gốc">`;
-            }
+            // 4. Ảnh và Thiết bị (Giữ nguyên)
+            let imgHtml = item.image_path ? 
+                `<img src="${item.image_path}" class="att-thumb" onclick="openImageModal('${item.image_path}', '${item.full_name}')">` : 
+                `<span style="color:#cbd5e1;">Không ảnh</span>`;
 
-            // --- [CẬP NHẬT] THÔNG TIN THIẾT BỊ VÀ GHI CHÚ ---
-            let typeBadge = item.attendance_type === 'Cá nhân' ? 'badge-type-personal' : 'badge-type-kiosk';
-            let ipHtml = item.client_ip ? `IP: <strong>${item.client_ip}</strong>` : `IP: N/A`;
-            let gpsHtml = `GPS: Không có`;
-            if (item.latitude && item.longitude) {
-                const mapLink = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`;
-                gpsHtml = `GPS: <a href="${mapLink}" target="_blank" title="Xem trên Google Maps">📍 ${item.latitude.toFixed(4)}, ${item.longitude.toFixed(4)}</a>`;
-            }
-            
-            // Xử lý render Ghi chú (Note)
-            let noteHtml = '';
-            if (item.note) {
-                noteHtml = `<span style="margin-top: 4px; padding: 3px 6px; background: #fffbeb; color: #b45309; border: 1px dashed #fde047; border-radius: 4px; font-size: 0.7rem; white-space: normal; word-wrap: break-word; line-height: 1.3;">⏱️ ${item.note}</span>`;
-            }
-
+            // 5. Ghi chú thiết bị
             let deviceInfoHtml = `
                 <div class="device-info">
-                    <span class="badge ${typeBadge}" style="width: fit-content; padding: 2px 6px; margin-bottom: 2px;">📱 ${item.attendance_type}</span>
-                    <span>${ipHtml}</span>
-                    <span>${gpsHtml}</span>
-                    ${noteHtml}
-                </div>
-            `;
-
-            // --- CỘT GIẢI TRÌNH & HÀNH ĐỘNG ---
-            let explainHtml = '';
-            if (item.is_fraud) {
-                explainHtml = `
-                    <div class="explain-wrapper" style="width: 100%;">
-                        <span class="explain-status" style="color: #dc2626; background: #fee2e2;">Lý do Gian lận:</span>
-                        <div class="explain-text" style="border-left-color: #fca5a5; width: 100%;">" ${item.fraud_note} "</div>
-                        <button class="btn-approve" style="margin-top: 5px; border-color: #cbd5e1; color: #475569; background: white;" onclick="removeFraud(${item.id})">↩️ Gỡ nhãn</button>
-                    </div>
-                `;
-            } else if (item.explanation_status && item.explanation_reason) {
-                let statusColor = item.explanation_status === 'Đã duyệt' ? '#10b981' : (item.explanation_status === 'Từ chối' ? '#ef4444' : '#f59e0b');
-                explainHtml = `
-                    <div class="explain-wrapper">
-                        <span class="explain-status" style="color: ${statusColor}; border: 1px solid ${statusColor}40; background: ${statusColor}10;">${item.explanation_status}</span>
-                        <div class="explain-text">" ${item.explanation_reason} "</div>
-                    </div>
-                `;
-                if (item.explanation_status === 'Chờ duyệt' || item.explanation_status === 'Đã gửi') {
-                     explainHtml += `
-                        <div class="approve-actions">
-                            <button class="btn-approve" onclick="reviewExplain(${item.id}, 'Đã duyệt')">✔️ Duyệt</button>
-                            <button class="btn-reject" onclick="reviewExplain(${item.id}, 'Từ chối')">✖ Từ chối</button>
-                        </div>
-                     `;
-                }
-            } else {
-                explainHtml = `<span style="color:#cbd5e1; font-size: 0.8rem;">Không có giải trình</span>`;
-            }
-
-            let fraudBtnHtml = "";
-            if (!item.is_fraud) {
-                fraudBtnHtml = `<br><button class="btn-fraud-alert" onclick="openFraudModal(${item.id})">🚩 Gắn cờ vi phạm</button>`;
-            }
-
-            let deleteBtnHtml = `
-                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
-                    <button class="btn-delete-log" onclick="deleteRecord(${item.id}, '${item.full_name}')">🗑️ Xóa bản ghi</button>
+                    <span class="badge badge-type-kiosk">${item.attendance_type}</span>
+                    <span>IP: ${item.client_ip || 'N/A'}</span>
+                    ${item.latitude ? `<span>📍 GPS OK</span>` : '<span>📍 No GPS</span>'}
                 </div>
             `;
 
             tbody.innerHTML += `
                 <tr>
-                    <td data-label="NGÀY"><strong>${dateStr}</strong></td>
-                    <td data-label="NHÂN VIÊN">
-                        <strong style="color: var(--theme-dark); font-size: 0.95rem;">${item.full_name}</strong><br>
-                        <small style="color: #94a3b8; font-family: monospace;">Mã: ${item.username}</small>
+                    <td><strong>${dateStr}</strong></td>
+                    <td>
+                        <strong>${item.full_name}</strong><br>
+                        <small>${item.username}</small>
                     </td>
-                    <td data-label="ẢNH CHỤP AI">${imgHtml}</td> 
-                    <td data-label="GIỜ VÀO"><span class="time-box">${item.scan_time}</span></td>
-                    <td data-label="ĐỘ CHÍNH XÁC">${confHtml}</td>
-                    <td data-label="THÔNG TIN THIẾT BỊ">${deviceInfoHtml}</td> 
-                    <td data-label="TRẠNG THÁI">
-                        ${statusBadge}
-                        ${fraudBtnHtml}
-                    </td>
-                    <td data-label="GIẢI TRÌNH & HÀNH ĐỘNG">
-                        ${explainHtml}
-                        ${deleteBtnHtml}
+                    <td>${imgHtml}</td> 
+                    <td><span class="time-box">${item.scan_time}</span></td>
+                    <td>${confHtml}</td>
+                    <td>${deviceInfoHtml}</td> 
+                    <td>${statusBadge}</td>
+                    <td>
+                        ${item.explanation_reason ? `<div class="explain-text">${item.explanation_reason}</div>` : ''}
+                        <button class="btn-delete-log" onclick="deleteRecord(${item.id}, '${item.full_name}')">🗑️ Xóa</button>
                     </td>
                 </tr>
             `;
