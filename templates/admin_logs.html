@@ -316,7 +316,7 @@
     
     async function fetchAttendance() {
         const fetchLimit = 1000;
-        const apiUrl = `/api/attendance?limit=${fetchLimit}&role=${currentUserRole}&username=${currentUsername}`;
+        const apiUrl = `/api/attendance?limit=${fetchLimit}`;
         
         // 1. Lấy token từ localStorage (Đảm bảo lúc login bạn đã lưu với key 'hrm_token')
         const token = localStorage.getItem("hrm_token"); 
