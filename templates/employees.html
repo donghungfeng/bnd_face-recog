@@ -353,9 +353,17 @@
     }
 
     async function fetchEmployees() {
-        const res = await fetch(API_URL);
-        currentEmployees = await res.json();
-        renderTable(currentEmployees.items);
+        try {
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            
+            // CẬP NHẬT Ở ĐÂY: Lưu mảng items vào currentEmployees
+            currentEmployees = data.items || data; 
+            
+            renderTable(currentEmployees);
+        } catch (e) {
+            console.error("Lỗi fetch:", e);
+        }
     }
 
     function renderTable(data) {
@@ -418,13 +426,22 @@
     }
 
     function filterTable() {
+        // Kiểm tra an toàn: nếu currentEmployees chưa phải là mảng thì thoát
+        if (!Array.isArray(currentEmployees)) return;
+
         const keyword = document.getElementById('searchInput').value.toLowerCase();
         const deptId = document.getElementById('deptFilter').value; 
+        
         const filtered = currentEmployees.filter(emp => {
-            const matchName = emp.full_name.toLowerCase().includes(keyword) || emp.username.toLowerCase().includes(keyword);
+            // Thêm kiểm tra null/undefined cho full_name và username
+            const fullName = (emp.full_name || "").toLowerCase();
+            const username = (emp.username || "").toLowerCase();
+            
+            const matchName = fullName.includes(keyword) || username.includes(keyword);
             const matchDept = deptId === "" || String(emp.department_id) === deptId;
             return matchName && matchDept;
         });
+        
         renderTable(filtered);
     }
 

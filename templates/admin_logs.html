@@ -315,14 +315,36 @@
     let rowsPerPage = 10;
     
     async function fetchAttendance() {
-        const fetchLimit = 1000; 
+        const fetchLimit = 1000;
         const apiUrl = `/api/attendance?limit=${fetchLimit}&role=${currentUserRole}&username=${currentUsername}`;
         
+        // 1. Lấy token từ localStorage (Đảm bảo lúc login bạn đã lưu với key 'hrm_token')
+        const token = localStorage.getItem("hrm_token"); 
+
         try {
             document.getElementById('attTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">Đang tải dữ liệu Logs...</td></tr>';
-            const res = await fetch(apiUrl);
+            
+            // 2. Thêm headers vào fetch
+            const res = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`, // Gửi Token ở đây
+                    'Accept': 'application/json'
+                }
+            });
+
+            // 3. Kiểm tra nếu bị 401 thì bắt login lại
+            if (res.status === 401) {
+                alert("Phiên làm việc đã hết hạn, vui lòng đăng nhập lại!");
+                window.location.href = "/login";
+                return;
+            }
+
+            if (!res.ok) throw new Error("Lỗi tải dữ liệu");
+
             allAttendance = await res.json();
             
+            // ... (phần map dữ liệu giữ nguyên như cũ) ...
             allAttendance = allAttendance.map(item => ({
                 ...item, 
                 is_fraud: item.is_fraud || false, 
@@ -331,13 +353,13 @@
                 latitude: item.latitude || null,
                 longitude: item.longitude || null,
                 attendance_type: item.attendance_type || "Tập trung",
-                // [CẬP NHẬT] Đảm bảo map biến note từ DB
                 note: item.note || "" 
             }));
 
             applyFilters();
         } catch (error) { 
-            document.getElementById('attTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Lỗi kết nối máy chủ!</td></tr>';
+            console.error(error);
+            document.getElementById('attTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Lỗi kết nối máy chủ hoặc quyền truy cập!</td></tr>';
         }
     }
 
