@@ -102,6 +102,9 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
             background_tasks.add_task(services.background_logging, best_match, img_to_save, max_sim, request.client_public_ip,0,0,request.attendance_type,'')
             return {"recognized": True, "user_id": best_match, "match_probability": f"{round(max_sim * 100, 2)}%"}
         
+        note_str = f"Nhận dạng thất bại (Giống {best_match} nhất với {round(max_sim * 100, 2)}%)"
+        background_tasks.add_task(services.background_logging, "UNKNOWN", img_to_save, max_sim, request.client_public_ip, 0, 0, request.attendance_type, note_str)
+        
         return {"recognized": False, "message": "Người lạ","match_probability": f"{round(max_sim * 100, 2)}%"}
     except Exception as e:
         error_msg = str(e).lower()

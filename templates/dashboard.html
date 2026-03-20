@@ -5,13 +5,21 @@
 
 {% block extra_css %}
 <style>
-    /* Bọc toàn bộ nội dung để không bị tràn quá to trên màn hình rộng */
+    /* Bọc toàn bộ nội dung */
     .dashboard-container { max-width: 1400px; margin: 0 auto; padding-bottom: 30px; }
 
     /* Tiêu đề & Đồng hồ thời gian thực */
-    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;}
-    .welcome-text h3 { margin: 0; color: var(--text-main); font-size: 1.3rem; font-weight: 700; }
-    .welcome-text p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9rem; }
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;}
+    
+    /* CSS cho thông tin User đang đăng nhập */
+    .user-greeting h3 { margin: 0; color: var(--text-main); font-size: 1.4rem; font-weight: 800; }
+    .user-greeting h3 span { color: var(--primary); }
+    .user-greeting p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+    
+    .role-badge { padding: 3px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;}
+    .role-admin { background: #fee2e2; color: #dc2626; border: 1px solid #f87171;}
+    .role-manager { background: #fef3c7; color: #d97706; border: 1px solid #fbbf24;}
+    .role-user { background: #dcfce7; color: #166534; border: 1px solid #4ade80;}
     
     .header-controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
     .live-clock { background: #fff; padding: 8px 15px; border-radius: 8px; border: 1px solid var(--border); font-family: 'Orbitron', monospace; font-weight: bold; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
@@ -19,6 +27,16 @@
     /* Dropdown tự làm mới */
     .reload-select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-main); background: #fff; cursor: pointer; outline: none; }
     .reload-select:focus { border-color: var(--primary); }
+
+    /* Dòng thông báo Wifi Bệnh Viện */
+    .wifi-notice {
+        background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1;
+        padding: 12px 20px; border-radius: 12px; margin-bottom: 25px;
+        display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 0.9rem;
+        box-shadow: 0 4px 6px rgba(14, 165, 233, 0.05);
+    }
+    .wifi-icon { font-size: 1.2rem; }
+    .wifi-notice strong { color: #0ea5e9; font-size: 1rem; letter-spacing: 0.5px; background: white; padding: 2px 8px; border-radius: 6px; margin: 0 3px;}
 
     /* CSS Lưới 4 cột chuẩn cho Stats */
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
@@ -48,7 +66,7 @@
     .recent-header a { color: var(--primary); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
     .recent-header a:hover { text-decoration: underline; }
 
-    .table-container { overflow-x: auto; min-height: 400px; /* Chống giật khung hình khi tải trang */}
+    .table-container { overflow-x: auto; min-height: 400px; }
     table { width: 100%; border-collapse: collapse; text-align: left; }
     th { background: #f8fafc; color: var(--text-muted); font-size: 0.8rem; padding: 15px 25px; font-weight: 700; text-transform: uppercase; white-space: nowrap;}
     td { padding: 15px 25px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap;}
@@ -64,7 +82,8 @@
     .time-badge { color: var(--primary); font-size: 0.95rem; font-weight: 700; font-family: 'Orbitron', monospace;}
     .date-badge { color: var(--text-muted); font-size: 0.75rem; display: block;}
     .status-success { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
-    
+    .status-err { background: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+
     /* Phân trang (Pagination) */
     .pagination { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background: #fff; border-top: 1px solid var(--border); }
     .page-info { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
@@ -86,9 +105,12 @@
 <div class="dashboard-container">
     
     <div class="dashboard-header">
-        <div class="welcome-text">
-            <h3>Tổng quan hệ thống</h3>
-            <p>Dữ liệu cập nhật theo thời gian thực hôm nay</p>
+        <div class="user-greeting">
+            <h3>Xin chào, <span id="display_fullname">Đang tải...</span> 👋</h3>
+            <p>
+                Mã NV: <strong id="display_username" style="color: var(--text-main);">...</strong> 
+                <span class="role-badge" id="display_role">...</span>
+            </p>
         </div>
         
         <div class="header-controls">
@@ -104,11 +126,16 @@
         </div>
     </div>
 
+    <div class="wifi-notice">
+        <span class="wifi-icon">📶</span> 
+        <span>Hệ thống chấm công yêu cầu kết nối mạng nội bộ. Các Wifi tại Bệnh viện Bệnh Nhiệt Đới sử dụng mật khẩu: <strong>88888888@</strong> hoặc <strong>88889999</strong>.</span>
+    </div>
+
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-info">
                 <span class="stat-title">TỔNG NHÂN SỰ</span>
-                <span class="stat-value" id="val_employees">0</span>
+                <span class="stat-value" id="val_employees">...</span>
             </div>
             <div class="icon-box bg-blue">👥</div>
         </div>
@@ -116,7 +143,7 @@
         <div class="stat-card">
             <div class="stat-info">
                 <span class="stat-title">TỔNG SỐ CA</span>
-                <span class="stat-value" id="val_shifts">0</span>
+                <span class="stat-value" id="val_shifts">...</span>
             </div>
             <div class="icon-box bg-orange">🕒</div>
         </div>
@@ -124,7 +151,7 @@
         <div class="stat-card">
             <div class="stat-info">
                 <span class="stat-title">ĐI LÀM HÔM NAY</span>
-                <span class="stat-value" id="val_unique_today">0</span>
+                <span class="stat-value" id="val_unique_today">...</span>
             </div>
             <div class="icon-box bg-green">✅</div>
         </div>
@@ -132,7 +159,7 @@
         <div class="stat-card">
             <div class="stat-info">
                 <span class="stat-title">LƯỢT QUẸT THẺ</span>
-                <span class="stat-value" id="val_attendances_today">0</span>
+                <span class="stat-value" id="val_attendances_today">...</span>
             </div>
             <div class="icon-box bg-purple">📷</div>
         </div>
@@ -140,7 +167,7 @@
 
     <div class="recent-activity">
         <div class="recent-header">
-            <h3>Lịch sử quét khuôn mặt</h3>
+            <h3>Lịch sử quét khuôn mặt mới nhất</h3>
             <a href="/attendance">Đến trang Nhật ký &rarr;</a>
         </div>
         <div class="table-container">
@@ -154,7 +181,7 @@
                     </tr>
                 </thead>
                 <tbody id="recentTableBody">
-                    <tr><td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">Đang tải dữ liệu...</td></tr>
+                    <tr><td colspan="4" style="text-align: center; padding: 40px; color: #94a3b8;"><div class="loader" style="margin: 0 auto;"></div>Đang kết nối Server...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -179,16 +206,39 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // --- 2. BIẾN TOÀN CỤC CHO PHÂN TRANG & RELOAD ---
+    // --- 2. BIẾN TOÀN CỤC CHO PHÂN TRANG & THÔNG TIN USER ---
     let allAttendanceData = [];
     let currentPage = 1;
     const itemsPerPage = 10;
     let refreshIntervalId = null;
 
+    // ÉP VIẾT HOA BẢO MẬT 100%
+    const currentRole = localStorage.getItem("hrm_role") || "user";
+    const currentUsername = (localStorage.getItem("hrm_username") || "").toUpperCase();
+    const currentFullname = localStorage.getItem("hrm_fullname") || currentUsername || "Chưa đăng nhập";
+
+    // Khởi tạo hiển thị User trên Header
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("display_fullname").innerText = currentFullname;
+        document.getElementById("display_username").innerText = currentUsername;
+        
+        const roleSpan = document.getElementById("display_role");
+        if (currentRole === "admin") {
+            roleSpan.innerText = "Quản trị viên";
+            roleSpan.classList.add("role-admin");
+        } else if (currentRole === "manager") {
+            roleSpan.innerText = "Quản lý";
+            roleSpan.classList.add("role-manager");
+        } else {
+            roleSpan.innerText = "Nhân viên";
+            roleSpan.classList.add("role-user");
+        }
+    });
+
     // --- 3. FETCH DỮ LIỆU TỪ SERVER ---
     async function fetchDashboardData() {
         try {
-            // Cập nhật các khối Thống Kê
+            // Lấy dữ liệu Thống Kê
             const statsRes = await fetch('/api/stats');
             if (statsRes.ok) {
                 const stats = await statsRes.json();
@@ -198,14 +248,30 @@
                 document.getElementById('val_attendances_today').innerText = stats.today_attendances || 0;
             }
 
-            // Kéo dữ liệu lịch sử quét khuôn mặt (Kéo 100 bản ghi mới nhất để phân trang Frontend)
-            const recentRes = await fetch('/api/attendance?limit=100');
+            // Chặn ngay từ cửa nếu là Nhân viên mà quên đăng nhập (Không có ID)
+            if (currentRole === "user" && !currentUsername) {
+                console.error("LỖI: Trình duyệt chưa lưu hrm_username. Vui lòng đăng nhập lại!");
+                document.getElementById('recentTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #ff4757; font-weight: bold;">Chưa lưu thông tin đăng nhập. Vui lòng đăng xuất và đăng nhập lại!</td></tr>';
+                return;
+            }
+
+            // Kéo dữ liệu lịch sử quét khuôn mặt
+            const fetchUrl = `/api/attendance?limit=100&role=${currentRole}&username=${encodeURIComponent(currentUsername)}`;
+            const recentRes = await fetch(fetchUrl);
+            
             if (recentRes.ok) {
-                allAttendanceData = await recentRes.json();
-                renderTable();
+                const data = await recentRes.json();
+                if (Array.isArray(data)) {
+                    allAttendanceData = data;
+                    renderTable();
+                }
+            } else {
+                console.warn("API Lịch sử lỗi:", recentRes.status);
+                document.getElementById('recentTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #ff4757;">Lỗi lấy dữ liệu lịch sử!</td></tr>';
             }
         } catch (error) {
-            console.error("Lỗi tải Dashboard:", error);
+            console.error("Mất kết nối Server:", error);
+            document.getElementById('recentTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #ff4757;">Mất kết nối máy chủ! Vui lòng kiểm tra lại mạng.</td></tr>';
         }
     }
 
@@ -213,7 +279,7 @@
     function renderTable() {
         const tbody = document.getElementById('recentTableBody');
         
-        if(allAttendanceData.length === 0) {
+        if(!allAttendanceData || allAttendanceData.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">Chưa có lượt chấm công nào.</td></tr>';
             document.getElementById('pageInfo').innerText = "Trang 1 / 1";
             document.getElementById('prevBtn').disabled = true;
@@ -232,7 +298,6 @@
 
         tbody.innerHTML = '';
         pageData.forEach(log => {
-            // Xử lý Ngày và Giờ (Chống lỗi null)
             let timeStr = log.scan_time || "---";
             let dateStr = "---";
             if (log.date) {
@@ -240,19 +305,30 @@
                 dateStr = `${d}/${m}/${y}`;
             }
             
-            // Xử lý Ảnh Avatar (Thêm Date.now để chống cache ảnh)
+            let displayName = log.full_name || "Người lạ / Chưa đăng ký";
+            let displayUser = log.username || "UNKNOWN";
+            
             const avatarSrc = (log.image_path && log.image_path !== "") 
                 ? `${log.image_path}?t=${Date.now()}` 
-                : `https://ui-avatars.com/api/?name=${log.username}&background=random`;
+                : `https://ui-avatars.com/api/?name=${displayUser}&background=random`;
+
+            let statusHtml = `<span class="status-success">Thành công</span>`;
+            if (log.is_fraud) {
+                statusHtml = `<span class="status-err">Nghi vấn gian lận</span>`;
+            } else if (log.late_minutes && log.late_minutes > 0 && log.explanation_status !== 'Đã duyệt') {
+                statusHtml = `<span class="status-err" style="background:#fef3c7; color:#d97706;">Đi muộn</span>`;
+            }
+
+            let typeIcon = log.attendance_type === 'Cá nhân' ? '📱 Cá nhân' : '🖥️ Kiosk';
 
             tbody.innerHTML += `
                 <tr>
                     <td>
                         <div class="user-profile">
-                            <img src="${avatarSrc}" class="avatar" alt="avatar">
+                            <img src="${avatarSrc}" class="avatar" alt="avatar" onerror="this.src='https://ui-avatars.com/api/?name=Err'">
                             <div class="user-info">
-                                <span class="user-name">${log.full_name}</span>
-                                <span class="user-id">Mã: ${log.username}</span>
+                                <span class="user-name">${displayName}</span>
+                                <span class="user-id">Mã: ${displayUser}</span>
                             </div>
                         </div>
                     </td>
@@ -260,13 +336,13 @@
                         <span class="time-badge">${timeStr}</span>
                         <span class="date-badge">${dateStr}</span>
                     </td>
-                    <td><span class="status-success">Thành công</span></td>
-                    <td><span style="color: #64748b; font-size: 0.85rem;">🤖 Face AI</span></td>
+                    <td>${statusHtml}</td>
+                    <td><span style="color: #475569; font-size: 0.85rem; font-weight:bold; background:#f1f5f9; padding:4px 8px; border-radius:6px;">${typeIcon}</span></td>
                 </tr>
             `;
         });
 
-        // Cập nhật hiển thị số trang và trạng thái nút bấm
+        // Cập nhật số trang
         document.getElementById('pageInfo').innerText = `Trang ${currentPage} / ${totalPages}`;
         document.getElementById('prevBtn').disabled = currentPage === 1;
         document.getElementById('nextBtn').disabled = currentPage === totalPages;
@@ -280,19 +356,12 @@
     // --- 5. ĐIỀU KHIỂN AUTO-RELOAD ---
     function changeInterval() {
         const val = parseInt(document.getElementById('reloadInterval').value);
-        
-        // Xóa vòng lặp cũ nếu có
         if (refreshIntervalId) clearInterval(refreshIntervalId);
-        
-        // Cài đặt vòng lặp mới nếu giá trị > 0
-        if (val > 0) {
-            refreshIntervalId = setInterval(fetchDashboardData, val);
-        }
+        if (val > 0) refreshIntervalId = setInterval(fetchDashboardData, val);
     }
 
     // Khởi động chạy lần đầu
     fetchDashboardData();
-    // Kích hoạt Auto-reload mặc định (10s)
     changeInterval();
 
 </script>
