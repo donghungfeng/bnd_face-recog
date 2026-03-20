@@ -28,6 +28,10 @@ def get_attendance(
     username: Optional[str] = None,   # Nhận username từ Client
     db: Session = Depends(get_db)
 ):
+    
+    if username:
+        username = username.upper()
+        
     # Khởi tạo câu query cơ bản
     query = db.query(Attendance, Employee).outerjoin(Employee, Attendance.username == Employee.username)
     

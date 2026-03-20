@@ -526,17 +526,41 @@
         // ==========================================
         function scheduleMorningReload() {
             const now = new Date();
-            let reloadTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0, 0); // 6h00'00"
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            
+            let targetTime = new Date(now.getTime());
+            targetTime.setSeconds(0);
+            targetTime.setMilliseconds(0);
 
-            // Nếu bây giờ đã qua 6h sáng, thì hẹn giờ cho 6h sáng ngày mai
-            if (now.getTime() > reloadTime.getTime()) {
-                reloadTime.setDate(reloadTime.getDate() + 1);
+            // Trường hợp 1: Nằm trong khung 6h00 - 7h59
+            if (currentHour >= 6 && currentHour < 8) {
+                // Tính mốc 10 phút tiếp theo (VD: 12p -> 20p, 20p -> 30p, 55p -> 60p)
+                const next10MinMark = Math.ceil((currentMinute + 1) / 10) * 10;
+                
+                if (next10MinMark === 60) {
+                    targetTime.setHours(currentHour + 1);
+                    targetTime.setMinutes(0);
+                } else {
+                    targetTime.setMinutes(next10MinMark);
+                }
+            } 
+            // Trường hợp 2: Trước 6h sáng -> Hẹn đúng 6h sáng nay
+            else if (currentHour < 6) {
+                targetTime.setHours(6, 0, 0, 0);
+            } 
+            // Trường hợp 3: Qua 8h sáng -> Hẹn đúng 6h sáng ngày mai
+            else {
+                targetTime.setDate(targetTime.getDate() + 1);
+                targetTime.setHours(6, 0, 0, 0);
             }
 
-            const msUntilReload = reloadTime.getTime() - now.getTime();
+            const msUntilReload = targetTime.getTime() - now.getTime();
+            
+            console.log(`Bảo trì RAM: Tự động Reload tiếp theo vào lúc ${targetTime.toLocaleTimeString('vi-VN')}`);
 
             setTimeout(() => {
-                console.log("Bảo trì hệ thống: Đang tải lại trang...");
+                console.log("Đang tiến hành tải lại trang...");
                 window.location.reload(true);
             }, msUntilReload);
         }
