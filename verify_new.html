@@ -342,6 +342,7 @@
                 if (!isCentered) {
                     guideCircle.classList.remove('guide-active');
                     consecutiveGoodFrames = 0;
+                    console.log("is not centered , consecutiveGoodFrames = 0");
                     updateFrameProgress(0);
                     if (!isProcessing) {
                         resultBox.className = "info status-warning";
@@ -351,6 +352,7 @@
                 else if (!isStraight) {
                     guideCircle.classList.remove('guide-active');
                     consecutiveGoodFrames = 0;
+                    console.log("is not straight , consecutiveGoodFrames = 0")
                     updateFrameProgress(0);
                     if (!isProcessing) {
                         resultBox.className = "info status-warning";
@@ -360,6 +362,7 @@
                 else if (faceSize < FACE_MIN_SIZE) {
                     guideCircle.classList.remove('guide-active');
                     consecutiveGoodFrames = 0;
+                    console.log("is not facesizemin , consecutiveGoodFrames = 0")
                     updateFrameProgress(0);
                     if (!isProcessing) {
                         resultBox.className = "info status-warning";
@@ -369,6 +372,7 @@
                 else if (faceSize > FACE_MAX_SIZE) {
                     guideCircle.classList.remove('guide-active');
                     consecutiveGoodFrames = 0;
+                    console.log("is not facesizemax , consecutiveGoodFrames = 0")
                     updateFrameProgress(0);
                     if (!isProcessing) {
                         resultBox.className = "info status-warning";
@@ -381,7 +385,7 @@
                     // Tăng số frame tốt liên tiếp
                     consecutiveGoodFrames = Math.min(consecutiveGoodFrames + 1, REQUIRED_GOOD_FRAMES);
                     updateFrameProgress(consecutiveGoodFrames);
-                    
+                    console.log("valid frame , consecutiveGoodFrames = " + consecutiveGoodFrames)
                     const now = Date.now();
                     
                     // Hiển thị tiến trình xác nhận
@@ -405,6 +409,7 @@
                 
                 // Reset counter khi mất khuôn mặt
                 consecutiveGoodFrames = 0;
+                console.log("reset frame , consecutiveGoodFrames = " + consecutiveGoodFrames)
                 updateFrameProgress(0);
                 
                 if (!isProcessing && !isSleeping) {

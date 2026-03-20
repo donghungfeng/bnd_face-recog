@@ -131,7 +131,7 @@ def background_logging(
 
         image_web_path = f"/data/history_db/{success_filename}"
 
-        if len(records_today) < 2:
+        if len(records_today) < 2 and user_id != 'UNKNOWN':
             new_log = Attendance(
                 username=user_id, 
                 full_name=full_name, 
