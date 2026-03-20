@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import date, time
+
+import models
 
 class FaceRequest(BaseModel):
     user_id: str = None
@@ -122,4 +124,28 @@ class MarkFraudRequest(BaseModel):
 
 class TestFaceRequest(BaseModel):
     image_base64: str
+
+class MonthlyRecordBase(BaseModel):
+    employee_id: int
+    shift_code: Optional[str] = None
+    date: date
+    checkin_time: Optional[time] = None
+    checkout_time: Optional[time] = None
+    late_minutes: int = 0
+    early_minutes: int = 0
+    status: int = 0
+    explanation_reason: Optional[str] = None
+    explanation_status: int = 0
+    note: Optional[str] = None
     
+class AttendanceSummary(BaseModel):
+    employee_id: int
+    username: str
+    target_date: date
+    # Danh sách các lần quét thực tế (đối tượng Model Attendance)
+    scans: list[models.Attendance]
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        arbitrary_types_allowed=True
+    )
