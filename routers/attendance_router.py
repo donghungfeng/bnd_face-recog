@@ -28,38 +28,57 @@ def get_attendance(
     limit: int = 50, 
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    username: Optional[str] = Query(None, description="Username nhân viên cần lọc"), # Param bên ngoài là username
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Lấy thông tin người đang thực hiện request (Admin/Manager/User)
     role = current_user.get("role", "user")
-    username = current_user.get("username")
+    current_username = current_user.get("username")
+    
+    # Gán lại vào biến q_username để xử lý logic bên dưới
+    q_username = username 
+    
     from sqlalchemy import func
     from datetime import timedelta
     from models import ShiftAssignment, ShiftCategory
     
     # 1. Khởi tạo điều kiện lọc theo phân quyền
     filter_conditions = []
+
     if role == "user":
-        if not username:
-            return [] # Trả về rỗng nếu không có định danh
-        filter_conditions.append(Attendance.username == username)
+        # Role USER: Bất kể q_username truyền vào là gì, chỉ được xem chính mình
+        filter_conditions.append(Attendance.username == current_username)
+
     elif role == "manager":
-        if not username:
-            return []
-        # Tìm Manager để lấy department_id
-        manager_emp = db.query(Employee).filter(Employee.username == username).first()
-        if manager_emp and manager_emp.department_id is not None:
-            # Lấy danh sách nhân viên trong cùng phòng ban
-            dept_users_query = db.query(Employee.username).filter(Employee.department_id == manager_emp.department_id).all()
-            dept_users = [u[0] for u in dept_users_query]
-            if dept_users:
-                filter_conditions.append(Attendance.username.in_(dept_users))
+        # Role MANAGER: Chỉ được xem nhân viên trong phòng ban của mình
+        manager_emp = db.query(Employee).filter(Employee.username == current_username).first()
+        if not manager_emp or manager_emp.department_id is None:
+            return [] # Manager "không nơi nương tựa" thì không có quyền xem ai
+
+        # Lấy list username thuộc phòng ban của Manager
+        dept_users_query = db.query(Employee.username).filter(Employee.department_id == manager_emp.department_id).all()
+        dept_users = [u[0] for u in dept_users_query]
+
+        if q_username:
+            # Nếu Manager muốn lọc đích danh 1 người
+            if q_username in dept_users:
+                filter_conditions.append(Attendance.username == q_username)
             else:
-                return [] # Phòng ban không có ai
+                # Nếu người cần lọc không thuộc phòng mình -> Chặn luôn (trả về rỗng)
+                return [] 
         else:
-            return [] # Manager chưa được gán phòng ban thì không xem được gì
-            
-    # 1.1 Lọc theo mốc thời gian (Date Filter)
+            # Nếu Manager không lọc đích danh -> Lấy toàn bộ người trong phòng
+            filter_conditions.append(Attendance.username.in_(dept_users))
+
+    elif role == "admin":
+        # Role ADMIN: Quyền tối thượng
+        if q_username:
+            # Nếu Admin lọc đích danh
+            filter_conditions.append(Attendance.username == q_username)
+        # Nếu Admin không lọc -> filter_conditions để trống => Query toàn công ty
+
+    # 1.1 Lọc theo mốc thời gian (Giữ nguyên logic của bạn)
     if start_date:
         filter_conditions.append(func.date(Attendance.check_in_time) >= start_date)
     if end_date:
