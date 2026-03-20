@@ -536,6 +536,42 @@
         let consecutiveGoodFrames = 0;
         const REQUIRED_GOOD_FRAMES = 3; // Số frame tốt liên tiếp cần đạt
         let lastProcessedFrameTime = 0;
+        let hasCalledAPIForCurrentSession = false; // FIX Bug 1: khai báo ngoài callback
+
+        // FIX Bug 6: Cooldown per-user (30 giây)
+        const USER_COOLDOWN_MS = 30 * 1000;
+        const userCooldowns = {};
+
+        // FIX Bug 3: Kiểm tra độ sắc nét ảnh (Laplacian Variance)
+        const SHARPNESS_THRESHOLD = 80;
+        function isImageSharp(canvas, threshold = SHARPNESS_THRESHOLD) {
+            try {
+                const ctx = canvas.getContext('2d');
+                const { width, height } = canvas;
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const d = imageData.data;
+                const gray = new Float32Array(width * height);
+                for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+                    gray[j] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                }
+                let sum = 0, sumSq = 0, count = 0;
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = y * width + x;
+                        const lap = -gray[idx - 1] - gray[idx + 1]
+                            - gray[idx - width] - gray[idx + width]
+                            + 4 * gray[idx];
+                        sum += lap; sumSq += lap * lap; count++;
+                    }
+                }
+                const mean = sum / count;
+                const variance = (sumSq / count) - (mean * mean);
+                console.log(`Sharpness score: ${variance.toFixed(1)}`);
+                return variance > threshold;
+            } catch (e) {
+                return true; // Nếu lỗi thì cho qua
+            }
+        }
 
         const FACE_MIN_SIZE = 0.30;
         const FACE_MAX_SIZE = 0.55;
@@ -591,7 +627,7 @@
                     (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
 
                 let isStraight = true;
-                let hasCalledAPIForCurrentSession = false;
+                let poseWarning = ""; // FIX Bug 2: khai báo poseWarning
 
                 if (landmarks && landmarks.length >= 3) {
                     const eyeR = landmarks[0];
@@ -609,7 +645,7 @@
                         const noseDistL = Math.abs(nose.x - eyeL.x);
                         const noseDistR = Math.abs(nose.x - eyeR.x);
 
-                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.35) {
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.25) { // FIX Bug 5: 0.35 → 0.25
                             isStraight = false;
                             poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
                         }
@@ -831,6 +867,17 @@
                     throw new Error("Không capture được ảnh");
                 }
 
+                // FIX Bug 3: Kiểm tra độ sắc nét trước khi gửi API
+                if (!isImageSharp(cropCanvas)) {
+                    resultBox.className = "info status-warning";
+                    resultBox.innerHTML = `⚠️ ẢNH CHƯA RÕ NÉT, VUI LÒNG ĐỨNG YÊN`;
+                    isProcessing = false;
+                    hasCalledAPIForCurrentSession = false;
+                    consecutiveGoodFrames = 0;
+                    updateFrameProgress(0);
+                    return;
+                }
+
                 const response = await fetch(`/recognize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -845,11 +892,22 @@
                 const data = await response.json();
 
                 if (data.recognized) {
-                    resultBox.className = "info status-ok";
-                    resultBox.innerHTML = `✅ XIN CHÀO: ${data.user_id.toUpperCase()}`;
-                    addHistoryItem(data.user_id, data.match_probability);
-                    triggerSuccessPopup(data.user_id.toUpperCase());
+                    // FIX Bug 6: Kiểm tra cooldown per-user
+                    const now = Date.now();
+                    if (userCooldowns[data.user_id] && now - userCooldowns[data.user_id] < USER_COOLDOWN_MS) {
+                        resultBox.className = "info status-ok";
+                        resultBox.innerHTML = `✅ ${data.user_id.toUpperCase()} ĐÃ CHẤM CÔNG`;
+                    } else {
+                        userCooldowns[data.user_id] = now;
+                        resultBox.className = "info status-ok";
+                        resultBox.innerHTML = `✅ XIN CHÀO: ${data.user_id.toUpperCase()}`;
+                        addHistoryItem(data.user_id, data.match_probability);
+                        triggerSuccessPopup(data.user_id.toUpperCase());
+                    }
                 } else {
+                    // FIX Bug 4: Reset ngay khi không nhận ra
+                    consecutiveGoodFrames = 0;
+                    updateFrameProgress(0);
                     resultBox.className = "info status-warning";
                     resultBox.innerHTML = `⚠️ KHÔNG NHẬN DIỆN ĐƯỢC`;
                 }
