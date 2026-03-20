@@ -355,7 +355,7 @@
     async function fetchEmployees() {
         const res = await fetch(API_URL);
         currentEmployees = await res.json();
-        renderTable(currentEmployees);
+        renderTable(currentEmployees.items);
     }
 
     function renderTable(data) {

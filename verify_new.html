@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BND Kiosk - Face Recognition</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --success: #00ff88;
+            --warning: #ffb800;
+            --error: #ff4444;
+            --bg: #0f172a;
+            --card: #1e293b;
+        }
+
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            background: var(--bg); color: #f8fafc; 
+            margin: 0; padding: 15px;
+            display: flex; flex-direction: column; align-items: center;
+            height: 100dvh; box-sizing: border-box; overflow: hidden;
+        }
+
+        header { width: 100%; max-width: 700px; text-align: center; margin-bottom: 10px; flex-shrink: 0; }
+        h2 { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--primary); margin: 5px 0 15px 0; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
+
+        .info { 
+            font-family: 'Orbitron', sans-serif; font-size: 0.95rem; padding: 15px; 
+            border-radius: 12px; background: var(--card); border: 1px solid rgba(255,255,255,0.1); 
+            transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; 
+            font-weight: bold; text-align: center; line-height: 1.4;
+        }
+
+        .distance-meter { width: 100%; height: 6px; background: #334155; border-radius: 10px; margin-top: 15px; overflow: hidden; position: relative; }
+        #distanceFill { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease, background 0.3s ease; }
+
+        /* Frame progress indicators */
+        .frame-progress {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 10px;
+            padding: 5px;
+        }
+        .frame-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #334155;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .frame-dot.active {
+            background: var(--success);
+            box-shadow: 0 0 15px var(--success);
+            transform: scale(1.2);
+            border-color: rgba(255,255,255,0.3);
+        }
+        .frame-dot.processing {
+            background: var(--primary);
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .main-wrapper { 
+            position: relative; width: 100%; max-width: 700px; 
+            flex: 1; background: #000; border-radius: 15px; overflow: hidden; 
+            border: 2px solid #334155; box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
+        }
+
+        #webcam { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+        .guide-overlay { 
+            position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            pointer-events: none; border: 2px dashed rgba(255,255,255,0.3); 
+            border-radius: 50% / 45%; width: 260px; height: 340px; 
+            transition: all 0.3s; z-index: 5;
+        }
+        .guide-active { border-color: var(--success); box-shadow: 0 0 25px rgba(0, 255, 136, 0.4); border-style: solid; background: rgba(0, 255, 136, 0.05); }
+
+        .scan-bar { position: absolute; width: 100%; height: 3px; background: linear-gradient(to bottom, transparent, var(--primary)); box-shadow: 0 0 15px var(--primary); top: 0; z-index: 5; animation: scan 3s ease-in-out infinite; opacity: 0.6; }
+        @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
+
+        .status-scanning { color: var(--primary); border-color: var(--primary); }
+        .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
+        .status-warning { color: var(--warning); border-color: var(--warning); }
+        .status-err { color: var(--error); border-color: var(--error); background: rgba(255, 68, 68, 0.1); }
+        .status-sleep { color: #94a3b8; border-color: #475569; background: #1e293b; }
+
+        .loader { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ================= BẢNG LỊCH SỬ ================= */
+        .history-container {
+            width: 100%; max-width: 700px; margin-top: 15px; 
+            background: var(--card); border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 15px; padding: 12px; flex-shrink: 0; 
+            box-sizing: border-box;
+        }
+        .history-title {
+            font-family: 'Orbitron', sans-serif; font-size: 0.8rem; color: #94a3b8;
+            margin-bottom: 10px; letter-spacing: 1px; display: flex; align-items: center; gap: 5px;
+        }
+        
+        .history-list {
+            list-style: none; padding: 0; margin: 0; 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 8px; width: 100%;
+        }
+        
+        .history-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+            padding: 10px 5px; background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+            text-align: center; animation: popIn 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .history-item:first-child { 
+            background: rgba(0, 255, 136, 0.15); 
+            border: 1px solid rgba(0, 255, 136, 0.5); 
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+        }
+        
+        .history-time { color: #cbd5e1; font-family: monospace; font-size: 0.75rem; }
+        
+        .history-name { 
+            font-weight: bold; color: var(--success); font-size: 0.85rem; width: 100%; 
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; 
+            overflow: hidden; text-overflow: ellipsis; line-height: 1.3;
+            word-wrap: break-word; min-height: 2.6em; 
+        }
+
+        .history-prob { color: var(--primary); font-size: 0.75rem; background: rgba(0, 242, 255, 0.1); padding: 2px 8px; border-radius: 10px; margin-top: 2px;}
+
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* ================= POPUP XIN CHÀO ================= */
+        .popup-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.9); display: none;
+            align-items: center; justify-content: center; z-index: 10000;
+            backdrop-filter: blur(8px);
+        }
+        .popup-content {
+            background: var(--card); border: 2px solid var(--success);
+            padding: 30px 40px; border-radius: 20px; text-align: center;
+            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.3);
+            animation: popIn 0.3s ease-out; position: relative;
+            max-width: 80%;
+        }
+        .popup-close {
+            position: absolute; top: 10px; right: 15px;
+            background: none; border: none; color: #94a3b8; font-size: 1.5rem;
+            cursor: pointer; transition: 0.2s;
+        }
+        .popup-close:hover { color: #fff; transform: scale(1.1); }
+        .popup-icon { font-size: 3.5rem; margin-bottom: 10px; }
+        .popup-title { color: #fff; font-size: 1.1rem; margin: 0 0 5px 0; font-weight: normal;}
+        .popup-name { 
+            color: var(--success); font-size: 1.8rem; font-family: 'Orbitron', sans-serif; 
+            margin: 0; text-shadow: 0 0 15px rgba(0, 255, 136, 0.5); font-weight: bold;
+        }
+
+        /* ================= MÀN HÌNH NGỦ ĐÔNG ================= */
+        #sleepOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); z-index: 50;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+        .btn-wake {
+            background: var(--primary); color: #000; border: none;
+            padding: 18px 35px; font-size: 1.2rem; font-family: 'Orbitron', sans-serif;
+            font-weight: bold; border-radius: 40px; cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); transition: 0.3s;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .btn-wake:hover { transform: scale(1.05); box-shadow: 0 0 35px rgba(0, 242, 255, 0.8); }
+        .sleep-text { color: #94a3b8; margin-top: 20px; font-size: 0.95rem; font-style: italic;}
+        .icon-sleep { font-size: 3rem; margin-bottom: 15px; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h3>Chấm công Bệnh viện Bệnh Nhiệt Đới</h3>
+        <div id="resultBox" class="info status-scanning">
+            <div class="loader"></div> ĐANG KHỞI TẠO CAMERA...
+        </div>
+        <div class="distance-meter">
+            <div id="distanceFill"></div>
+        </div>
+        <!-- Frame progress indicators -->
+        <div class="frame-progress">
+            <div id="frame1" class="frame-dot"></div>
+            <div id="frame2" class="frame-dot"></div>
+            <div id="frame3" class="frame-dot"></div>
+        </div>
+    </header>
+    
+    <div class="main-wrapper">
+        <div id="sleepOverlay">
+            <div class="icon-sleep">💤</div>
+            <button class="btn-wake" onclick="wakeUp()">👋 CHẠM ĐỂ KHỞI ĐỘNG</button>
+            </div>
+
+        <div class="guide-overlay" id="guideCircle"></div>
+        <div class="scan-bar"></div>
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="cropCanvas" style="display:none;"></canvas>
+    </div>
+
+    <div class="history-container">
+        <div class="history-title"><span style="color:var(--success)">●</span> Danh sách chấm công thành công</div>
+        <ul class="history-list" id="historyList"></ul>
+    </div>
+
+    <div class="popup-overlay" id="successPopup" onclick="closePopup()">
+        <div class="popup-content" onclick="event.stopPropagation()">
+            <button class="popup-close" onclick="closePopup()">✖</button>
+            <div class="popup-icon">✅</div>
+            <p class="popup-title">CHẤM CÔNG THÀNH CÔNG</p>
+            <p class="popup-name" id="popupUserName">...</p>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const resultBox = document.getElementById('resultBox');
+        const distanceFill = document.getElementById('distanceFill');
+        const guideCircle = document.getElementById('guideCircle');
+        const cropCanvas = document.getElementById('cropCanvas');
+        const historyList = document.getElementById('historyList');
+
+        let lastProcessingTime = 0;
+        let isProcessing = false;
+        let lastDetection = null;
+        let isFaceDetectionRunning = false; 
+        let currentPublicIp = '';
+        let popupTimer = null; 
+
+        let sleepTimer = null;
+        let isSleeping = false;
+        const IDLE_TIMEOUT = 5 * 60 * 1000; 
+
+        // Multiple frames variables
+        let consecutiveGoodFrames = 0;
+        const REQUIRED_GOOD_FRAMES = 3; // Số frame tốt liên tiếp cần đạt
+        let lastProcessedFrameTime = 0;
+
+        const FACE_MIN_SIZE = 0.30; 
+        const FACE_MAX_SIZE = 0.55;
+        const CENTER_X_MIN = 0.4; 
+        const CENTER_X_MAX = 0.6;
+        const CENTER_Y_MIN = 0.38; 
+        const CENTER_Y_MAX = 0.62;
+
+        const faceDetection = new FaceDetection({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+        });
+
+        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.85 });
+
+        // Function to update frame progress UI
+        function updateFrameProgress(count) {
+            const dots = ['frame1', 'frame2', 'frame3'];
+            dots.forEach((id, index) => {
+                const dot = document.getElementById(id);
+                if (dot) {
+                    if (index < count) {
+                        dot.classList.add('active');
+                        dot.classList.remove('processing');
+                    } else {
+                        dot.classList.remove('active');
+                        if (isProcessing && index === count) {
+                            dot.classList.add('processing');
+                        } else {
+                            dot.classList.remove('processing');
+                        }
+                    }
+                }
+            });
+        }
+
+        faceDetection.onResults((results) => {
+            isFaceDetectionRunning = false; 
+
+            if (results.detections.length > 0) {
+                resetSleepTimer();
+
+                const detection = results.detections[0];
+                lastDetection = detection.boundingBox;
+                const landmarks = detection.landmarks;
+
+                const faceSize = lastDetection.width;
+                const faceX = lastDetection.xCenter;
+                const faceY = lastDetection.yCenter;
+
+                distanceFill.style.width = (faceSize * 100) + "%";
+
+                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && 
+                                   (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
+
+                let isStraight = true;
+                let poseWarning = "";
+
+                if (landmarks && landmarks.length >= 3) {
+                    const eyeR = landmarks[0]; 
+                    const eyeL = landmarks[1]; 
+                    const nose = landmarks[2]; 
+
+                    const eyeDistX = Math.abs(eyeL.x - eyeR.x);
+                    const eyeDistY = Math.abs(eyeL.y - eyeR.y);
+
+                    if (eyeDistY / eyeDistX > 0.25) {
+                        isStraight = false;
+                        poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
+                    } 
+                    else {
+                        const noseDistL = Math.abs(nose.x - eyeL.x);
+                        const noseDistR = Math.abs(nose.x - eyeR.x);
+                        
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.35) {
+                            isStraight = false;
+                            poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
+                        }
+                    }
+                }
+
+                if (!isCentered) {
+                    guideCircle.classList.remove('guide-active');
+                    consecutiveGoodFrames = 0;
+                    updateFrameProgress(0);
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = `⚠️ HÃY ĐƯA MẶT VÀO GIỮA KHUNG`;
+                    }
+                } 
+                else if (!isStraight) {
+                    guideCircle.classList.remove('guide-active');
+                    consecutiveGoodFrames = 0;
+                    updateFrameProgress(0);
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = poseWarning;
+                    }
+                }
+                else if (faceSize < FACE_MIN_SIZE) {
+                    guideCircle.classList.remove('guide-active');
+                    consecutiveGoodFrames = 0;
+                    updateFrameProgress(0);
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = `⚠️ VUI LÒNG LẠI GẦN CAMERA HƠN`;
+                    }
+                } 
+                else if (faceSize > FACE_MAX_SIZE) {
+                    guideCircle.classList.remove('guide-active');
+                    consecutiveGoodFrames = 0;
+                    updateFrameProgress(0);
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = `⚠️ VUI LÒNG ĐỨNG XA RA CHÚT`;
+                    }
+                } 
+                else {
+                    guideCircle.classList.add('guide-active');
+                    
+                    // Tăng số frame tốt liên tiếp
+                    consecutiveGoodFrames = Math.min(consecutiveGoodFrames + 1, REQUIRED_GOOD_FRAMES);
+                    updateFrameProgress(consecutiveGoodFrames);
+                    
+                    const now = Date.now();
+                    
+                    // Hiển thị tiến trình xác nhận
+                    if (!isProcessing && consecutiveGoodFrames < REQUIRED_GOOD_FRAMES) {
+                        resultBox.className = "info status-scanning";
+                        resultBox.innerHTML = `📸 ĐANG XÁC NHẬN... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
+                    }
+                    
+                    // Chỉ xử lý khi đủ số frame tốt liên tiếp
+                    if (!isProcessing && consecutiveGoodFrames >= REQUIRED_GOOD_FRAMES && now - lastProcessedFrameTime > 2000) {
+                        sendToAPI();
+                        lastProcessedFrameTime = now;
+                        consecutiveGoodFrames = 0; // Reset sau khi gửi
+                        updateFrameProgress(0);
+                    }
+                }
+            } else {
+                lastDetection = null;
+                distanceFill.style.width = "0%";
+                guideCircle.classList.remove('guide-active');
+                
+                // Reset counter khi mất khuôn mặt
+                consecutiveGoodFrames = 0;
+                updateFrameProgress(0);
+                
+                if (!isProcessing && !isSleeping) {
+                    resultBox.className = "info status-scanning";
+                    resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
+                }
+            }
+        });
+
+        function resetSleepTimer() {
+            if (sleepTimer) clearTimeout(sleepTimer);
+            if (!isSleeping) {
+                sleepTimer = setTimeout(enterSleepMode, IDLE_TIMEOUT);
+            }
+        }
+
+        function enterSleepMode() {
+            console.log("Hệ thống nhàn rỗi -> Vào chế độ ngủ đông!");
+            isSleeping = true;
+            
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            
+            document.getElementById('sleepOverlay').style.display = 'flex';
+            document.getElementById('resultBox').className = "info status-sleep";
+            document.getElementById('resultBox').innerHTML = "💤 HỆ THỐNG ĐANG TẠM NGHỈ";
+            
+            guideCircle.classList.remove('guide-active');
+            distanceFill.style.width = "0%";
+            
+            // Reset frame progress
+            consecutiveGoodFrames = 0;
+            updateFrameProgress(0);
+        }
+
+        async function wakeUp() {
+            console.log("Đánh thức hệ thống!");
+            isSleeping = false;
+
+            document.getElementById('sleepOverlay').style.display = 'none';
+            document.getElementById('resultBox').className = "info status-scanning";
+            document.getElementById('resultBox').innerHTML = `<div class="loader"></div> ĐANG KHỞI ĐỘNG LẠI CAMERA...`;
+
+            await startCamera();
+            resetSleepTimer();
+        }
+
+        function captureCroppedFace() {
+            if (!lastDetection) return null;
+
+            const videoW = video.videoWidth;
+            const videoH = video.videoHeight;
+            let { xCenter, yCenter, width, height } = lastDetection;
+
+            const padding = 0.25; 
+            let cropW = width * (1 + padding) * videoW;
+            let cropH = height * (1 + padding) * videoH;
+            
+            let startX = (xCenter * videoW) - (cropW / 2);
+            let startY = (yCenter * videoH) - (cropH / 2);
+
+            startX = Math.max(0, startX);
+            startY = Math.max(0, startY);
+            cropW = Math.min(videoW - startX, cropW);
+            cropH = Math.min(videoH - startY, cropH);
+
+            cropCanvas.width = 224; 
+            cropCanvas.height = 224;
+            const ctx = cropCanvas.getContext('2d');
+            
+            ctx.translate(224, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, startX, startY, cropW, cropH, 0, 0, 224, 224);
+            return cropCanvas.toDataURL('image/jpeg', 0.9);
+        }
+
+        function captureFullFrame() {
+            const tempCanvas = document.createElement('canvas');
+            const maxWidth = 640; 
+            const scale = Math.min(1, maxWidth / video.videoWidth);
+            
+            tempCanvas.width = video.videoWidth * scale;
+            tempCanvas.height = video.videoHeight * scale;
+            const ctx = tempCanvas.getContext('2d');
+            
+            ctx.translate(tempCanvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            return tempCanvas.toDataURL('image/jpeg', 0.7); 
+        }
+
+        function addHistoryItem(userId, probability) {
+            const timeString = new Date().toLocaleTimeString('vi-VN', { hour12: false, hour: '2-digit', minute: '2-digit', second:'2-digit' });
+            const li = document.createElement('li');
+            li.className = 'history-item';
+            
+            li.innerHTML = `
+                <span class="history-time">${timeString}</span>
+                <span class="history-name" title="${userId}">${userId.toUpperCase()}</span>
+                <span class="history-prob">${probability}</span>
+            `;
+            
+            historyList.prepend(li);
+            if (historyList.children.length > 5) {
+                historyList.removeChild(historyList.lastChild);
+            }
+        }
+
+        function triggerSuccessPopup(name) {
+            const popup = document.getElementById('successPopup');
+            document.getElementById('popupUserName').innerText = name;
+            popup.style.display = 'flex';
+            
+            if (popupTimer) clearTimeout(popupTimer);
+            
+            popupTimer = setTimeout(() => {
+                closePopup();
+            }, 1500);
+        }
+
+        function closePopup() {
+            document.getElementById('successPopup').style.display = 'none';
+        }
+
+        async function sendToAPI() {
+            isProcessing = true; 
+            resultBox.className = "info status-scanning";
+            resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
+            
+            // Update frame progress to show processing
+            updateFrameProgress(REQUIRED_GOOD_FRAMES);
+            
+            try {
+                const croppedImage = captureCroppedFace();
+                const fullImage = captureFullFrame();
+                
+                if (!croppedImage || !fullImage) {
+                    isProcessing = false;
+                    updateFrameProgress(0);
+                    return;
+                }
+
+                const API_URL = "https://hrm.benhnhietdoi.vn";
+                
+                const response = await fetch(`/recognize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_base64: croppedImage, full_image_base64: fullImage, client_public_ip: currentPublicIp, attendance_type: 'Tập trung' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.recognized) {
+                    resultBox.className = "info status-ok";
+                    resultBox.innerHTML = `✅ XIN CHÀO: ${data.user_id.toUpperCase()}`;
+                    
+                    addHistoryItem(data.user_id, data.match_probability);
+                    triggerSuccessPopup(data.user_id.toUpperCase());
+
+                } else {
+                    resultBox.className = "info status-warning";
+                    if(data.match_probability) {
+                        resultBox.innerHTML = `⚠️ VUI LÒNG GIỮ THẲNG KHUÔN MẶT, VÀ GIỮ Ở GIỮA KHUNG HÌNH (${data.match_probability})`;
+                    } else {
+                        resultBox.innerHTML = `⚠️ VUI LÒNG GIỮ THẲNG KHUÔN MẶT, VÀ GIỮ Ở GIỮA KHUNG HÌNH`;
+                    }
+                }
+            } catch (e) {
+                resultBox.className = "info status-err";
+                resultBox.innerHTML = `⚠️ LỖI KẾT NỐI SERVER`;
+            } finally {
+                setTimeout(() => { 
+                    isProcessing = false; 
+                    updateFrameProgress(0);
+                }, 1500);
+            }
+        }
+
+        async function processVideoFrame() {
+            if (!isSleeping && video.readyState >= 2 && !isFaceDetectionRunning) {
+                isFaceDetectionRunning = true;
+                await faceDetection.send({ image: video });
+            }
+            requestAnimationFrame(processVideoFrame);
+        }
+
+        async function startCamera() {
+            verifyNetwork();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } 
+                });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    processVideoFrame(); 
+                }
+            } catch (err) {
+                resultBox.className = "info status-err";
+                resultBox.innerHTML = "❌ LỖI TRUY CẬP CAMERA";
+            }
+        }
+
+        async function verifyNetwork() {
+            try {
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipRes.json();
+                currentPublicIp = ipData.ip;
+            } catch(e) {
+                console.warn("Không lấy được IP mạng: ", e);
+            }
+        }
+
+        // ==========================================
+        // TỰ ĐỘNG RELOAD LÚC 6H SÁNG ĐỂ BẢO TRÌ RAM
+        // ==========================================
+        function scheduleMorningReload() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            
+            let targetTime = new Date(now.getTime());
+            targetTime.setSeconds(0);
+            targetTime.setMilliseconds(0);
+
+            // Trường hợp 1: Nằm trong khung 6h00 - 7h59
+            if (currentHour >= 6 && currentHour < 8) {
+                // Tính mốc 10 phút tiếp theo (VD: 12p -> 20p, 20p -> 30p, 55p -> 60p)
+                const next10MinMark = Math.ceil((currentMinute + 1) / 10) * 10;
+                
+                if (next10MinMark === 60) {
+                    targetTime.setHours(currentHour + 1);
+                    targetTime.setMinutes(0);
+                } else {
+                    targetTime.setMinutes(next10MinMark);
+                }
+            } 
+            // Trường hợp 2: Trước 6h sáng -> Hẹn đúng 6h sáng nay
+            else if (currentHour < 6) {
+                targetTime.setHours(6, 0, 0, 0);
+            } 
+            // Trường hợp 3: Qua 8h sáng -> Hẹn đúng 6h sáng ngày mai
+            else {
+                targetTime.setDate(targetTime.getDate() + 1);
+                targetTime.setHours(6, 0, 0, 0);
+            }
+
+            const msUntilReload = targetTime.getTime() - now.getTime();
+            
+            console.log(`Bảo trì RAM: Tự động Reload tiếp theo vào lúc ${targetTime.toLocaleTimeString('vi-VN')}`);
+
+            setTimeout(() => {
+                console.log("Đang tiến hành tải lại trang...");
+                window.location.reload(true);
+            }, msUntilReload);
+        }
+
+        // Khởi động hệ thống
+        startCamera();
+        resetSleepTimer();
+        scheduleMorningReload(); // Kích hoạt bộ đếm giờ tự động Reload
+    </script>
+</body>
+</html>

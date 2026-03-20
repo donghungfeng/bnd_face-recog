@@ -8,6 +8,9 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/verify")
 def read_verify(): return FileResponse("verify.html")
 
+@router.get("/verify_new")
+def read_verify(): return FileResponse("verify_new.html")
+
 @router.get("/enroll")
 def read_enroll(): return FileResponse("enroll.html")
 
