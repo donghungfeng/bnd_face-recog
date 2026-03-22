@@ -131,7 +131,25 @@ def background_logging(
 
         image_web_path = f"/data/history_db/{success_filename}"
 
-        if len(records_today) < 2 and user_id != 'UNKNOWN':
+        if user_id == 'UNKNOWN':
+            # Trường hợp 1: NGƯỜI LẠ -> Cứ chèn thêm dòng mới vào DB, không đụng tới index [1]
+            new_log = Attendance(
+                username=user_id, 
+                full_name=full_name, 
+                check_in_time=now,
+                image_path=image_web_path, 
+                late_minutes=0, 
+                early_minutes=0, 
+                confidence=round(confidence*100, 2),
+                client_ip=client_ip,                  
+                latitude=latitude,                    
+                longitude=longitude,                  
+                attendance_type=attendance_type,        
+                note="Không nhận diện được"                               
+            )
+            db.add(new_log)
+
+        elif len(records_today) < 2:
             new_log = Attendance(
                 username=user_id, 
                 full_name=full_name, 

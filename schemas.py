@@ -123,3 +123,7 @@ class MarkFraudRequest(BaseModel):
 class TestFaceRequest(BaseModel):
     image_base64: str
     
+class AttendanceUpdateRequest(BaseModel):
+    scan_time: str = None  # Nhận giờ mới (vd: 07:45:00)
+    note: str = None       # Nhận ghi chú mới
+    role: str = None

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BND Kiosk - Face Recognition</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap"
         rel="stylesheet">
 
@@ -138,38 +139,16 @@
             transform: scaleX(-1);
         }
 
-        /* --- THÊM CSS CHO CANVAS TRACKING --- */
         #overlayCanvas {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Khớp với video */
-            transform: scaleX(-1); /* Lật cùng chiều với video */
-            pointer-events: none; /* Không cản trở click */
-            z-index: 4; /* Nằm trên video, dưới guide overlay */
-        }
-
-        .guide-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            object-fit: cover;
+            transform: scaleX(-1);
             pointer-events: none;
-            border: 2px dashed rgba(255, 255, 255, 0.3);
-            border-radius: 50% / 45%;
-            width: 260px;
-            height: 340px;
-            transition: all 0.3s;
-            z-index: 5;
-        }
-
-        .guide-active {
-            border-color: var(--success);
-            box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
-            border-style: solid;
-            background: rgba(0, 255, 136, 0.05);
+            z-index: 4;
         }
 
         .scan-bar {
@@ -206,7 +185,7 @@
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* ================= BẢNG LỊCH SỬ ================= */
+        /* BẢNG LỊCH SỬ */
         .history-container {
             width: 100%;
             max-width: 700px;
@@ -234,7 +213,7 @@
 
         @keyframes popIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
 
-        /* ================= POPUP XIN CHÀO ================= */
+        /* POPUP XIN CHÀO */
         .popup-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.9); display: none; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(8px);
         }
@@ -249,7 +228,7 @@
         .popup-title { color: #fff; font-size: 1.1rem; margin: 0 0 5px 0; font-weight: normal; }
         .popup-name { color: var(--success); font-size: 1.8rem; font-family: 'Orbitron', sans-serif; margin: 0; text-shadow: 0 0 15px rgba(0, 255, 136, 0.5); font-weight: bold; }
 
-        /* ================= MÀN HÌNH NGỦ ĐÔNG ================= */
+        /* MÀN HÌNH NGỦ ĐÔNG */
         #sleepOverlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 50; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px);
         }
@@ -267,7 +246,7 @@
     <header>
         <h3>Chấm công Bệnh viện Bệnh Nhiệt Đới</h3>
         <div id="resultBox" class="info status-scanning">
-            <div class="loader"></div> ĐANG KHỞI TẠO HỆ THỐNG AI...
+            <div class="loader"></div> ĐANG KHỞI TẠO CAMERA...
         </div>
         <div class="distance-meter">
             <div id="distanceFill"></div>
@@ -285,9 +264,7 @@
             <button class="btn-wake" onclick="wakeUp()">👋 CHẠM ĐỂ KHỞI ĐỘNG</button>
         </div>
 
-        <div class="guide-overlay" id="guideCircle"></div>
         <div class="scan-bar"></div>
-        
         <video id="webcam" autoplay playsinline></video>
         <canvas id="overlayCanvas"></canvas>
         <canvas id="cropCanvas" style="display:none;"></canvas>
@@ -307,27 +284,21 @@
         </div>
     </div>
 
-    <script type="module">
-        import { FaceDetector, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
-
+<script>
         const video = document.getElementById('webcam');
         const overlayCanvas = document.getElementById('overlayCanvas');
         const overlayCtx = overlayCanvas.getContext('2d');
         const resultBox = document.getElementById('resultBox');
         const distanceFill = document.getElementById('distanceFill');
-        const guideCircle = document.getElementById('guideCircle');
         const cropCanvas = document.getElementById('cropCanvas');
         const historyList = document.getElementById('historyList');
 
-        let faceDetector;
-        let isModelReady = false;
-
         let lastProcessingTime = 0;
         let isProcessing = false;
-        let lastDetection = null; 
+        let lastDetection = null;
+        let isFaceDetectionRunning = false;
         let currentPublicIp = '';
         let popupTimer = null;
-        let hasCalledAPIForCurrentSession = false;
 
         let sleepTimer = null;
         let isSleeping = false;
@@ -336,37 +307,54 @@
         let consecutiveGoodFrames = 0;
         const REQUIRED_GOOD_FRAMES = 3; 
         let lastProcessedFrameTime = 0;
+        let hasCalledAPIForCurrentSession = false;
+        
+        let isLoopRunning = false; 
+        let emptyFrames = 0;
 
-        const FACE_MIN_SIZE = 0.30;
-        const FACE_MAX_SIZE = 0.55;
-        const CENTER_X_MIN = 0.4;
-        const CENTER_X_MAX = 0.6;
-        const CENTER_Y_MIN = 0.38;
-        const CENTER_Y_MAX = 0.62;
+        let isFetchingAPI = false; 
+        let lastAttemptTime = 0; 
 
-        async function initModel() {
+        const USER_COOLDOWN_MS = 30 * 1000;
+        const userCooldowns = {};
+
+        const SHARPNESS_THRESHOLD = 60; 
+        const FACE_MIN_SIZE = 0.20;
+        const FACE_MAX_SIZE = 0.60;
+
+        function isImageSharp(canvas, threshold = SHARPNESS_THRESHOLD) {
             try {
-                const vision = await FilesetResolver.forVisionTasks(
-                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-                );
-                faceDetector = await FaceDetector.createFromOptions(vision, {
-                    baseOptions: {
-                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
-                        delegate: "GPU"
-                    },
-                    runningMode: "VIDEO"
-                });
-                
-                isModelReady = true;
-                resultBox.className = "info status-scanning";
-                resultBox.innerHTML = `<div class="loader"></div> ĐANG KHỞI TẠO CAMERA...`;
-                startCamera();
+                const ctx = canvas.getContext('2d');
+                const { width, height } = canvas;
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const d = imageData.data;
+                const gray = new Float32Array(width * height);
+                for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+                    gray[j] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                }
+                let sum = 0, sumSq = 0, count = 0;
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = y * width + x;
+                        const lap = -gray[idx - 1] - gray[idx + 1]
+                            - gray[idx - width] - gray[idx + width]
+                            + 4 * gray[idx];
+                        sum += lap; sumSq += lap * lap; count++;
+                    }
+                }
+                const mean = sum / count;
+                const variance = (sumSq / count) - (mean * mean);
+                return variance > threshold;
             } catch (e) {
-                console.error("Lỗi khởi tạo AI:", e);
-                resultBox.className = "info status-err";
-                resultBox.innerHTML = `❌ LỖI TẢI MÔ HÌNH AI`;
+                return true; 
             }
         }
+
+        const faceDetection = new FaceDetection({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+        });
+
+        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.85 });
 
         function updateFrameProgress(count) {
             const dots = ['frame1', 'frame2', 'frame3'];
@@ -388,6 +376,135 @@
             });
         }
 
+        function drawTargetingFrame(ctx, x, y, width, height, color, isSolid = false) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = isSolid ? 4 : 2;
+            const len = Math.min(width, height) * 0.2; 
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y + len); ctx.lineTo(x, y); ctx.lineTo(x + len, y);
+            ctx.moveTo(x + width - len, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + len);
+            ctx.moveTo(x + width, y + height - len); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width - len, y + height);
+            ctx.moveTo(x + len, y + height); ctx.lineTo(x, y + height); ctx.lineTo(x, y + height - len);
+            ctx.stroke();
+        }
+
+        faceDetection.onResults((results) => {
+            isFaceDetectionRunning = false;
+            
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+            const w = overlayCanvas.width;
+            const h = overlayCanvas.height;
+            const targetSize = Math.min(w, h) * 0.5; 
+            const targetX = (w - targetSize) / 2;
+            const targetY = (h - targetSize) / 2;
+
+            if (results.detections.length > 0) {
+                resetSleepTimer();
+                emptyFrames = 0; 
+
+                const detection = results.detections[0];
+                lastDetection = detection.boundingBox;
+                const landmarks = detection.landmarks;
+
+                const faceSize = lastDetection.width;
+                const faceX = lastDetection.xCenter;
+                const faceY = lastDetection.yCenter;
+
+                distanceFill.style.width = (faceSize * 100) + "%";
+
+                let isStraight = true;
+                let poseWarning = ""; 
+
+                if (landmarks && landmarks.length >= 3) {
+                    const eyeR = landmarks[0];
+                    const eyeL = landmarks[1];
+                    const nose = landmarks[2];
+
+                    const eyeDistX = Math.abs(eyeL.x - eyeR.x);
+                    const eyeDistY = Math.abs(eyeL.y - eyeR.y);
+
+                    if (eyeDistY / eyeDistX > 0.40) {
+                        isStraight = false;
+                        poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
+                    }
+                    else {
+                        const noseDistL = Math.abs(nose.x - eyeL.x);
+                        const noseDistR = Math.abs(nose.x - eyeR.x);
+
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.40) { 
+                            isStraight = false;
+                            poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
+                        }
+                    }
+                }
+
+                let isValid = true;
+                let currentWarning = "";
+
+                if (!isStraight) {
+                    isValid = false;
+                    currentWarning = poseWarning;
+                } else if (faceSize < FACE_MIN_SIZE) {
+                    isValid = false;
+                    currentWarning = `⚠️ VUI LÒNG LẠI GẦN CAMERA HƠN`;
+                } else if (faceSize > FACE_MAX_SIZE) {
+                    isValid = false;
+                    currentWarning = `⚠️ VUI LÒNG ĐỨNG XA RA CHÚT`;
+                }
+
+                if (!isProcessing) {
+                    const originX = (faceX - faceSize / 2) * w;
+                    const originY = (faceY - lastDetection.height / 2) * h;
+                    const boxW = faceSize * w;
+                    const boxH = lastDetection.height * h;
+
+                    const guideColor = isValid ? "#00ff88" : "#ffb800";
+                    drawTargetingFrame(overlayCtx, originX, originY, boxW, boxH, guideColor, isValid);
+                }
+
+                if (!isValid) {
+                    consecutiveGoodFrames = 0;
+                    updateFrameProgress(0);
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = currentWarning;
+                    }
+                } else {
+                    if (!isProcessing && !hasCalledAPIForCurrentSession) {
+                        consecutiveGoodFrames = Math.min(consecutiveGoodFrames + 1, REQUIRED_GOOD_FRAMES);
+                        updateFrameProgress(consecutiveGoodFrames);
+
+                        if (consecutiveGoodFrames < REQUIRED_GOOD_FRAMES) {
+                            resultBox.className = "info status-scanning";
+                            resultBox.innerHTML = `📸 ĐANG XÁC NHẬN... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
+                        } else {
+                            hasCalledAPIForCurrentSession = true; 
+                            sendToAPI();
+                        }
+                    }
+                }
+
+            } else {
+                emptyFrames++;
+                if (emptyFrames > 15 && !isProcessing) {
+                    hasCalledAPIForCurrentSession = false;
+                }
+
+                lastDetection = null;
+                distanceFill.style.width = "0%";
+                consecutiveGoodFrames = 0;
+                updateFrameProgress(0);
+                
+                if (!isProcessing && !isSleeping) {
+                    drawTargetingFrame(overlayCtx, targetX, targetY, targetSize, "rgba(255, 255, 255, 0.4)", false);
+                    resultBox.className = "info status-scanning";
+                    resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
+                }
+            }
+        });
+
         function resetSleepTimer() {
             if (sleepTimer) clearTimeout(sleepTimer);
             if (!isSleeping) {
@@ -404,16 +521,13 @@
             document.getElementById('sleepOverlay').style.display = 'flex';
             document.getElementById('resultBox').className = "info status-sleep";
             document.getElementById('resultBox').innerHTML = "💤 HỆ THỐNG ĐANG TẠM NGHỈ";
-            guideCircle.classList.remove('guide-active');
             distanceFill.style.width = "0%";
             consecutiveGoodFrames = 0;
             updateFrameProgress(0);
-            
-            // Xóa canvas theo dõi khi ngủ
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         }
 
-        window.wakeUp = async function() {
+        async function wakeUp() {
             isSleeping = false;
             document.getElementById('sleepOverlay').style.display = 'none';
             document.getElementById('resultBox').className = "info status-scanning";
@@ -422,58 +536,32 @@
             resetSleepTimer();
         }
 
-        window.closePopup = function() {
-            document.getElementById('successPopup').style.display = 'none';
-        }
-
         function captureCroppedFace() {
             if (!lastDetection) return null;
 
-            const bbox = lastDetection.boundingBox;
-            const keypoints = lastDetection.keypoints;
             const videoW = video.videoWidth;
             const videoH = video.videoHeight;
+            let { xCenter, yCenter, width, height } = lastDetection;
 
-            const rX = keypoints[0].x * videoW;
-            const rY = keypoints[0].y * videoH;
-            const lX = keypoints[1].x * videoW;
-            const lY = keypoints[1].y * videoH;
-            
-            const angle = Math.atan2(lY - rY, lX - rX);
-            const pad = bbox.width * 0.25;
-            
-            const paddedCanvas = document.createElement('canvas');
-            const pCtx = paddedCanvas.getContext('2d');
-            
-            paddedCanvas.width = bbox.width + pad * 2;
-            paddedCanvas.height = bbox.height + pad * 2;
-            pCtx.fillStyle = 'white';
-            pCtx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height);
+            const padding = 0.25;
+            let cropW = width * (1 + padding) * videoW;
+            let cropH = height * (1 + padding) * videoH;
 
-            pCtx.drawImage(
-                video,
-                bbox.originX - pad, bbox.originY - pad, 
-                bbox.width + pad * 2, bbox.height + pad * 2,
-                0, 0, 
-                paddedCanvas.width, paddedCanvas.height
-            );
+            let startX = (xCenter * videoW) - (cropW / 2);
+            let startY = (yCenter * videoH) - (cropH / 2);
+
+            startX = Math.max(0, startX);
+            startY = Math.max(0, startY);
+            cropW = Math.min(videoW - startX, cropW);
+            cropH = Math.min(videoH - startY, cropH);
 
             cropCanvas.width = 224;
             cropCanvas.height = 224;
             const ctx = cropCanvas.getContext('2d');
 
-            ctx.save();
             ctx.translate(224, 0);
             ctx.scale(-1, 1);
-            ctx.translate(112, 112); 
-            ctx.rotate(-angle); 
-            
-            const finalScale = 224 / paddedCanvas.width;
-            ctx.scale(finalScale, finalScale);
-
-            ctx.drawImage(paddedCanvas, -paddedCanvas.width / 2, -paddedCanvas.height / 2, paddedCanvas.width, paddedCanvas.height);
-            ctx.restore();
-
+            ctx.drawImage(video, startX, startY, cropW, cropH, 0, 0, 224, 224);
             return cropCanvas.toDataURL('image/jpeg', 0.9);
         }
 
@@ -497,6 +585,7 @@
             const timeString = new Date().toLocaleTimeString('vi-VN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const li = document.createElement('li');
             li.className = 'history-item';
+
             li.innerHTML = `
                 <span class="history-time">${timeString}</span>
                 <span class="history-name" title="${userId}">${userId.toUpperCase()}</span>
@@ -518,20 +607,53 @@
             popupTimer = setTimeout(() => { closePopup(); }, 1500);
         }
 
+        function closePopup() {
+            document.getElementById('successPopup').style.display = 'none';
+        }
+
         async function sendToAPI() {
+            const now = Date.now();
+            
+            if (isFetchingAPI || now - lastAttemptTime < 1500) {
+                return;
+            }
+            
+            isFetchingAPI = true;
             isProcessing = true;
+            lastAttemptTime = now;
+
             resultBox.className = "info status-scanning";
             resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
             updateFrameProgress(REQUIRED_GOOD_FRAMES);
             
-            // Xóa tracking khi đang gửi API để tránh giật lag
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); 
 
             try {
                 const croppedImage = captureCroppedFace();
                 const fullImage = captureFullFrame();
 
-                if (!croppedImage || !fullImage) throw new Error("Không capture được ảnh");
+                if (!croppedImage || !fullImage) {
+                    throw new Error("Không capture được ảnh");
+                }
+
+                if (!isImageSharp(cropCanvas)) {
+                    resultBox.className = "info status-warning";
+                    resultBox.innerHTML = `⚠️ ẢNH CHƯA RÕ NÉT, VUI LÒNG ĐỨNG YÊN`;
+                    
+                    setTimeout(() => {
+                        isProcessing = false;
+                        isFetchingAPI = false;
+                        hasCalledAPIForCurrentSession = false; 
+                        consecutiveGoodFrames = 0;
+                        updateFrameProgress(0);
+                    }, 1000);
+                    
+                    clearTimeout(timeoutId);
+                    return; 
+                }
 
                 const response = await fetch(`/recognize`, {
                     method: 'POST',
@@ -540,171 +662,60 @@
                         image_base64: croppedImage,
                         full_image_base64: fullImage,
                         client_public_ip: currentPublicIp,
-                        attendance_type: 'Tập trung v3'
-                    })
+                        attendance_type: 'Tập trung v2'
+                    }),
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (data.recognized) {
-                    resultBox.className = "info status-ok";
-                    resultBox.innerHTML = `✅ XIN CHÀO: ${data.user_id.toUpperCase()}`;
-                    addHistoryItem(data.user_id, data.match_probability);
-                    triggerSuccessPopup(data.user_id.toUpperCase());
+                    const checkTime = Date.now();
+                    if (userCooldowns[data.user_id] && checkTime - userCooldowns[data.user_id] < USER_COOLDOWN_MS) {
+                        resultBox.className = "info status-ok";
+                        resultBox.innerHTML = `✅ ${data.user_id.toUpperCase()} ĐÃ CHẤM CÔNG`;
+                    } else {
+                        userCooldowns[data.user_id] = checkTime;
+                        resultBox.className = "info status-ok";
+                        resultBox.innerHTML = `✅ XIN CHÀO: ${data.user_id.toUpperCase()}`;
+                        addHistoryItem(data.user_id, data.match_probability);
+                        triggerSuccessPopup(data.user_id.toUpperCase());
+                    }
                 } else {
                     resultBox.className = "info status-warning";
-                    resultBox.innerHTML = `⚠️ KHÔNG NHẬN DIỆN ĐƯỢC`;
+                    resultBox.innerHTML = `⚠️ KHÔNG NHẬN DIỆN ĐƯỢC - ĐANG THỬ LẠI...`;
                 }
 
             } catch (e) {
+                clearTimeout(timeoutId);
                 console.error("Lỗi API:", e);
                 resultBox.className = "info status-err";
-                resultBox.innerHTML = `⚠️ LỖI KẾT NỐI`;
+                if (e.name === 'AbortError') {
+                    resultBox.innerHTML = `⚠️ MÁY CHỦ PHẢN HỒI QUÁ LÂU - ĐANG THỬ LẠI...`;
+                } else {
+                    resultBox.innerHTML = `⚠️ LỖI KẾT NỐI - ĐANG THỬ LẠI...`;
+                }
             } finally {
+                // FIX: Timeout 2s để cho phép quét tiếp (dù thành công hay thất bại)
                 setTimeout(() => {
                     isProcessing = false;
+                    isFetchingAPI = false;
+                    
+                    // Xóa khóa nhận diện
                     hasCalledAPIForCurrentSession = false;
+
                     consecutiveGoodFrames = 0;
                     updateFrameProgress(0);
-                }, 2000);
+                }, 2000); 
             }
         }
 
         async function processVideoFrame() {
-            if (isSleeping || video.readyState < 2 || !isModelReady) {
-                requestAnimationFrame(processVideoFrame);
-                return;
+            if (!isSleeping && video.readyState >= 2 && !isFaceDetectionRunning) {
+                isFaceDetectionRunning = true;
+                await faceDetection.send({ image: video });
             }
-
-            const results = faceDetector.detectForVideo(video, performance.now());
-            
-            // Luôn xóa canvas tracking đầu mỗi frame
-            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-
-            if (results.detections.length > 0) {
-                resetSleepTimer();
-
-                const detection = results.detections[0];
-                lastDetection = detection; 
-                const bbox = detection.boundingBox;
-                const keypoints = detection.keypoints;
-
-                // ---- VẼ TRACKING LÊN OVERLAY CANVAS ----
-                if (!isProcessing) {
-                    // Vẽ Box
-                    overlayCtx.strokeStyle = "#00f2ff"; // Màu đồng bộ với giao diện
-                    overlayCtx.lineWidth = 3;
-                    overlayCtx.strokeRect(bbox.originX, bbox.originY, bbox.width, bbox.height);
-                    
-                    // Vẽ Mắt trái & phải
-                    overlayCtx.fillStyle = "#00ff88";
-                    const rE = keypoints[0], lE = keypoints[1], nose = keypoints[2];
-                    overlayCtx.beginPath(); overlayCtx.arc(rE.x * overlayCanvas.width, rE.y * overlayCanvas.height, 4, 0, 2*Math.PI); overlayCtx.fill();
-                    overlayCtx.beginPath(); overlayCtx.arc(lE.x * overlayCanvas.width, lE.y * overlayCanvas.height, 4, 0, 2*Math.PI); overlayCtx.fill();
-                    // Vẽ Mũi
-                    overlayCtx.fillStyle = "#ffb800";
-                    overlayCtx.beginPath(); overlayCtx.arc(nose.x * overlayCanvas.width, nose.y * overlayCanvas.height, 4, 0, 2*Math.PI); overlayCtx.fill();
-                }
-                // ------------------------------------------
-
-                const faceSize = bbox.width / video.videoWidth;
-                const faceX = (bbox.originX + bbox.width / 2) / video.videoWidth;
-                const faceY = (bbox.originY + bbox.height / 2) / video.videoHeight;
-
-                distanceFill.style.width = (faceSize * 100) + "%";
-
-                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) &&
-                                   (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
-
-                let isStraight = true;
-                let poseWarning = "";
-
-                if (keypoints && keypoints.length >= 3) {
-                    const eyeR = keypoints[0], eyeL = keypoints[1], nose = keypoints[2];
-                    const eyeDistX = Math.abs(eyeL.x - eyeR.x);
-                    const eyeDistY = Math.abs(eyeL.y - eyeR.y);
-
-                    if (eyeDistY / eyeDistX > 0.25) {
-                        isStraight = false;
-                        poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
-                    } else {
-                        const noseDistL = Math.abs(nose.x - eyeL.x);
-                        const noseDistR = Math.abs(nose.x - eyeR.x);
-                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.35) {
-                            isStraight = false;
-                            poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
-                        }
-                    }
-                }
-
-                if (!isCentered) {
-                    guideCircle.classList.remove('guide-active');
-                    consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
-                    if (!isProcessing) {
-                        resultBox.className = "info status-warning";
-                        resultBox.innerHTML = `⚠️ HÃY ĐƯA MẶT VÀO GIỮA KHUNG`;
-                    }
-                }
-                else if (!isStraight) {
-                    guideCircle.classList.remove('guide-active');
-                    consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
-                    if (!isProcessing) {
-                        resultBox.className = "info status-warning";
-                        resultBox.innerHTML = poseWarning;
-                    }
-                }
-                else if (faceSize < FACE_MIN_SIZE) {
-                    guideCircle.classList.remove('guide-active');
-                    consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
-                    if (!isProcessing) {
-                        resultBox.className = "info status-warning";
-                        resultBox.innerHTML = `⚠️ VUI LÒNG LẠI GẦN CAMERA HƠN`;
-                    }
-                }
-                else if (faceSize > FACE_MAX_SIZE) {
-                    guideCircle.classList.remove('guide-active');
-                    consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
-                    if (!isProcessing) {
-                        resultBox.className = "info status-warning";
-                        resultBox.innerHTML = `⚠️ VUI LÒNG ĐỨNG XA RA CHÚT`;
-                    }
-                }
-                else {
-                    guideCircle.classList.add('guide-active');
-
-                    if (!isProcessing && !hasCalledAPIForCurrentSession) {
-                        consecutiveGoodFrames = Math.min(consecutiveGoodFrames + 1, REQUIRED_GOOD_FRAMES);
-                        updateFrameProgress(consecutiveGoodFrames);
-                    }
-
-                    if (!isProcessing && !hasCalledAPIForCurrentSession && consecutiveGoodFrames < REQUIRED_GOOD_FRAMES) {
-                        resultBox.className = "info status-scanning";
-                        resultBox.innerHTML = `📸 ĐANG XÁC NHẬN... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
-                    }
-
-                    if (!isProcessing && !hasCalledAPIForCurrentSession && consecutiveGoodFrames >= REQUIRED_GOOD_FRAMES) {
-                        hasCalledAPIForCurrentSession = true;
-                        sendToAPI();
-                        lastProcessedFrameTime = Date.now();
-                    }
-                }
-            } else {
-                lastDetection = null;
-                distanceFill.style.width = "0%";
-                guideCircle.classList.remove('guide-active');
-                consecutiveGoodFrames = 0;
-                updateFrameProgress(0);
-
-                if (!isProcessing && !isSleeping && isModelReady) {
-                    resultBox.className = "info status-scanning";
-                    resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
-                }
-            }
-
             requestAnimationFrame(processVideoFrame);
         }
 
@@ -716,10 +727,12 @@
                 });
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
-                    // Cập nhật độ phân giải thật của canvas khớp với video
                     overlayCanvas.width = video.videoWidth;
                     overlayCanvas.height = video.videoHeight;
-                    requestAnimationFrame(processVideoFrame);
+                    if (!isLoopRunning) {
+                        isLoopRunning = true;
+                        processVideoFrame();
+                    }
                 }
             } catch (err) {
                 resultBox.className = "info status-err";
@@ -765,11 +778,12 @@
             setTimeout(() => { window.location.reload(true); }, msUntilReload);
         }
 
-        // Bắt đầu khởi tạo quy trình
-        initModel();
+        startCamera();
         resetSleepTimer();
         scheduleMorningReload();
     </script>
+
+
 </body>
 
 </html>

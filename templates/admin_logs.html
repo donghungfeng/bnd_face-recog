@@ -104,6 +104,8 @@
     .btn-reject:hover { background: #ef4444; color: white; }
     .btn-delete-log { background: #f87171; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 5px;}
     .btn-delete-log:hover { background: #dc2626; box-shadow: 0 2px 5px rgba(220,38,38,0.3);}
+    .btn-edit-log { background: #3b82f6; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 5px; margin-right: 5px;}
+    .btn-edit-log:hover { background: #2563eb; box-shadow: 0 2px 5px rgba(59,130,246,0.3);}
 
     /* --- PHÂN TRANG (PAGINATION) --- */
     .pagination-container {
@@ -289,6 +291,27 @@
     </div>
 </div>
 
+<div id="editModal" class="modal-overlay">
+    <div class="modal-content" style="border-top: 5px solid #3b82f6;">
+        <h3 style="margin-top:0; color: #3b82f6; padding-bottom: 10px; font-size: 1.2rem;">✏️ Sửa Bản Ghi Chấm Công</h3>
+        <form id="editForm">
+            <input type="hidden" id="edit_att_id">
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.85rem; font-weight: bold; color: #475569;">Giờ vào:</label>
+                <input type="time" step="1" id="edit_scan_time" required style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-top: 5px; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.85rem; font-weight: bold; color: #475569;">Ghi chú thay đổi (nếu có):</label>
+                <textarea id="edit_note" rows="3" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-top: 5px; resize: vertical; box-sizing: border-box;"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: #e2e8f0; font-weight: bold; cursor: pointer;" onclick="closeEditModal()">HỦY BỎ</button>
+                <button type="submit" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: #3b82f6; color: white; font-weight: bold; cursor: pointer;">CẬP NHẬT</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="imageModal" class="modal-overlay" onclick="closeImageModal()">
     <div class="img-modal-content" onclick="event.stopPropagation()">
         <button class="img-modal-close" onclick="closeImageModal()">✖</button>
@@ -457,12 +480,15 @@
                 `<img src="${item.image_path}" class="att-thumb" onclick="openImageModal('${item.image_path}', '${item.full_name}')">` : 
                 `<span style="color:#cbd5e1;">Không ảnh</span>`;
 
-            // 5. Ghi chú thiết bị
+            let gpsHtml = (item.latitude && item.longitude) 
+                ? `<a href="https://www.google.com/maps?q=${item.latitude},${item.longitude}" target="_blank" title="Xem trên Google Maps">📍 Xem Bản Đồ</a>` 
+                : '<span style="color: #94a3b8;">📍 No GPS</span>';
+
             let deviceInfoHtml = `
                 <div class="device-info">
                     <span class="badge badge-type-kiosk">${item.attendance_type}</span>
                     <span>IP: ${item.client_ip || 'N/A'}</span>
-                    ${item.latitude ? `<span>📍 GPS OK</span>` : '<span>📍 No GPS</span>'}
+                    ${gpsHtml}
                 </div>
             `;
 
@@ -479,8 +505,13 @@
                     <td>${deviceInfoHtml}</td> 
                     <td>${statusBadge}</td>
                     <td>
-                        ${item.explanation_reason ? `<div class="explain-text">${item.explanation_reason}</div>` : ''}
-                        <button class="btn-delete-log" onclick="deleteRecord(${item.id}, '${item.full_name}')">🗑️ Xóa</button>
+                        ${item.note ? `<div class="explain-text" style="margin-bottom: 5px;">${item.note}</div>` : ''}
+                        ${item.explanation_reason ? `<div class="explain-text" style="margin-bottom: 5px;">${item.explanation_reason}</div>` : ''}
+                        
+                        <div style="display: flex; flex-wrap: wrap;">
+                            <button class="btn-edit-log" onclick="openEditModal(${item.id}, '${item.scan_time}', '${item.note || ''}')">✏️ Sửa</button>
+                            <button class="btn-delete-log" onclick="deleteRecord(${item.id}, '${item.full_name}')">🗑️ Xóa</button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -588,6 +619,49 @@
         document.getElementById('imageModal').style.display = 'none';
         document.getElementById('previewImage').src = ""; 
     }
+
+    // --- CÁC HÀM XỬ LÝ SỬA BẢN GHI ---
+    function openEditModal(id, time, note) {
+        document.getElementById('edit_att_id').value = id;
+        document.getElementById('edit_scan_time').value = time; // Gán giờ vào (chuẩn HH:MM:SS)
+        document.getElementById('edit_note').value = note !== 'null' && note !== 'undefined' ? note : '';
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit_att_id').value;
+        const scanTime = document.getElementById('edit_scan_time').value;
+        const note = document.getElementById('edit_note').value.trim();
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.innerText = "ĐANG LƯU..."; submitBtn.disabled = true;
+
+        try {
+            const res = await fetch(`/api/attendance/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ scan_time: scanTime, note: note, role: currentUserRole })
+            });
+
+            if(res.ok) {
+                closeEditModal();
+                fetchAttendance();
+                alert("✅ Cập nhật bản ghi thành công!");
+            } else {
+                const data = await res.json();
+                alert("❌ Lỗi: " + (data.detail || "Không thể lưu dữ liệu"));
+            }
+        } catch (err) {
+            alert("❌ Lỗi kết nối máy chủ!");
+        } finally {
+            submitBtn.innerText = "CẬP NHẬT"; submitBtn.disabled = false;
+        }
+    });
 
     fetchAttendance();
 </script>

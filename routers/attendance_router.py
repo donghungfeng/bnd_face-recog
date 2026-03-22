@@ -16,7 +16,7 @@ from typing import Optional
 
 from database import get_db
 from models import Employee, Attendance, LeaveRequest, ShiftCategory
-from schemas import EmployeeCreate, LeaveSubmit, ExplainRequest, ReviewExplainRequest, MarkFraudRequest
+from schemas import AttendanceUpdateRequest, EmployeeCreate, LeaveSubmit, ExplainRequest, ReviewExplainRequest, MarkFraudRequest
 from config import DB_PATH
 
 router = APIRouter()
@@ -255,3 +255,48 @@ def delete_attendance_record(
         raise HTTPException(status_code=500, detail="Lỗi SQL khi xóa bản ghi.")
 
     return {"status": "success", "message": f"Đã xóa vĩnh viễn bản ghi ID {record_id}"}
+
+@router.put("/api/attendance/{record_id}")
+def update_attendance_record(
+    record_id: int, 
+    req: AttendanceUpdateRequest, 
+    db: Session = Depends(get_db)
+):
+    # 1. Chặn cửa: Chỉ Admin/Manager mới được phép gọi lệnh Sửa
+    if req.role not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Truy cập bị từ chối: Chỉ Quản lý hoặc Admin mới được phép sửa!")
+
+    # 2. Tìm bản ghi
+    record = db.query(Attendance).filter(Attendance.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi này!")
+
+    # 3. Cập nhật Thời gian
+    if req.scan_time:
+        try:
+            # Lấy giờ/phút/giây từ request (có thể là HH:MM:SS hoặc HH:MM)
+            time_parts = req.scan_time.split(":")
+            hour = int(time_parts[0])
+            minute = int(time_parts[1])
+            second = int(time_parts[2]) if len(time_parts) > 2 else 0
+            
+            # Kết hợp với ngày hiện tại của bản ghi
+            new_time = time(hour, minute, second)
+            record.check_in_time = datetime.combine(record.check_in_time.date(), new_time)
+            
+            # (Tuỳ chọn) Tính lại Early/Late nếu muốn, ở đây tạm thời giữ nguyên hoặc bác có thể tái sử dụng logic tính trễ ở trên.
+            
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Định dạng thời gian không hợp lệ!")
+
+    # 4. Cập nhật Ghi chú
+    if req.note is not None:
+        record.note = req.note
+
+    # 5. Lưu vào DB
+    try:
+        db.commit()
+        return {"status": "success", "message": "Đã cập nhật bản ghi thành công!"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Lỗi SQL khi lưu dữ liệu.")
