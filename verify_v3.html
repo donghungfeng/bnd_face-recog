@@ -113,8 +113,17 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.1); }
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
         }
 
         .main-wrapper {
@@ -164,15 +173,45 @@
         }
 
         @keyframes scan {
-            0%, 100% { top: 5%; }
-            50% { top: 95%; }
+
+            0%,
+            100% {
+                top: 5%;
+            }
+
+            50% {
+                top: 95%;
+            }
         }
 
-        .status-scanning { color: var(--primary); border-color: var(--primary); }
-        .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
-        .status-warning { color: var(--warning); border-color: var(--warning); }
-        .status-err { color: var(--error); border-color: var(--error); background: rgba(255, 68, 68, 0.1); }
-        .status-sleep { color: #94a3b8; border-color: #475569; background: #1e293b; }
+        .status-scanning {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .status-ok {
+            color: var(--success);
+            border-color: var(--success);
+            background: rgba(0, 255, 136, 0.1);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .status-warning {
+            color: var(--warning);
+            border-color: var(--warning);
+        }
+
+        .status-err {
+            color: var(--error);
+            border-color: var(--error);
+            background: rgba(255, 68, 68, 0.1);
+        }
+
+        .status-sleep {
+            color: #94a3b8;
+            border-color: #475569;
+            background: #1e293b;
+        }
 
         .loader {
             width: 18px;
@@ -183,7 +222,15 @@
             animation: spin 0.8s linear infinite;
         }
 
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
 
         /* BẢNG LỊCH SỬ */
         .history-container {
@@ -198,46 +245,210 @@
             box-sizing: border-box;
         }
 
-        .history-title { font-family: 'Orbitron', sans-serif; font-size: 0.8rem; color: #94a3b8; margin-bottom: 10px; letter-spacing: 1px; display: flex; align-items: center; gap: 5px; }
-        .history-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 100%; }
-        
-        .history-item {
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 5px;
-            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; text-align: center; animation: popIn 0.3s ease; overflow: hidden;
+        .history-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
-        .history-item:first-child { background: rgba(0, 255, 136, 0.15); border: 1px solid rgba(0, 255, 136, 0.5); box-shadow: 0 0 10px rgba(0, 255, 136, 0.2); }
-        .history-time { color: #cbd5e1; font-family: monospace; font-size: 0.75rem; }
-        .history-name { font-weight: bold; color: var(--success); font-size: 0.85rem; width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; word-wrap: break-word; min-height: 2.6em; }
-        .history-prob { color: var(--primary); font-size: 0.75rem; background: rgba(0, 242, 255, 0.1); padding: 2px 8px; border-radius: 10px; margin-top: 2px; }
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            width: 100%;
+        }
 
-        @keyframes popIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+        .history-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 10px 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            text-align: center;
+            animation: popIn 0.3s ease;
+            overflow: hidden;
+        }
+
+        .history-item:first-child {
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid rgba(0, 255, 136, 0.5);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+        }
+
+        .history-time {
+            color: #cbd5e1;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+
+        .history-name {
+            font-weight: bold;
+            color: var(--success);
+            font-size: 0.85rem;
+            width: 100%;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+            word-wrap: break-word;
+            min-height: 2.6em;
+        }
+
+        .history-prob {
+            color: var(--primary);
+            font-size: 0.75rem;
+            background: rgba(0, 242, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 2px;
+        }
+
+        @keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
 
         /* POPUP XIN CHÀO */
         .popup-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.9); display: none; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(8px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(8px);
         }
 
         .popup-content {
-            background: var(--card); border: 2px solid var(--success); padding: 30px 40px; border-radius: 20px; text-align: center; box-shadow: 0 15px 40px rgba(0, 255, 136, 0.3); animation: popIn 0.3s ease-out; position: relative; max-width: 80%;
+            background: var(--card);
+            border: 2px solid var(--success);
+            padding: 30px 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.3);
+            animation: popIn 0.3s ease-out;
+            position: relative;
+            max-width: 80%;
         }
 
-        .popup-close { position: absolute; top: 10px; right: 15px; background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
-        .popup-close:hover { color: #fff; transform: scale(1.1); }
-        .popup-icon { font-size: 3.5rem; margin-bottom: 10px; }
-        .popup-title { color: #fff; font-size: 1.1rem; margin: 0 0 5px 0; font-weight: normal; }
-        .popup-name { color: var(--success); font-size: 1.8rem; font-family: 'Orbitron', sans-serif; margin: 0; text-shadow: 0 0 15px rgba(0, 255, 136, 0.5); font-weight: bold; }
+        .popup-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .popup-close:hover {
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        .popup-icon {
+            font-size: 3.5rem;
+            margin-bottom: 10px;
+        }
+
+        .popup-title {
+            color: #fff;
+            font-size: 1.1rem;
+            margin: 0 0 5px 0;
+            font-weight: normal;
+        }
+
+        .popup-name {
+            color: var(--success);
+            font-size: 1.8rem;
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+            font-weight: bold;
+        }
 
         /* MÀN HÌNH NGỦ ĐÔNG */
         #sleepOverlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 50; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 50;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
         }
 
-        .btn-wake { background: var(--primary); color: #000; border: none; padding: 18px 35px; font-size: 1.2rem; font-family: 'Orbitron', sans-serif; font-weight: bold; border-radius: 40px; cursor: pointer; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); transition: 0.3s; display: flex; align-items: center; gap: 10px; }
-        .btn-wake:hover { transform: scale(1.05); box-shadow: 0 0 35px rgba(0, 242, 255, 0.8); }
-        .icon-sleep { font-size: 3rem; margin-bottom: 15px; animation: float 3s ease-in-out infinite; }
+        .btn-wake {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 18px 35px;
+            font-size: 1.2rem;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            border-radius: 40px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .btn-wake:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 35px rgba(0, 242, 255, 0.8);
+        }
+
+        .icon-sleep {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
     </style>
 </head>
 
@@ -284,7 +495,7 @@
         </div>
     </div>
 
-<script>
+    <script>
         const video = document.getElementById('webcam');
         const overlayCanvas = document.getElementById('overlayCanvas');
         const overlayCtx = overlayCanvas.getContext('2d');
@@ -305,20 +516,20 @@
         const IDLE_TIMEOUT = 5 * 60 * 1000;
 
         let consecutiveGoodFrames = 0;
-        const REQUIRED_GOOD_FRAMES = 3; 
+        const REQUIRED_GOOD_FRAMES = 3;
         let lastProcessedFrameTime = 0;
         let hasCalledAPIForCurrentSession = false;
-        
-        let isLoopRunning = false; 
+
+        let isLoopRunning = false;
         let emptyFrames = 0;
 
-        let isFetchingAPI = false; 
-        let lastAttemptTime = 0; 
+        let isFetchingAPI = false;
+        let lastAttemptTime = 0;
 
         const USER_COOLDOWN_MS = 30 * 1000;
         const userCooldowns = {};
 
-        const SHARPNESS_THRESHOLD = 60; 
+        const SHARPNESS_THRESHOLD = 60;
         const FACE_MIN_SIZE = 0.20;
         const FACE_MAX_SIZE = 0.60;
 
@@ -346,7 +557,7 @@
                 const variance = (sumSq / count) - (mean * mean);
                 return variance > threshold;
             } catch (e) {
-                return true; 
+                return true;
             }
         }
 
@@ -379,8 +590,8 @@
         function drawTargetingFrame(ctx, x, y, width, height, color, isSolid = false) {
             ctx.strokeStyle = color;
             ctx.lineWidth = isSolid ? 4 : 2;
-            const len = Math.min(width, height) * 0.2; 
-            
+            const len = Math.min(width, height) * 0.2;
+
             ctx.beginPath();
             ctx.moveTo(x, y + len); ctx.lineTo(x, y); ctx.lineTo(x + len, y);
             ctx.moveTo(x + width - len, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + len);
@@ -391,18 +602,18 @@
 
         faceDetection.onResults((results) => {
             isFaceDetectionRunning = false;
-            
+
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
             const w = overlayCanvas.width;
             const h = overlayCanvas.height;
-            const targetSize = Math.min(w, h) * 0.5; 
+            const targetSize = Math.min(w, h) * 0.5;
             const targetX = (w - targetSize) / 2;
             const targetY = (h - targetSize) / 2;
 
             if (results.detections.length > 0) {
                 resetSleepTimer();
-                emptyFrames = 0; 
+                emptyFrames = 0;
 
                 const detection = results.detections[0];
                 lastDetection = detection.boundingBox;
@@ -415,7 +626,7 @@
                 distanceFill.style.width = (faceSize * 100) + "%";
 
                 let isStraight = true;
-                let poseWarning = ""; 
+                let poseWarning = "";
 
                 if (landmarks && landmarks.length >= 3) {
                     const eyeR = landmarks[0];
@@ -433,7 +644,7 @@
                         const noseDistL = Math.abs(nose.x - eyeL.x);
                         const noseDistR = Math.abs(nose.x - eyeR.x);
 
-                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.40) { 
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.40) {
                             isStraight = false;
                             poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
                         }
@@ -480,7 +691,7 @@
                             resultBox.className = "info status-scanning";
                             resultBox.innerHTML = `📸 ĐANG XÁC NHẬN... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
                         } else {
-                            hasCalledAPIForCurrentSession = true; 
+                            hasCalledAPIForCurrentSession = true;
                             sendToAPI();
                         }
                     }
@@ -496,7 +707,7 @@
                 distanceFill.style.width = "0%";
                 consecutiveGoodFrames = 0;
                 updateFrameProgress(0);
-                
+
                 if (!isProcessing && !isSleeping) {
                     drawTargetingFrame(overlayCtx, targetX, targetY, targetSize, "rgba(255, 255, 255, 0.4)", false);
                     resultBox.className = "info status-scanning";
@@ -613,11 +824,11 @@
 
         async function sendToAPI() {
             const now = Date.now();
-            
+
             if (isFetchingAPI || now - lastAttemptTime < 1500) {
                 return;
             }
-            
+
             isFetchingAPI = true;
             isProcessing = true;
             lastAttemptTime = now;
@@ -625,11 +836,11 @@
             resultBox.className = "info status-scanning";
             resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
             updateFrameProgress(REQUIRED_GOOD_FRAMES);
-            
+
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); 
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             try {
                 const croppedImage = captureCroppedFace();
@@ -642,17 +853,17 @@
                 if (!isImageSharp(cropCanvas)) {
                     resultBox.className = "info status-warning";
                     resultBox.innerHTML = `⚠️ ẢNH CHƯA RÕ NÉT, VUI LÒNG ĐỨNG YÊN`;
-                    
+
                     setTimeout(() => {
                         isProcessing = false;
                         isFetchingAPI = false;
-                        hasCalledAPIForCurrentSession = false; 
+                        hasCalledAPIForCurrentSession = false;
                         consecutiveGoodFrames = 0;
                         updateFrameProgress(0);
                     }, 1000);
-                    
+
                     clearTimeout(timeoutId);
-                    return; 
+                    return;
                 }
 
                 const response = await fetch(`/recognize`, {
@@ -701,13 +912,13 @@
                 setTimeout(() => {
                     isProcessing = false;
                     isFetchingAPI = false;
-                    
+
                     // Xóa khóa nhận diện
                     hasCalledAPIForCurrentSession = false;
 
                     consecutiveGoodFrames = 0;
                     updateFrameProgress(0);
-                }, 2000); 
+                }, 2000);
             }
         }
 
@@ -750,7 +961,7 @@
             }
         }
 
-        function scheduleMorningReload() {
+        function schedulePeriodicReload() {
             const now = new Date();
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
@@ -759,28 +970,48 @@
             targetTime.setSeconds(0);
             targetTime.setMilliseconds(0);
 
-            if (currentHour >= 6 && currentHour < 8) {
+            const isMorningWindow = currentHour >= 6 && currentHour < 8;
+            const isAfternoonWindow = currentHour >= 16 && currentHour < 18;
+
+            // Trường hợp 1: Nằm trong khung 6h00 - 7h59 HOẶC 16h00 - 17h59
+            if (isMorningWindow || isAfternoonWindow) {
+                // Tính mốc 10 phút tiếp theo (VD: 12p -> 20p, 20p -> 30p, 55p -> 60p)
                 const next10MinMark = Math.ceil((currentMinute + 1) / 10) * 10;
+
                 if (next10MinMark === 60) {
                     targetTime.setHours(currentHour + 1);
                     targetTime.setMinutes(0);
                 } else {
                     targetTime.setMinutes(next10MinMark);
                 }
-            } else if (currentHour < 6) {
+            }
+            // Trường hợp 2: Trước 6h sáng -> Hẹn đúng 6h00 sáng nay
+            else if (currentHour < 6) {
                 targetTime.setHours(6, 0, 0, 0);
-            } else {
+            }
+            // Trường hợp 3: Từ 8h00 sáng đến trước 16h00 chiều -> Hẹn đúng 16h00 chiều nay
+            else if (currentHour >= 8 && currentHour < 16) {
+                targetTime.setHours(16, 0, 0, 0);
+            }
+            // Trường hợp 4: Từ 18h00 tối trở đi -> Hẹn đúng 6h00 sáng ngày mai
+            else {
                 targetTime.setDate(targetTime.getDate() + 1);
                 targetTime.setHours(6, 0, 0, 0);
             }
 
             const msUntilReload = targetTime.getTime() - now.getTime();
-            setTimeout(() => { window.location.reload(true); }, msUntilReload);
+
+            console.log(`Bảo trì RAM: Tự động Reload tiếp theo vào lúc ${targetTime.toLocaleTimeString('vi-VN')}`);
+
+            setTimeout(() => {
+                console.log("Đang tiến hành tải lại trang...");
+                window.location.reload(true);
+            }, msUntilReload);
         }
 
         startCamera();
         resetSleepTimer();
-        scheduleMorningReload();
+        schedulePeriodicReload();
     </script>
 
 

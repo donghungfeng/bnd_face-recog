@@ -965,7 +965,7 @@
         // ==========================================
         // TỰ ĐỘNG RELOAD LÚC 6H SÁNG ĐỂ BẢO TRÌ RAM
         // ==========================================
-        function scheduleMorningReload() {
+        function schedulePeriodicReload() {
             const now = new Date();
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
@@ -974,8 +974,11 @@
             targetTime.setSeconds(0);
             targetTime.setMilliseconds(0);
 
-            // Trường hợp 1: Nằm trong khung 6h00 - 7h59
-            if (currentHour >= 6 && currentHour < 8) {
+            const isMorningWindow = currentHour >= 6 && currentHour < 8;
+            const isAfternoonWindow = currentHour >= 16 && currentHour < 18;
+
+            // Trường hợp 1: Nằm trong khung 6h00 - 7h59 HOẶC 16h00 - 17h59
+            if (isMorningWindow || isAfternoonWindow) {
                 // Tính mốc 10 phút tiếp theo (VD: 12p -> 20p, 20p -> 30p, 55p -> 60p)
                 const next10MinMark = Math.ceil((currentMinute + 1) / 10) * 10;
 
@@ -986,11 +989,15 @@
                     targetTime.setMinutes(next10MinMark);
                 }
             }
-            // Trường hợp 2: Trước 6h sáng -> Hẹn đúng 6h sáng nay
+            // Trường hợp 2: Trước 6h sáng -> Hẹn đúng 6h00 sáng nay
             else if (currentHour < 6) {
                 targetTime.setHours(6, 0, 0, 0);
             }
-            // Trường hợp 3: Qua 8h sáng -> Hẹn đúng 6h sáng ngày mai
+            // Trường hợp 3: Từ 8h00 sáng đến trước 16h00 chiều -> Hẹn đúng 16h00 chiều nay
+            else if (currentHour >= 8 && currentHour < 16) {
+                targetTime.setHours(16, 0, 0, 0);
+            }
+            // Trường hợp 4: Từ 18h00 tối trở đi -> Hẹn đúng 6h00 sáng ngày mai
             else {
                 targetTime.setDate(targetTime.getDate() + 1);
                 targetTime.setHours(6, 0, 0, 0);
@@ -1009,7 +1016,7 @@
         // Khởi động hệ thống
         startCamera();
         resetSleepTimer();
-        scheduleMorningReload(); // Kích hoạt bộ đếm giờ tự động Reload
+        schedulePeriodicReload(); // Kích hoạt bộ đếm giờ tự động Reload
     </script>
 </body>
 
