@@ -306,9 +306,61 @@
                 </table>
             </div>
 
+            <!-- Pagination Controls -->
+            <div id="paginationControls"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #fff; border: 1px solid #e2e8f0; border-top: 2px solid #cbd5e1; border-radius: 0 0 8px 8px; font-size: 0.85rem; box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.1);">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <button class="btn-pagination" id="btnFirst" onclick="jumpToPage(1)" title="Trang đầu">⏮️</button>
+                    <button class="btn-pagination" id="btnPrev" onclick="changePage(-1)" title="Trang trước">◀️</button>
+                    <span style="margin: 0 10px;">
+                        Trang <input type="number" id="pageInput" value="1" min="1" onchange="jumpToPage(this.value)"
+                            style="width: 45px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px;">
+                        / <span id="totalPageDisplay">1</span>
+                    </span>
+                    <button class="btn-pagination" id="btnNext" onclick="changePage(1)" title="Trang sau">▶️</button>
+                    <button class="btn-pagination" id="btnLast" onclick="jumpToPage(totalPages)" title="Trang cuối">⏭️</button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 15px; color: #64748b; flex-wrap: wrap;">
+                    <span id="totalItemsDisplay">Tổng số: 0</span>
+                    <span>
+                        Kết quả trên trang:
+                        <select id="pageSizeSelect" onchange="updatePageSize(this.value)"
+                            style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px; outline: none;">
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </span>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
+
+<style>
+    .btn-pagination {
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-pagination:hover:not(:disabled) {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+    }
+    .btn-pagination:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -316,6 +368,11 @@
     const API_URL = "/api/employees";
     let currentEmployees = []; 
     let allDepartments = [];
+    
+    // Biến phân trang
+    let currentPage = 1;
+    let pageSize = 15;
+    let totalPages = 1;
 
     function toggleCard(contentId, iconId) {
         const content = document.getElementById(contentId);
@@ -353,13 +410,22 @@
     }
 
     async function fetchEmployees() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        const deptId = document.getElementById('deptFilter').value; 
+        
+        // Pass page, size, search, and department_id
+        let url = `${API_URL}?page=${currentPage}&size=${pageSize}`;
+        if (keyword) url += `&search=${encodeURIComponent(keyword)}`;
+        if (deptId) url += `&department_id=${deptId}`;
+
         try {
-            const res = await fetch(API_URL);
+            const res = await fetch(url);
             const data = await res.json();
             
-            // CẬP NHẬT Ở ĐÂY: Lưu mảng items vào currentEmployees
             currentEmployees = data.items || data; 
-            
+            if (data.items) {
+                renderPagination(data.page, data.total_pages, data.total);
+            }
             renderTable(currentEmployees);
         } catch (e) {
             console.error("Lỗi fetch:", e);
@@ -425,24 +491,53 @@
         });
     }
 
+    let searchTimeout = null;
     function filterTable() {
-        // Kiểm tra an toàn: nếu currentEmployees chưa phải là mảng thì thoát
-        if (!Array.isArray(currentEmployees)) return;
+        // Debounce gọi API để không load liên tục khi đang gõ
+        if (searchTimeout) clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1; // reset về trang 1
+            fetchEmployees();
+        }, 300);
+    }
 
-        const keyword = document.getElementById('searchInput').value.toLowerCase();
-        const deptId = document.getElementById('deptFilter').value; 
-        
-        const filtered = currentEmployees.filter(emp => {
-            // Thêm kiểm tra null/undefined cho full_name và username
-            const fullName = (emp.full_name || "").toLowerCase();
-            const username = (emp.username || "").toLowerCase();
-            
-            const matchName = fullName.includes(keyword) || username.includes(keyword);
-            const matchDept = deptId === "" || String(emp.department_id) === deptId;
-            return matchName && matchDept;
-        });
-        
-        renderTable(filtered);
+    // --- CÁC HÀM PHÂN TRANG ---
+    function renderPagination(page, totalPageCount, totalItems) {
+        totalPages = totalPageCount;
+        currentPage = page;
+
+        document.getElementById('pageInput').value = page;
+        document.getElementById('totalPageDisplay').innerText = totalPageCount;
+        document.getElementById('totalItemsDisplay').innerText = `Tổng số: ${totalItems}`;
+
+        document.getElementById('btnFirst').disabled = (page <= 1);
+        document.getElementById('btnPrev').disabled = (page <= 1);
+        document.getElementById('btnNext').disabled = (page >= totalPageCount);
+        document.getElementById('btnLast').disabled = (page >= totalPageCount);
+    }
+
+    function changePage(delta) {
+        jumpToPage(currentPage + delta);
+    }
+
+    function jumpToPage(page) {
+        const pageNum = parseInt(page);
+        if (isNaN(pageNum) || pageNum < 1) {
+            document.getElementById('pageInput').value = currentPage;
+            return;
+        }
+        if (pageNum > totalPages && totalPages > 0) {
+            currentPage = totalPages;
+        } else {
+            currentPage = pageNum;
+        }
+        fetchEmployees();
+    }
+
+    function updatePageSize(newSize) {
+        pageSize = parseInt(newSize);
+        currentPage = 1; 
+        fetchEmployees();
     }
 
     function downloadTemplate() { window.location.href = '/api/employees/export_template'; }

@@ -103,6 +103,21 @@ class OrganizationUnit(Base):
     # Relationship để truy vấn con/cha dễ dàng nếu cần
     children = relationship("OrganizationUnit", backref="parent", remote_side=[id])
 
+class MonthlyRecord(Base):
+    __tablename__ = "monthly_records"
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    shift_code = Column(String(50), nullable=True)
+    date = Column(Date, index=True)
+    checkin_time = Column(Time, nullable=True)
+    checkout_time = Column(Time, nullable=True)
+    late_minutes = Column(Integer, default=0)
+    early_minutes = Column(Integer, default=0)
+    status = Column(Integer, default=0)
+    explanation_reason = Column(Text, nullable=True)
+    explanation_status = Column(Integer, default=0)
+    note = Column(Text, nullable=True)
+
 class AppConfig(Base):
     __tablename__ = "app_configs"
 

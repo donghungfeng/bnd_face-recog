@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import date, time
+
+import models
 
 class FaceRequest(BaseModel):
     user_id: str = None
@@ -127,3 +129,63 @@ class AttendanceUpdateRequest(BaseModel):
     scan_time: str = None  # Nhận giờ mới (vd: 07:45:00)
     note: str = None       # Nhận ghi chú mới
     role: str = None
+
+class MonthlyRecordBase(BaseModel):
+    employee_id: int
+    shift_code: Optional[str] = None
+    date: date
+    checkin_time: Optional[time] = None
+    checkout_time: Optional[time] = None
+    late_minutes: int = 0
+    early_minutes: int = 0
+    status: int = 0
+    explanation_reason: Optional[str] = None
+    explanation_status: int = 0
+    note: Optional[str] = None
+
+class MonthlyRecordOut(MonthlyRecordBase):
+    id: Optional[int] = None
+    full_name: Optional[str] = None
+    username: Optional[str] = None
+    shift_display_name: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+    
+class AttendanceSummary(BaseModel):
+    employee_id: int
+    username: str
+    target_date: date
+    # Danh sách các lần quét thực tế (đối tượng Model Attendance)
+    scans: list[models.Attendance]
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        arbitrary_types_allowed=True
+    )
+    
+class AttendanceSummaryByEmployee(BaseModel):
+    # Thông tin cá nhân
+    employee_id: int
+    username: str
+    full_name: str
+    department: Optional[str] = None
+    position: Optional[str] = None
+
+    # Tổng số bản ghi trong kỳ
+    total_days: int
+
+    # Số lượng theo từng trạng thái
+    present_count:            int = 0  # PRESENT = 1
+    late_count:               int = 0  # LATE = 2
+    early_leave_count:        int = 0  # EARLY_LEAVE = 3
+    on_leave_count:           int = 0  # ON_LEAVE = 4
+    unpaid_leave_count:       int = 0  # UNPAID_LEAVE = 5
+    late_and_early_count:     int = 0  # LATE_AND_EARLY_LEAVE = 6
+    absent_count:             int = 0  # ABSENT = 0
+
+    # Phút tổng cộng
+    total_late_minutes:  int = 0
+    total_early_minutes: int = 0
+
+    class Config:
+        from_attributes = True
