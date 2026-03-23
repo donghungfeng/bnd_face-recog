@@ -14,7 +14,7 @@ from fastapi.security import OAuth2PasswordBearer
 # Cấu hình "Chìa khóa bí mật" để mã hóa Token (Trong thực tế nên lưu ở file biến môi trường .env)
 SECRET_KEY = "HRM_BENH_VIEN_SECRET_KEY_2026"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 99999999 # Hết hạn sau 24h
+ACCESS_TOKEN_EXPIRE_HOURS = 87600 # Hết hạn sau 24h
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
