@@ -84,8 +84,8 @@
     /* --- KHỐI THỐNG KÊ --- */
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 15px;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 12px;
         margin-bottom: 25px;
     }
 
@@ -93,7 +93,7 @@
         background: #fff;
         border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 20px 15px;
+        padding: 15px 10px;
         text-align: center;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
         transition: 0.2s;
@@ -105,8 +105,8 @@
     }
 
     .stat-card h4 {
-        margin: 0 0 10px 0;
-        font-size: 0.8rem;
+        margin: 0 0 8px 0;
+        font-size: 0.75rem;
         color: var(--text-muted);
         text-transform: uppercase;
         font-weight: 800;
@@ -114,7 +114,7 @@
     }
 
     .stat-card .num {
-        font-size: 2.2rem;
+        font-size: 1.8rem;
         font-weight: 800;
         margin: 0;
         line-height: 1;
@@ -209,6 +209,9 @@
         align-items: center;
         gap: 5px;
         border: 1px solid transparent;
+        min-width: 140px;
+        justify-content: flex-start;
+        box-sizing: border-box;
     }
 
     .badge-present {
@@ -262,14 +265,20 @@
     }
 
     .time-box {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        width: 100%;
+        max-width: 200px;
         font-family: 'Orbitron', monospace;
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: bold;
         color: var(--primary);
         background: #f0fdf4;
-        padding: 4px 8px;
+        padding: 6px 12px;
         border-radius: 6px;
         border: 1px solid #bbf7d0;
+        box-sizing: border-box;
     }
 
     /* --- GIẢI TRÌNH & BUTTONS --- */
@@ -311,6 +320,13 @@
     .btn-fraud-alert:hover {
         background: #fee2e2;
         border-style: solid;
+    }
+
+    .col-flex-container {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
     }
 
     .explain-wrapper {
@@ -500,67 +516,36 @@
     }
 
     /* ==========================================================
-       RESPONSIVE: IPAD & MOBILE 
+       RESPONSIVE DESIGN (TABLETS & MOBILE)
        ========================================================== */
-    /* ==========================================================
-       RESPONSIVE: IPAD & TABLET (< 1024px)
-       ========================================================== */
+
     @media (max-width: 1024px) {
-
-        /* Mở khóa giới hạn chiều rộng của bảng để không tràn màn hình */
-        table {
-            min-width: 100%;
-        }
-
-        /* Sắp xếp lại bộ lọc (Filter) */
         .filter-bar {
             flex-direction: column;
             align-items: stretch;
-            padding: 15px;
         }
 
         .filter-group-container {
             flex-direction: column;
-            width: 100%;
-            gap: 15px;
         }
 
-        .filter-group {
-            min-width: 100%;
-            flex: 1 !important;
-        }
-
-        .btn-export {
-            width: 100%;
-            margin-top: 5px;
-        }
-
-        /* Khối thống kê thành 2 cột cho iPad */
         .stats-grid {
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
         }
 
-        /* Modal thu gọn lại */
         .modal-content {
             max-width: 90%;
             padding: 20px;
         }
     }
 
-    /* ==========================================================
-       RESPONSIVE: SMARTPHONE (< 768px) 
-       Biến Bảng (Table) thành dạng Thẻ (Card)
-       ========================================================== */
-    /* ==========================================================
-       RESPONSIVE: SMARTPHONE (< 768px) 
-       Biến Bảng thành Thẻ (Grid Card) siêu gọn, chuẩn App Mobile
-       ========================================================== */
     @media (max-width: 768px) {
+        .stat-card .num {
+            font-size: 1.6rem;
+        }
 
-        /* Khối thống kê thành 1 cột */
         .stats-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, 1fr);
         }
 
         table,
@@ -571,190 +556,91 @@
         tr {
             display: block;
             width: 100%;
-            box-sizing: border-box;
+        }
+
+        table {
+            min-width: 100%;
         }
 
         thead tr {
             display: none;
         }
 
-        /* Ẩn hoàn toàn thanh tiêu đề ngang */
-
-        /* -------------------------------------------
-           BỐ CỤC LƯỚI (GRID) CHO TỪNG DÒNG (TR)
-        ---------------------------------------------*/
         tr {
             background: #fff;
             border: 1px solid #e2e8f0;
             border-radius: 12px;
-            margin-bottom: 12px;
+            margin-bottom: 20px;
             padding: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            display: grid;
-            /* Cột 1: 55px (Ảnh) | Cột 2: Co giãn (Tên) | Cột 3: Tự động (Giờ) */
-            grid-template-columns: 55px 1fr auto;
-            grid-template-areas:
-                "avatar name time"
-                "avatar status date"
-                "accuracy explain explain";
-            gap: 6px 12px;
-            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         td {
-            border: none;
-            padding: 0;
-            text-align: left;
-            min-height: unset;
             display: flex;
-        }
-
-        /* Xóa bỏ toàn bộ các Tiêu đề (Label) gây tốn diện tích */
-        td::before {
-            display: none !important;
-        }
-
-        /* --- SẮP XẾP VỊ TRÍ TỪNG Ô (TD) VÀO LƯỚI --- */
-
-        /* 1. NGÀY THÁNG (Góc phải, dưới giờ) */
-        td:nth-child(1) {
-            grid-area: date;
-            justify-content: flex-end;
-        }
-
-        td:nth-child(1) strong {
-            font-size: 0.8rem;
-            color: #94a3b8;
-            font-weight: 600;
-        }
-
-        /* 2. NHÂN VIÊN (Giữa, trên cùng) */
-        td:nth-child(2) {
-            grid-area: name;
             flex-direction: column;
-            justify-content: center;
-            line-height: 1.3;
+            align-items: flex-start;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid #f1f5f9;
+            text-align: left;
+            box-sizing: border-box;
+            width: 100%;
         }
 
-        td:nth-child(2) strong {
-            font-size: 0.95rem;
-            color: #0f172a;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 170px;
+        td:last-child {
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        /* 3. ẢNH AI (Trái, trên cùng) */
-        td:nth-child(3) {
-            grid-area: avatar;
-            justify-content: center;
+        td::before {
+            content: attr(data-label);
+            font-weight: 800;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            margin-right: 0;
+            text-align: left;
+            flex-shrink: 0;
+            width: 100%;
+            border-bottom: 1px dashed #cbd5e1;
+            padding-bottom: 6px;
         }
 
-        .att-thumb {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            margin: 0;
-            border: 2px solid #f1f5f9;
-        }
-
-        /* Bo tròn ảnh như Avatar */
-
-        /* 4. GIỜ VÀO (Phải, trên cùng) */
-        td:nth-child(4) {
-            grid-area: time;
-            justify-content: flex-end;
+        td>div {
+            width: 100%;
+            align-items: flex-start !important;
         }
 
         .time-box {
-            font-size: 1.05rem;
-            padding: 2px 8px;
-            border-radius: 6px;
+            font-size: 0.95rem;
+            width: fit-content;
         }
-
-        /* 5. ĐỘ CHÍNH XÁC AI (Trái, dưới Avatar) */
-        td:nth-child(5) {
-            grid-area: accuracy;
-            justify-content: center;
-            font-size: 0.75rem;
-            background: #f8fafc;
-            padding: 2px 0;
-            border-radius: 6px;
-            margin-top: -5px;
-        }
-
-        /* 6. TRẠNG THÁI (Giữa, dưới Tên) */
-        td:nth-child(6) {
-            grid-area: status;
-            flex-wrap: wrap;
-            gap: 5px;
-            align-items: center;
-        }
-
-        td:nth-child(6) br {
-            display: none;
-        }
-
-        /* Ẩn thẻ xuống dòng thừa của nút báo cáo */
-        .btn-fraud-alert {
-            margin-top: 0;
-            padding: 3px 6px;
-            font-size: 0.7rem;
-        }
-
-        /* Thu nhỏ nút báo cáo */
-
-        /* 7. GIẢI TRÌNH & XÉT DUYỆT (Trải dài 2 cột ở dưới cùng) */
-        td:nth-child(7) {
-            grid-area: explain;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        td:nth-child(7) span[style*="color:#cbd5e1"] {
-            display: none;
-        }
-
-        /* Ẩn dấu "---" khi không có giải trình */
 
         .explain-wrapper {
             width: 100%;
-            border-top: 1px dashed #e2e8f0;
-            padding-top: 10px;
-            margin-top: 5px;
+            align-items: flex-start;
         }
 
         .explain-text {
             max-width: 100%;
             width: 100%;
-            box-sizing: border-box;
+            font-size: 0.8rem;
+            text-align: left;
         }
-
-        .btn-explain {
-            width: 100%;
-            justify-content: center;
-            margin-top: 5px;
-        }
-
-        /* Kéo dài nút viết giải trình 100% */
 
         .approve-actions {
-            display: flex;
             width: 100%;
-            gap: 10px;
-            margin-top: 8px;
+            justify-content: flex-start;
         }
 
-        .approve-actions button {
-            flex: 1;
-            justify-content: center;
-        }
-
-        /* Phân trang */
         .pagination-container {
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
         }
 
         .pagination-controls {
@@ -762,6 +648,29 @@
             flex-wrap: wrap;
             justify-content: center;
             gap: 5px;
+        }
+    }
+
+    /* iPhone 12 Pro / Narrow screens (up to 390px) */
+    @media (max-width: 400px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-bar {
+            padding: 15px;
+        }
+
+        .stat-card .num {
+            font-size: 1.6rem;
+        }
+
+        td::before {
+            font-size: 0.7rem;
+        }
+
+        .btn-export {
+            font-size: 0.85rem;
         }
     }
 </style>
@@ -785,26 +694,30 @@
                 <label>Trạng thái:</label>
                 <select id="statusFilter" onchange="applyFilters()">
                     <option value="all">Tất cả trạng thái</option>
-                    <option value="present">✔️ Hợp lệ</option>
-                    <option value="late">⚠️ Đi muộn</option>
-                    <option value="early">⏳ Về sớm</option>
-                    <option value="fraud">🚨 Nghi ngờ Gian lận</option>
+                    <option value="1">✔️ Đúng giờ</option>
+                    <option value="2">⚠️ Đi muộn</option>
+                    <option value="3">⏳ Về sớm</option>
+                    <option value="6">❌ Muộn & Sớm</option>
+                    <option value="0">🚫 Vắng mặt</option>
+                    <option value="4">📅 Nghỉ phép</option>
+                    <option value="5">📅 Nghỉ KL</option>
                 </select>
             </div>
             <div class="filter-group" id="searchGroup" style="flex: 1.5;">
                 <label>🔍 Tìm kiếm nhân viên:</label>
-                <input type="text" id="searchInput" placeholder="Nhập tên hoặc mã NV..."
-                    oninput="applyFilters()">
+                <input type="text" id="searchInput" placeholder="Nhập tên hoặc mã NV..." oninput="applyFilters()">
             </div>
             <div class="filter-group" style="flex: 1;">
                 <label>📅 Từ ngày:</label>
-                <input type="date" id="startDateFilter" onchange="fetchAttendance()" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                <input type="date" id="startDateFilter" onchange="fetchAttendance()"
+                    style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
             </div>
             <div class="filter-group" style="flex: 1;">
                 <label>📅 Đến ngày:</label>
-                <input type="date" id="endDateFilter" onchange="fetchAttendance()" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                <input type="date" id="endDateFilter" onchange="fetchAttendance()"
+                    style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
             </div>
-            
+
             <div class="filter-group" style="flex: 0.5; justify-content: flex-end;">
                 <button class="btn-export" onclick="window.print()" style="width: 100%;">🖨️ Xuất báo cáo</button>
             </div>
@@ -829,12 +742,20 @@
             <p class="num" style="color: #ec4899;" id="statEarly">0</p>
         </div>
         <div class="stat-card">
-            <h4>Nghi vấn Gian lận</h4>
-            <p class="num red" id="statFraud">0</p>
+            <h4>Muộn & Sớm</h4>
+            <p class="num red" id="statLateEarly">0</p>
         </div>
-        <div class="stat-card" style="background: #f8fafc;">
-            <h4>Tỷ lệ xác thực (TB)</h4>
-            <p class="num purple" id="statConf">--%</p>
+        <div class="stat-card">
+            <h4>Vắng mặt</h4>
+            <p class="num" style="color: #64748b;" id="statAbsent">0</p>
+        </div>
+        <div class="stat-card">
+            <h4>Nghỉ phép</h4>
+            <p class="num" style="color: #0ea5e9;" id="statLeave">0</p>
+        </div>
+        <div class="stat-card">
+            <h4>Nghỉ KL</h4>
+            <p class="num" style="color: #334155;" id="statUnpaid">0</p>
         </div>
     </div>
 
@@ -845,10 +766,9 @@
                     <tr>
                         <th>NGÀY</th>
                         <th>NHÂN VIÊN</th>
-                        <th>ẢNH CHỤP AI</th>
-                        <th>GIỜ VÀO</th>
-                        <th>ĐỘ CHÍNH XÁC</th>
-                        <th>TRẠNG THÁI</th>
+                        <th>CA LÀM VIỆC</th>
+                        <th>GIỜ VÀO / RA</th>
+                        <th>VI PHẠM</th>
                         <th>GIẢI TRÌNH & XÉT DUYỆT</th>
                     </tr>
                 </thead>
@@ -949,18 +869,14 @@
 
     // --- 1. TẢI DỮ LIỆU TỪ SERVER ---
     async function fetchAttendance() {
-        const fetchLimit = 500;
         const startDate = document.getElementById('startDateFilter')?.value || "";
         const endDate = document.getElementById('endDateFilter')?.value || "";
-        
-        // Không truyền role, username qua URL nữa vì API tự giải mã từ Token
-        let apiUrl = `/api/attendance?limit=${fetchLimit}`;
-        if (startDate) apiUrl += `&start_date=${startDate}`;
-        if (endDate) apiUrl += `&end_date=${endDate}`;
+
+        let apiUrl = `/api/monthly-records?startDate=${startDate}&endDate=${endDate}`;
 
         try {
             document.getElementById('attTableBody').innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">Đang tải dữ liệu...</td></tr>';
-            
+
             // Lấy token từ LocalStorage và gán vào Header
             const token = localStorage.getItem("hrm_token");
             const res = await fetch(apiUrl, {
@@ -969,7 +885,7 @@
                     "Authorization": `Bearer ${token}`
                 }
             });
-            
+
             if (!res.ok) {
                 if (res.status === 401) {
                     alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
@@ -978,7 +894,7 @@
                 }
                 throw new Error("Mã lỗi: " + res.status);
             }
-            
+
             allAttendance = await res.json();
 
             // Giả lập dữ liệu trạng thái Gian lận nếu DB chưa có (Để Test giao diện)
@@ -1002,12 +918,11 @@
             const matchKeyword = (item.full_name && item.full_name.toLowerCase().includes(keyword)) ||
                 (item.username && item.username.toLowerCase().includes(keyword));
 
-            // Lọc theo trạng thái
+            // Lọc theo trạng thái (Từ constants.AttendanceStatus)
             let matchStatus = true;
-            if (statusFilter === 'fraud') matchStatus = item.is_fraud === true;
-            else if (statusFilter === 'late') matchStatus = item.late_minutes > 0 && !item.is_fraud;
-            else if (statusFilter === 'early') matchStatus = item.early_minutes > 0 && item.early_minutes !== "Waiting" && !item.is_fraud;
-            else if (statusFilter === 'present') matchStatus = item.late_minutes <= 0 && (item.early_minutes <= 0 || item.early_minutes === "Waiting") && !item.is_fraud;
+            if (statusFilter !== 'all') {
+                matchStatus = item.status === parseInt(statusFilter);
+            }
 
             return matchKeyword && matchStatus;
         });
@@ -1019,50 +934,28 @@
 
     // --- 3. THỐNG KÊ (Dựa trên dữ liệu đang lọc) ---
     function calculateStats(data) {
-        let total = data.length, present = 0, late = 0, early = 0, fraud = 0;
-        let totalConfidence = 0, validConfCount = 0;
+        let total = data.length, present = 0, late = 0, early = 0;
+        let lateEarly = 0, absent = 0, leave = 0, unpaid = 0;
 
         data.forEach(item => {
-            if (item.is_fraud) {
-                fraud++;
-            } else {
-                let isLate = item.late_minutes > 0;
-                let isEarly = item.early_minutes > 0 && item.early_minutes !== "Waiting";
-                
-                if (!isLate && !isEarly) {
-                    present++;
-                }
-                
-                if (isLate && item.explanation_status !== 'Đã duyệt') {
-                    late++;
-                }
-                
-                if (isEarly && item.explanation_status !== 'Đã duyệt') {
-                    early++;
-                }
-            }
-
-            if (item.confidence && item.confidence > 0) {
-                totalConfidence += parseFloat(item.confidence);
-                validConfCount++;
-            }
+            // Status codes from constants.py
+            if (item.status === 1) present++; // PRESENT
+            else if (item.status === 2) late++;   // LATE
+            else if (item.status === 3) early++;  // EARLY
+            else if (item.status === 6) lateEarly++; // LATE_AND_EARLY
+            else if (item.status === 0) absent++; // ABSENT
+            else if (item.status === 4) leave++; // LEAVE
+            else if (item.status === 5) unpaid++; // UNPAID
         });
-
-        let avgConf = validConfCount > 0 ? (totalConfidence / validConfCount).toFixed(2) : "--";
 
         document.getElementById('statTotal').innerText = total;
         document.getElementById('statPresent').innerText = present;
         document.getElementById('statLate').innerText = late;
         document.getElementById('statEarly').innerText = early;
-        document.getElementById('statFraud').innerText = fraud;
-        document.getElementById('statConf').innerText = avgConf !== "--" ? avgConf + '%' : '--%';
-
-        const confElement = document.getElementById('statConf');
-        if (avgConf !== "--") {
-            if (avgConf >= 85) confElement.style.color = "#10b981";
-            else if (avgConf >= 70) confElement.style.color = "#f59e0b";
-            else confElement.style.color = "#ef4444";
-        } else { confElement.style.color = "#8b5cf6"; }
+        document.getElementById('statLateEarly').innerText = lateEarly;
+        document.getElementById('statAbsent').innerText = absent;
+        document.getElementById('statLeave').innerText = leave;
+        document.getElementById('statUnpaid').innerText = unpaid;
     }
 
     // --- 4. RENDER BẢNG (CÓ PHÂN TRANG) ---
@@ -1082,88 +975,49 @@
         tbody.innerHTML = '';
 
         if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">Không tìm thấy dữ liệu phù hợp.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">Không tìm thấy dữ liệu phù hợp.</td></tr>';
             renderPagination(0);
             return;
         }
 
-        // Logic cắt mảng dữ liệu cho trang hiện tại
         const startIndex = (currentPage - 1) * rowsPerPage;
         const endIndex = startIndex + rowsPerPage;
         const paginatedData = filteredData.slice(startIndex, endIndex);
 
         paginatedData.forEach(item => {
-            // Ngày tháng
             let dateStr = "---";
             if (item.date) {
                 const [y, m, d] = item.date.split('-');
                 dateStr = `${d}/${m}/${y}`;
             }
 
-            // Xử lý Trạng thái Chính
-            let statusBadge = `<span class="badge badge-present">✔️ Hợp lệ</span>`;
-            let isViolated = false;
+            let statusBadge = `<span class="badge badge-absent">❌ Vắng mặt</span>`;
+            if (item.status === 1) statusBadge = `<span class="badge badge-present">✔️ Đúng giờ</span>`;
+            else if (item.status === 2) statusBadge = `<span class="badge badge-late">⚠️ Đi muộn</span>`;
+            else if (item.status === 3) statusBadge = `<span class="badge badge-late">⚠️ Về sớm</span>`;
+            else if (item.status === 6) statusBadge = `<span class="badge badge-late">⚠️ Muộn & Sớm</span>`;
+            else if (item.status === 4) statusBadge = `<span class="badge" style="background:#0ea5e9; color:white;">📅 Nghỉ phép</span>`;
+            else if (item.status === 5) statusBadge = `<span class="badge" style="background:#64748b; color:white;">📅 Nghỉ KL</span>`;
 
-            if (item.is_fraud) {
-                statusBadge = `<span class="badge badge-fraud" title="Đã bị Quản lý đánh dấu nghi ngờ">🚨 NGHI VẤN GIAN LẬN</span>`;
-            } else if (item.late_minutes > 0 || (item.early_minutes > 0 && item.early_minutes !== "Waiting")) {
-                isViolated = true;
-                
-                let violations = [];
-                if (item.late_minutes > 0) violations.push("Đi muộn");
-                if (item.early_minutes > 0 && item.early_minutes !== "Waiting") violations.push("Về sớm");
-
-                if (item.explanation_status === 'Đã duyệt') {
-                    statusBadge = `<span class="badge badge-present" title="Đã được duyệt giải trình">✔️ Đã duyệt muộn/sớm</span>`;
-                } else {
-                    statusBadge = `<span class="badge badge-late">⚠️ ${violations.join(" & ")}</span>`;
-                }
+            if (item.explanation_status === 2) {
+                statusBadge = `<span class="badge badge-present" title="Đã được duyệt giải trình">✔️ Đã duyệt</span>`;
             }
 
-            // Tỷ lệ xác thực AI
-            let confHtml = `<span style="color:#94a3b8;">---</span>`;
-            if (item.confidence) {
-                let confVal = parseFloat(item.confidence).toFixed(2);
-                let confClass = "conf-high", icon = "🎯";
-                if (confVal < 80) { confClass = "conf-med"; icon = "⚠️"; }
-                if (confVal < 60) { confClass = "conf-low"; icon = "❗"; }
-                confHtml = `<span class="${confClass}">${icon} ${confVal}%</span>`;
-            }
-
-            // Ảnh Thumbnail
-            let imgHtml = `<span style="color:#cbd5e1; font-size: 0.8rem; font-style:italic;">Không có ảnh</span>`;
-            if (item.image_path && item.image_path !== "") {
-                imgHtml = `<img src="${item.image_path}?t=${Date.now()}" class="att-thumb" onclick="openImageModal('${item.image_path}', '${item.full_name} - ${item.scan_time}')" title="Bấm để xem ảnh gốc">`;
-            }
-
-            // CỘT GIẢI TRÌNH & XÉT DUYỆT CỦA ADMIN
             let explainHtml = '';
+            const expStatusTexts = { 0: "Chưa gửi", 1: "Đã gửi", 2: "Đã duyệt", 3: "Từ chối" };
+            const expStatusText = expStatusTexts[item.explanation_status] || "";
 
-            if (item.is_fraud) {
-                // Nếu bị đánh dấu gian lận -> Hiển thị lý do của Admin và Nút Gỡ
-                explainHtml = `
-                    <div class="explain-wrapper" style="width: 100%;">
-                        <span class="explain-status" style="color: #dc2626; background: #fee2e2;">Admin Ghi chú:</span>
-                        <div class="explain-text" style="border-left-color: #fca5a5; width: 100%;">" ${item.fraud_note} "</div>
-                `;
-                if (currentUserRole === 'admin' || currentUserRole === 'manager') {
-                    explainHtml += `<button class="btn-approve" style="margin-top: 5px; border-color: #cbd5e1; color: #475569; background: white;" onclick="removeFraud(${item.id})">↩️ Gỡ nhãn Gian lận</button>`;
-                }
-                explainHtml += `</div>`;
-
-            } else if (item.explanation_status && item.explanation_reason) {
-                // Đã có giải trình đi muộn
-                let statusColor = item.explanation_status === 'Đã duyệt' ? '#10b981' : (item.explanation_status === 'Từ chối' ? '#ef4444' : '#f59e0b');
+            if (item.explanation_status !== 0 && item.explanation_reason) {
+                let statusColor = item.explanation_status === 2 ? '#10b981' : (item.explanation_status === 3 ? '#ef4444' : '#f59e0b');
 
                 explainHtml = `
                     <div class="explain-wrapper">
-                        <span class="explain-status" style="color: ${statusColor}; border: 1px solid ${statusColor}40; background: ${statusColor}10;">${item.explanation_status}</span>
+                        <span class="explain-status" style="color: ${statusColor}; border: 1px solid ${statusColor}40; background: ${statusColor}10;">${expStatusText}</span>
                         <div class="explain-text">" ${item.explanation_reason} "</div>
                     </div>
                 `;
 
-                if ((currentUserRole === 'admin' || currentUserRole === 'manager') &&
-                    (item.explanation_status === 'Chờ duyệt' || item.explanation_status === 'Đã gửi')) {
+                if ((currentUserRole === 'admin' || currentUserRole === 'manager') && (item.explanation_status === 1)) {
                     explainHtml += `
                         <div class="approve-actions">
                             <button class="btn-approve" onclick="reviewExplain(${item.id}, 'Đã duyệt')">✔️ Duyệt</button>
@@ -1172,34 +1026,28 @@
                      `;
                 }
             } else {
-                // [MỚI] Mặc định luôn hiện nút "Viết Giải trình"
+                const isViolated = [2, 3, 6].includes(item.status);
                 if (isViolated) {
-                    explainHtml = `<button class="btn-explain" onclick="openExplainModal(${item.id})">✍️ Viết Giải trình</button>`;
+                    if (item.id) {
+                        explainHtml = `<button class="btn-explain" onclick="openExplainModal(${item.id})">✍️ Viết Giải trình</button>`;
+                    } else {
+                        explainHtml = `<button class="btn-explain" disabled style="opacity: 0.5; background: #e2e8f0; border-color: #cbd5e1; cursor: not-allowed;" title="Cần chốt lại ngày hôm nay mới có thể giải trình">✍️ Viết Giải trình</button>`;
+                    }
                 } else {
-                    explainHtml = `<button class="btn-explain" disabled style="opacity: 0.5; cursor: not-allowed; background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0;">✍️ Viết Giải trình</button>`;
+                    explainHtml = `<button class="btn-explain" disabled style="opacity: 0.5; cursor: not-allowed; background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0;">✔️ Hợp lệ</button>`;
                 }
             }
 
-            // [MỚI] NÚT CẢNH BÁO GIAN LẬN DÀNH CHO ADMIN NẰM DƯỚI CÙNG CỦA Ô TRẠNG THÁI
-            let fraudBtnHtml = "";
-            if (!item.is_fraud && (currentUserRole === 'admin' || currentUserRole === 'manager')) {
-                fraudBtnHtml = `<br><button class="btn-fraud-alert" onclick="openFraudModal(${item.id})">🚩 Báo cáo Gian lận</button>`;
-            }
+            let subViolation = "";
+            if (item.late_minutes > 0) subViolation += `<span style="font-size: 0.85rem; color: #d97706; font-weight: 600;">Muộn: ${item.late_minutes}m</span>`;
+            if (item.early_minutes > 0) subViolation += `<span style="font-size: 0.85rem; color: #ea580c; font-weight: 600;">Sớm: ${item.early_minutes}m</span>`;
 
-            let subStatus = "";
-            let noteLabel = !item.is_shift_assigned ? `<span style="font-size:0.75rem; color:#94a3b8; margin-left:4px;">(Chưa phân ca)</span>` : "";
-            if (true) {
-                if (item.late_minutes > 0) {
-                    subStatus += `<span style="font-size: 0.85rem; color: #d97706; font-weight: 600;">(Muộn ${item.late_minutes} phút)</span>`;
-                }
-                if (item.early_minutes === "Waiting") {
-                    subStatus += `<span style="font-size: 0.85rem; color: #3b82f6; font-weight: 600;">(Chờ chốt ca)</span>`;
-                } else if (item.early_minutes > 0) {
-                    subStatus += `<span style="font-size: 0.85rem; color: #ea580c; font-weight: 600;">(Sớm ${item.early_minutes} phút)</span>`;
-                }
-            }
-
-            let shiftNameDisplay = item.shift_display_name ? ` - ${item.shift_display_name}` : '';
+            const formatTime = (t) => {
+                if (!t || t === "---") return "---";
+                return t.split('.')[0];
+            };
+            let c_in = formatTime(item.checkin_time);
+            let c_out = formatTime(item.checkout_time);
 
             tbody.innerHTML += `
                 <tr>
@@ -1208,18 +1056,20 @@
                         <strong style="color: var(--theme-dark); font-size: 0.95rem;">${item.full_name}</strong><br>
                         <small style="color: #94a3b8; font-family: monospace;">Mã: ${item.username}</small>
                     </td>
-                    <td data-label="ẢNH CHỤP AI">${imgHtml}</td> 
-                    <td data-label="GIỜ VÀO">
-                        <span class="time-box">${item.scan_time}</span><br>
-                        <small style="color: #64748b; font-weight: bold; margin-top: 3px; display: inline-block;">Ca: ${item.shift_display_code || '---'}${shiftNameDisplay} ${noteLabel}</small>
-                    </td>
-                    <td data-label="ĐỘ CHÍNH XÁC">${confHtml}</td>
-                    <td data-label="TRẠNG THÁI">
-                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                            ${statusBadge}
-                            ${subStatus}
+                    <td data-label="CA LÀM VIỆC">
+                        <span style="font-weight: 600; color: #0284c7;">${item.shift_display_name || item.shift_code || '---'}</span>
+                    </td> 
+                    <td data-label="GIỜ VÀO / RA">
+                        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <span class="time-box">Vào: ${c_in}</span>
+                            <span class="time-box" style="background:#fff1f2; color:#e11d48; border-color:#fecdd3;">Ra: ${c_out}</span>
                         </div>
-                        ${fraudBtnHtml}
+                    </td>
+                    <td data-label="VI PHẠM">
+                        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                            ${statusBadge}
+                            ${subViolation}
+                        </div>
                     </td>
                     <td data-label="GIẢI TRÌNH & XÉT DUYỆT">${explainHtml}</td>
                 </tr>
@@ -1231,8 +1081,6 @@
 
     function renderPagination(totalItems, start, end) {
         const totalPages = Math.ceil(totalItems / rowsPerPage);
-
-        // Cập nhật text Info
         const actualEnd = end > totalItems ? totalItems : end;
         if (totalItems === 0) {
             document.getElementById('pageInfo').innerText = `Không có bản ghi nào`;
@@ -1240,19 +1088,14 @@
             document.getElementById('pageInfo').innerHTML = `Đang hiển thị <strong style="color:var(--primary)">${start + 1} - ${actualEnd}</strong> trong tổng số <strong>${totalItems}</strong> bản ghi`;
         }
 
-        // Render nút bấm
         let html = '';
         if (totalPages > 1) {
             html += `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="changePage(${currentPage - 1})">❮</button>`;
-
-            // Logic hiển thị tối đa 5 nút số gần nhất cho gọn
             let startPage = Math.max(1, currentPage - 2);
             let endPage = Math.min(totalPages, currentPage + 2);
-
             for (let i = startPage; i <= endPage; i++) {
                 html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
             }
-
             html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="changePage(${currentPage + 1})">❯</button>`;
         }
         document.getElementById('paginationControls').innerHTML = html;
@@ -1411,7 +1254,7 @@
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
         const todayStr = `${yyyy}-${mm}-${dd}`;
-        
+
         document.getElementById("startDateFilter").value = todayStr;
         document.getElementById("endDateFilter").value = todayStr;
 

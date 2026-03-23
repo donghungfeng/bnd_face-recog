@@ -168,7 +168,10 @@
     <div class="recent-activity">
         <div class="recent-header">
             <h3>Lịch sử quét khuôn mặt mới nhất</h3>
-            <a href="/attendance">Đến trang Nhật ký &rarr;</a>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input type="text" id="searchRecent" placeholder="🔍 Tên / Mã NV..." style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); outline: none; font-family: 'Nunito', sans-serif; font-size: 0.85rem;" oninput="filterRecentTable()">
+                <a href="/attendance">Đến trang Nhật ký &rarr;</a>
+            </div>
         </div>
         <div class="table-container">
             <table>
@@ -208,6 +211,7 @@
 
     // --- 2. BIẾN TOÀN CỤC CHO PHÂN TRANG & THÔNG TIN USER ---
     let allAttendanceData = [];
+    let filteredAttendanceData = [];
     let currentPage = 1;
     const itemsPerPage = 10;
     let refreshIntervalId = null;
@@ -237,15 +241,30 @@
 
     // --- 3. FETCH DỮ LIỆU TỪ SERVER ---
     async function fetchDashboardData() {
+        const token = localStorage.getItem("hrm_token");
+        if (!token) {
+            alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
+            window.location.href = "/login-page";
+            return;
+        }
+
+        const headers = {
+            "Authorization": `Bearer ${token}`
+        };
+
         try {
             // Lấy dữ liệu Thống Kê
-            const statsRes = await fetch('/api/stats');
+            const statsRes = await fetch('/api/stats', { headers });
             if (statsRes.ok) {
                 const stats = await statsRes.json();
                 document.getElementById('val_employees').innerText = stats.total_employees || 0;
                 document.getElementById('val_shifts').innerText = stats.total_shifts || 0;
                 document.getElementById('val_unique_today').innerText = stats.unique_checkins_today || 0;
                 document.getElementById('val_attendances_today').innerText = stats.today_attendances || 0;
+            } else if (statsRes.status === 401) {
+                alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
+                window.location.href = "/login-page";
+                return;
             }
 
             // Chặn ngay từ cửa nếu là Nhân viên mà quên đăng nhập (Không có ID)
@@ -255,16 +274,20 @@
                 return;
             }
 
-            // Kéo dữ liệu lịch sử quét khuôn mặt
-            const fetchUrl = `/api/attendance?limit=100&role=${currentRole}&username=${encodeURIComponent(currentUsername)}`;
-            const recentRes = await fetch(fetchUrl);
+            // Kéo dữ liệu lịch sử quét khuôn mặt (Xóa tham số username để BE tự lo phân quyền)
+            const fetchUrl = `/api/attendance?limit=100`;
+            const recentRes = await fetch(fetchUrl, { headers });
             
             if (recentRes.ok) {
                 const data = await recentRes.json();
                 if (Array.isArray(data)) {
                     allAttendanceData = data;
-                    renderTable();
+                    filterRecentTable();
                 }
+            } else if (recentRes.status === 401) {
+                alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
+                window.location.href = "/login-page";
+                return;
             } else {
                 console.warn("API Lịch sử lỗi:", recentRes.status);
                 document.getElementById('recentTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #ff4757;">Lỗi lấy dữ liệu lịch sử!</td></tr>';
@@ -275,12 +298,27 @@
         }
     }
 
-    // --- 4. RENDER BẢNG THEO TRANG ---
+    // --- 4. RENDER BẢNG THEO TRANG VÀ LỌC ---
+    function filterRecentTable() {
+        const keyword = document.getElementById('searchRecent') ? document.getElementById('searchRecent').value.toLowerCase().trim() : "";
+        if (keyword) {
+            filteredAttendanceData = allAttendanceData.filter(log => {
+                const name = (log.full_name || "").toLowerCase();
+                const uid = (log.username || "").toLowerCase();
+                return name.includes(keyword) || uid.includes(keyword);
+            });
+        } else {
+            filteredAttendanceData = allAttendanceData;
+        }
+        currentPage = 1;
+        renderTable();
+    }
+
     function renderTable() {
         const tbody = document.getElementById('recentTableBody');
         
-        if(!allAttendanceData || allAttendanceData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">Chưa có lượt chấm công nào.</td></tr>';
+        if(!filteredAttendanceData || filteredAttendanceData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">Chưa có lượt chấm công nào phù hợp.</td></tr>';
             document.getElementById('pageInfo').innerText = "Trang 1 / 1";
             document.getElementById('prevBtn').disabled = true;
             document.getElementById('nextBtn').disabled = true;
@@ -288,13 +326,13 @@
         }
 
         // Tính toán phân trang
-        const totalPages = Math.ceil(allAttendanceData.length / itemsPerPage);
+        const totalPages = Math.ceil(filteredAttendanceData.length / itemsPerPage);
         if (currentPage > totalPages) currentPage = totalPages;
         if (currentPage < 1) currentPage = 1;
 
         const startIdx = (currentPage - 1) * itemsPerPage;
         const endIdx = startIdx + itemsPerPage;
-        const pageData = allAttendanceData.slice(startIdx, endIdx);
+        const pageData = filteredAttendanceData.slice(startIdx, endIdx);
 
         tbody.innerHTML = '';
         pageData.forEach(log => {

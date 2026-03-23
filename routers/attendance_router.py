@@ -18,6 +18,8 @@ from database import get_db
 from models import Employee, Attendance, LeaveRequest, ShiftCategory
 from schemas import AttendanceUpdateRequest, EmployeeCreate, LeaveSubmit, ExplainRequest, ReviewExplainRequest, MarkFraudRequest
 from config import DB_PATH
+import models, schemas, constants
+import service.attendace_service as attendance_service
 
 router = APIRouter()
 
@@ -256,6 +258,7 @@ def delete_attendance_record(
 
     return {"status": "success", "message": f"Đã xóa vĩnh viễn bản ghi ID {record_id}"}
 
+
 @router.put("/api/attendance/{record_id}")
 def update_attendance_record(
     record_id: int, 
@@ -300,3 +303,25 @@ def update_attendance_record(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail="Lỗi SQL khi lưu dữ liệu.")
+
+@router.get("/api/attendance/calculate-monthly-records")
+def get_calculated_monthly_records(
+    start_date: date = Query(..., description="Ngày bắt đầu (YYYY-MM-DD)"),
+    end_date: date = Query(..., description="Ngày kết thúc (YYYY-MM-DD)"),
+    username: str = Query(None, description="Lọc theo username cụ thể (tùy chọn)"),
+    db: Session = Depends(get_db)
+):
+    # 1. Truy vấn dữ liệu Attendance thô từ Database
+    query = db.query(models.Attendance).filter(
+        models.Attendance.check_in_time >= datetime.combine(start_date, time.min),
+        models.Attendance.check_in_time <= datetime.combine(end_date, time.max)
+    )
+    
+    if username:
+        query = query.filter(models.Attendance.username == username)
+    
+    raw_attendance = query.all()
+
+    if not raw_attendance:
+        raise HTTPException(status_code=404, detail="Không tìm thấy dữ liệu chấm công trong khoảng thời gian này.")
+    return attendance_service.process_attendance_to_monthly(db, raw_attendance)
