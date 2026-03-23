@@ -190,3 +190,7 @@ class AttendanceSummaryByEmployee(BaseModel):
 
     class Config:
         from_attributes = True
+
+class UpdateImageUrlRequest(BaseModel):
+    filename: str
+    image_url: str

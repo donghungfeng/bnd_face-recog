@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.concurrency import run_in_threadpool
 from deepface import DeepFace
 from sqlalchemy.orm import Session
-from schemas import CheckIPRequest, FaceRequest, SingleFaceDeleteRequest, UnregisterRequest, PersonalVerifyRequest, TestFaceRequest
+from schemas import CheckIPRequest, FaceRequest, SingleFaceDeleteRequest, UnregisterRequest, PersonalVerifyRequest, TestFaceRequest, UpdateImageUrlRequest
 from config import DB_PATH, MODEL_NAME, CACHE_FILE
 from database import get_db
 
@@ -212,8 +212,15 @@ def get_face_image(filename: str):
     raise HTTPException(status_code=404, detail="Không tìm thấy ảnh")
 
 @router.get("/api/faces/overview")
-def get_faces_overview(db: Session = Depends(get_db)):
+def get_faces_overview(
+    page: int = 1, 
+    limit: int = 12, 
+    search: str = "", 
+    status: str = "all", 
+    db: Session = Depends(get_db)
+):
     import os
+    import math
     from models import Employee
     from sqlalchemy.orm import joinedload
     
@@ -223,7 +230,6 @@ def get_faces_overview(db: Session = Depends(get_db)):
             if f.endswith('.jpg'):
                 exact_name = f.replace('.jpg', '')
                 parts = exact_name.rsplit("_", 1)
-                # Tách NV001_2 thành uid_upper = NV001
                 if len(parts) == 2 and parts[1].isdigit():
                     uid_upper = parts[0].upper()
                 else:
@@ -231,28 +237,29 @@ def get_faces_overview(db: Session = Depends(get_db)):
                     
                 if uid_upper not in file_map:
                     file_map[uid_upper] = []
-                file_map[uid_upper].append(exact_name) # Push thêm ảnh vào danh sách
+                file_map[uid_upper].append(exact_name)
                 
     emps = db.query(Employee).options(joinedload(Employee.department)).all()
     emp_dict_upper = {e.username.upper(): e for e in emps}
     
-    results = []
+    all_results = []
     
+    # Gộp dữ liệu nhân viên
     for e in emps:
         username_upper = e.username.upper()
         has_face = username_upper in file_map
-        
-        results.append({
+        all_results.append({
             "type": "mapped" if has_face else "no_face",
             "username": e.username,
             "full_name": e.full_name,
             "department_name": e.department.unit_name if e.department else "Chưa xếp phòng",
-            "images": file_map.get(username_upper, []) # Trả về mảng chứa [NV001_1, NV001_2]
+            "images": file_map.get(username_upper, [])
         })
         
+    # Gộp dữ liệu ảnh mồ côi
     for upper_name, file_names in file_map.items():
         if upper_name not in emp_dict_upper:
-            results.append({
+            all_results.append({
                 "type": "unmapped",
                 "username": upper_name,
                 "full_name": "Người lạ / Chưa ĐK",
@@ -260,7 +267,36 @@ def get_faces_overview(db: Session = Depends(get_db)):
                 "images": file_names
             })
             
-    return results
+    # XỬ LÝ LỌC (FILTERING)
+    filtered_results = []
+    search_query = search.lower().strip()
+    
+    for item in all_results:
+        # Lọc trạng thái
+        if status != "all" and item["type"] != status:
+            continue
+        # Lọc tìm kiếm
+        if search_query:
+            if search_query not in item["username"].lower() and search_query not in item["full_name"].lower():
+                continue
+        
+        filtered_results.append(item)
+        
+    # XỬ LÝ PHÂN TRANG (PAGINATION)
+    total_items = len(filtered_results)
+    total_pages = math.ceil(total_items / limit) if total_items > 0 else 1
+    
+    start_idx = (page - 1) * limit
+    end_idx = start_idx + limit
+    paginated_results = filtered_results[start_idx:end_idx]
+            
+    return {
+        "data": paginated_results,
+        "total": total_items,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages
+    }
 
 @router.post("/delete_single_face")
 async def delete_single_face(request: SingleFaceDeleteRequest):
