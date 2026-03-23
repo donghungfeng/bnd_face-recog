@@ -233,6 +233,12 @@
         animation: pulseRed 2s infinite;
     }
 
+    .badge-inprogress {
+        background: #eff6ff;
+        color: #2563eb;
+        border-color: #dbeafe;
+    }
+
     /* Badge cảnh báo gian lận */
 
     @keyframes pulseRed {
@@ -701,6 +707,7 @@
                     <option value="0">🚫 Vắng mặt</option>
                     <option value="4">📅 Nghỉ phép</option>
                     <option value="5">📅 Nghỉ KL</option>
+                    <option value="7">⚡ Đang có mặt</option>
                 </select>
             </div>
             <div class="filter-group" id="searchGroup" style="flex: 1.5;">
@@ -756,6 +763,10 @@
         <div class="stat-card">
             <h4>Nghỉ KL</h4>
             <p class="num" style="color: #334155;" id="statUnpaid">0</p>
+        </div>
+        <div class="stat-card">
+            <h4>Đang có mặt</h4>
+            <p class="num" style="color: #3b82f6;" id="statInProgress">0</p>
         </div>
     </div>
 
@@ -935,7 +946,7 @@
     // --- 3. THỐNG KÊ (Dựa trên dữ liệu đang lọc) ---
     function calculateStats(data) {
         let total = data.length, present = 0, late = 0, early = 0;
-        let lateEarly = 0, absent = 0, leave = 0, unpaid = 0;
+        let lateEarly = 0, absent = 0, leave = 0, unpaid = 0, inProgress = 0;
 
         data.forEach(item => {
             // Status codes from constants.py
@@ -946,6 +957,7 @@
             else if (item.status === 0) absent++; // ABSENT
             else if (item.status === 4) leave++; // LEAVE
             else if (item.status === 5) unpaid++; // UNPAID
+            else if (item.status === 7) inProgress++; // IN_PROGRESS
         });
 
         document.getElementById('statTotal').innerText = total;
@@ -956,6 +968,7 @@
         document.getElementById('statAbsent').innerText = absent;
         document.getElementById('statLeave').innerText = leave;
         document.getElementById('statUnpaid').innerText = unpaid;
+        document.getElementById('statInProgress').innerText = inProgress;
     }
 
     // --- 4. RENDER BẢNG (CÓ PHÂN TRANG) ---
@@ -998,6 +1011,7 @@
             else if (item.status === 6) statusBadge = `<span class="badge badge-late">⚠️ Muộn & Sớm</span>`;
             else if (item.status === 4) statusBadge = `<span class="badge" style="background:#0ea5e9; color:white;">📅 Nghỉ phép</span>`;
             else if (item.status === 5) statusBadge = `<span class="badge" style="background:#64748b; color:white;">📅 Nghỉ KL</span>`;
+            else if (item.status === 7) statusBadge = `<span class="badge badge-inprogress">⚡ Đang có mặt</span>`;
 
             if (item.explanation_status === 2) {
                 statusBadge = `<span class="badge badge-present" title="Đã được duyệt giải trình">✔️ Đã duyệt</span>`;

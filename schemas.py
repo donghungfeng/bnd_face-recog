@@ -181,6 +181,7 @@ class AttendanceSummaryByEmployee(BaseModel):
     on_leave_count:           int = 0  # ON_LEAVE = 4
     unpaid_leave_count:       int = 0  # UNPAID_LEAVE = 5
     late_and_early_count:     int = 0  # LATE_AND_EARLY_LEAVE = 6
+    in_progress_count:        int = 0  # IN_PROGRESS = 7
     absent_count:             int = 0  # ABSENT = 0
 
     # Phút tổng cộng

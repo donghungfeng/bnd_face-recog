@@ -9,6 +9,7 @@ class AttendanceStatus(IntEnum):
     ON_LEAVE = 4         # Nghỉ phép có lương
     UNPAID_LEAVE = 5     # Nghỉ không lương
     LATE_AND_EARLY_LEAVE = 6 # Đi muộn & Về sớm
+    IN_PROGRESS = 7
 
 class ExplanationStatus(IntEnum):
     """Trạng thái giải trình"""
