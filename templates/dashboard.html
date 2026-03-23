@@ -244,7 +244,7 @@
         const token = localStorage.getItem("hrm_token");
         if (!token) {
             alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
-            window.location.href = "/login-page";
+            window.location.href = "/login";
             return;
         }
 
@@ -263,7 +263,7 @@
                 document.getElementById('val_attendances_today').innerText = stats.today_attendances || 0;
             } else if (statsRes.status === 401) {
                 alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
-                window.location.href = "/login-page";
+                window.location.href = "/login";
                 return;
             }
 
@@ -286,7 +286,7 @@
                 }
             } else if (recentRes.status === 401) {
                 alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
-                window.location.href = "/login-page";
+                window.location.href = "/login";
                 return;
             } else {
                 console.warn("API Lịch sử lỗi:", recentRes.status);
