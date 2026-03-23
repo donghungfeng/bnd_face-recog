@@ -144,16 +144,19 @@
 <div class="card">
     <div class="filter-bar"
         style="display: flex; gap: 15px; align-items: flex-end; justify-content: space-between; margin-bottom: 15px; padding: 10px;">
-        <div style="display: flex; gap: 15px; align-items: flex-end;">
-            <div class="form-group" style="margin: 0;">
+        <div style="display: flex; gap: 15px; align-items: flex-end; flex: 1; padding-right: 20px;">
+            <div class="form-group" style="margin: 0; width: 160px;">
                 <label>Từ ngày:</label>
                 <input type="date" id="startDateFilter" class="form-control">
             </div>
-            <div class="form-group" style="margin: 0;">
+            <div class="form-group" style="margin: 0; width: 160px;">
                 <label>Đến ngày:</label>
                 <input type="date" id="endDateFilter" class="form-control">
             </div>
-            <button class="btn-primary" onclick="fetchAssignments()">XEM LỊCH</button>
+            <div class="form-group" style="margin: 0; flex: 1;">
+                <label>Tìm kiếm:</label>
+                <input type="text" id="searchFilter" class="form-control" placeholder="Tên hoặc Mã NV..." oninput="debounceFetch()">
+            </div>
         </div>
 
         <div style="display: flex; gap: 10px;">
@@ -261,6 +264,9 @@
     document.getElementById('startDateFilter').value = monday.toISOString().split('T')[0];
     document.getElementById('endDateFilter').value = sunday.toISOString().split('T')[0];
 
+    document.getElementById('startDateFilter').addEventListener('change', fetchAssignments);
+    document.getElementById('endDateFilter').addEventListener('change', fetchAssignments);
+
     let allShiftCategories = [];
     let currentPage = 1;
     let pageSize = 15;
@@ -275,10 +281,21 @@
         } catch (e) { console.error("Lỗi tải ca:", e); }
     }
 
+    // Debounce cho tìm kiếm
+    let debounceTimer;
+    function debounceFetch() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            currentPage = 1;
+            fetchAssignments();
+        }, 500);
+    }
+
     // 3. HÀM CHÍNH: LẤY DỮ LIỆU VÀ VẼ BẢNG
     async function fetchAssignments() {
         const start = document.getElementById('startDateFilter').value;
         const end = document.getElementById('endDateFilter').value;
+        const search = document.getElementById('searchFilter').value;
         const tbody = document.getElementById('matrixBody');
 
         if (!start || !end) return;
@@ -286,7 +303,7 @@
 
         try {
             const [empRes, assignRes] = await Promise.all([
-                fetch(`/api/employees?page=${currentPage}&size=${pageSize}`),
+                fetch(`/api/employees?page=${currentPage}&size=${pageSize}&search=${search}`),
                 fetch(`/api/assignments/details?start_date=${start}&end_date=${end}`)
             ]);
             const empData = await empRes.json();
