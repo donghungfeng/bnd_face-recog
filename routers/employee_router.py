@@ -3,12 +3,14 @@ from fastapi import UploadFile, File
 from fastapi.responses import StreamingResponse
 import pandas as pd
 import io
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models import Employee, OrganizationUnit
 from schemas import EmployeeCreate, PasswordUpdate
 from config import DB_PATH
+from sqlalchemy.orm import aliased
+from sqlalchemy import or_
 
 router = APIRouter()
 
@@ -24,16 +26,18 @@ def create_employee(emp: EmployeeCreate, db: Session = Depends(get_db)):
     return {"status": "success", "message": "Thêm nhân sự thành công"}
 
 @router.get("/api/employees")
-def get_employees(db: Session = Depends(get_db), page: int = 1, size: int = 15):
-    from sqlalchemy.orm import aliased
+def get_employees(
+    db: Session = Depends(get_db), 
+    page: int = 1, 
+    size: int = 15,
+    search: str = Query(None),
+    department_id: int = Query(None)
+):
+    
     Dept = aliased(OrganizationUnit)
     ParentUnit = aliased(OrganizationUnit)
 
-    # Lấy tổng số nhân viên để tính phân trang
-    total = db.query(Employee).count()
-    offset = (page - 1) * size
-
-    rows = db.query(
+    query = db.query(
         Employee,
         Dept.unit_name.label("dept_name"),
         ParentUnit.unit_name.label("parent_name")
@@ -41,7 +45,23 @@ def get_employees(db: Session = Depends(get_db), page: int = 1, size: int = 15):
         Dept, Employee.department_id == Dept.id
     ).outerjoin(
         ParentUnit, Dept.parent_id == ParentUnit.id
-    ).order_by(Employee.id.desc()).offset(offset).limit(size).all()
+    )
+
+    if search:
+        query = query.filter(
+            or_(
+                Employee.full_name.ilike(f"%{search}%"),
+                Employee.username.ilike(f"%{search}%")
+            )
+        )
+    if department_id:
+        query = query.filter(Employee.department_id == department_id)
+
+    # Lấy tổng số nhân viên (đã lọc) để tính phân trang
+    total = query.count()
+    offset = (page - 1) * size
+
+    rows = query.order_by(Employee.id.desc()).offset(offset).limit(size).all()
 
     result = []
     for e, dept_name, parent_name in rows:
@@ -76,7 +96,7 @@ def get_employees(db: Session = Depends(get_db), page: int = 1, size: int = 15):
         "total": total,
         "page": page,
         "size": size,
-        "total_pages": (total + size - 1) // size
+        "total_pages": (total + size - 1) // size if size > 0 else 1
     }
 
 @router.put("/api/employees/{username}")
