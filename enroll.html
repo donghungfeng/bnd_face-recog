@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HỆ THỐNG CHẤM CÔNG AI</title>
+    <title>HỆ THỐNG CHẤM CÔNG AI - LẤY MẪU KHUÔN MẶT</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
     
@@ -114,7 +114,6 @@
             transform: translateX(-2px);
         }
 
-        /* Đẩy Header xuống một chút để không bị đè chữ trên màn hình nhỏ */
         @media (max-width: 480px) {
             header { margin-top: 40px; }
         }
@@ -158,21 +157,24 @@
         const toast = document.getElementById('toast');
         const cropCanvas = document.getElementById('cropCanvas');
         
-        //const API_URL = "https://hrm.benhnhietdoi.vn"; // Thay đổi nếu cần
-        const API_URL = "http://localhost:8000"; // Thay đổi nếu cần
         let lastDetection = null;
+        let isFaceDetectionRunning = false;
+        let isProcessing = false;
+        
+        // Cấu hình Tự động Đăng ký
+        let consecutiveGoodFrames = 0;
+        const REQUIRED_GOOD_FRAMES = 5; // Yêu cầu 5 frame hoàn hảo liên tiếp
+        const SHARPNESS_THRESHOLD = 60; // Ngưỡng chống mờ
 
-        // --- MỚI: TỰ ĐỘNG ĐIỀN ID TỪ URL PARAMETER ---
+        // Tự động điền ID từ tham số URL
         const urlParams = new URLSearchParams(window.location.search);
-        // Hỗ trợ cả 2 kiểu viết tham số: ?id=NV001 hoặc ?userid=NV001
         const paramId = urlParams.get('id') || urlParams.get('userid'); 
         if (paramId) {
-            userIdInput.value = paramId.toUpperCase(); // Đổi thành chữ hoa cho đồng bộ
+            userIdInput.value = paramId.toUpperCase();
             userIdInput.blur();
         }
-        // ----------------------------------------------
 
-        // Cấu hình Ngưỡng (Tâm & Độ lớn)
+        // Cấu hình Ngưỡng Vị Trí (Tâm & Độ lớn)
         const FACE_MIN_SIZE = 0.35;
         const FACE_MAX_SIZE = 0.60;
         const CENTER_X_MIN = 0.35; 
@@ -185,18 +187,63 @@
             toast.style.backgroundColor = type === 'success' ? '#2ed573' : '#ff4757';
             toast.classList.add('show');
             setTimeout(() => { toast.classList.remove('show'); }, 3000);
-            statusDisplay.innerText = msg;
+            
+            if (!isProcessing) statusDisplay.innerText = msg;
+        }
+
+        // 1. Kiểm tra độ nét của ảnh (Chống mờ/rung tay)
+        function isImageSharp(canvas, threshold = SHARPNESS_THRESHOLD) {
+            try {
+                const ctx = canvas.getContext('2d');
+                const { width, height } = canvas;
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const d = imageData.data;
+                const gray = new Float32Array(width * height);
+                for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+                    gray[j] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                }
+                let sum = 0, sumSq = 0, count = 0;
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = y * width + x;
+                        const lap = -gray[idx - 1] - gray[idx + 1] - gray[idx - width] - gray[idx + width] + 4 * gray[idx];
+                        sum += lap; sumSq += lap * lap; count++;
+                    }
+                }
+                const mean = sum / count;
+                const variance = (sumSq / count) - (mean * mean);
+                return variance > threshold;
+            } catch (e) {
+                return true; 
+            }
+        }
+
+        // 2. Kiểm tra độ sáng (Chống ngược sáng hoặc quá tối)
+        function isLightingGood(canvas, minBrightness = 40, maxBrightness = 210) {
+            try {
+                const ctx = canvas.getContext('2d');
+                const { width, height } = canvas;
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const d = imageData.data;
+                let sum = 0;
+                for (let i = 0; i < d.length; i += 4) {
+                    sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; // Tính Luma
+                }
+                const avgBrightness = sum / (width * height);
+                return avgBrightness >= minBrightness && avgBrightness <= maxBrightness;
+            } catch (e) {
+                return true; 
+            }
         }
 
         async function initCamera() {
             try {
-                // Để Tablet tự bắt phân giải phù hợp
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "user" } 
                 });
                 video.srcObject = stream;
             } catch (err) {
-                notify("Lỗi camera: " + err.message, "error");
+                notify("Lỗi truy cập camera: " + err.message, "error");
             }
         }
 
@@ -207,49 +254,124 @@
         faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.7 });
 
         faceDetection.onResults((results) => {
+            isFaceDetectionRunning = false;
+
             if (results.detections.length > 0) {
+                // ĐIỀU KIỆN 1: Bắt buộc chỉ có 1 khuôn mặt trong hình (Tránh lộn xộn dữ liệu)
+                if (results.detections.length > 1) {
+                    consecutiveGoodFrames = 0;
+                    if (!isProcessing) {
+                        statusDisplay.innerText = "⚠️ CÓ NHIỀU NGƯỜI TRONG KHUNG HÌNH. HÃY ĐỨNG MỘT MÌNH!";
+                        statusDisplay.style.color = "#ff4757";
+                        guideCircle.classList.remove('guide-active');
+                        regBtn.disabled = true;
+                    }
+                    return; 
+                }
+
                 lastDetection = results.detections[0].boundingBox;
+                const landmarks = results.detections[0].landmarks;
+                
                 const faceSize = lastDetection.width;
                 const faceX = lastDetection.xCenter;
                 const faceY = lastDetection.yCenter;
                 
                 distanceFill.style.width = (faceSize * 100) + "%";
 
-                // Kiểm tra Tọa độ Tâm
-                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && 
-                                   (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
+                let isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && 
+                                 (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
+                
+                let isStraight = true;
+                let poseWarning = ""; 
 
-                if (!isCentered) {
-                    statusDisplay.innerText = "HÃY ĐƯA MẶT VÀO GIỮA KHUNG";
-                    statusDisplay.style.color = "#ffb800";
-                    guideCircle.classList.remove('guide-active');
-                    regBtn.disabled = true;
-                } 
-                else if (faceSize < FACE_MIN_SIZE) {
-                    statusDisplay.innerText = "HÃY LẠI GẦN HƠN";
-                    statusDisplay.style.color = "#ffb800";
-                    guideCircle.classList.remove('guide-active');
-                    regBtn.disabled = true;
-                } 
-                else if (faceSize > FACE_MAX_SIZE) {
-                    statusDisplay.innerText = "HÃY ĐỨNG XA RA CHÚT";
-                    statusDisplay.style.color = "#ff4757";
-                    guideCircle.classList.remove('guide-active');
-                    regBtn.disabled = true;
-                } 
-                else {
-                    statusDisplay.innerText = "VỊ TRÍ HOÀN HẢO - CÓ THỂ ĐĂNG KÝ";
-                    statusDisplay.style.color = "#2ed573";
-                    guideCircle.classList.add('guide-active');
-                    regBtn.disabled = false; // Bật nút đăng ký
+                // ĐIỀU KIỆN 2: Góc mặt thẳng
+                if (landmarks && landmarks.length >= 3) {
+                    const eyeR = landmarks[0];
+                    const eyeL = landmarks[1];
+                    const nose = landmarks[2];
+
+                    const eyeDistX = Math.abs(eyeL.x - eyeR.x);
+                    const eyeDistY = Math.abs(eyeL.y - eyeR.y);
+
+                    if (eyeDistY / eyeDistX > 0.40) {
+                        isStraight = false;
+                        poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
+                    } else {
+                        const noseDistL = Math.abs(nose.x - eyeL.x);
+                        const noseDistR = Math.abs(nose.x - eyeR.x);
+
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.40) { 
+                            isStraight = false;
+                            poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
+                        }
+                    }
+                }
+
+                let isValid = true;
+                let currentWarning = "";
+
+                // Bộ lọc vị trí vật lý
+                if (!userIdInput.value.trim()) {
+                    isValid = false;
+                    currentWarning = "VUI LÒNG NHẬP MÃ NHÂN VIÊN ĐỂ BẮT ĐẦU";
+                } else if (!isCentered) {
+                    isValid = false;
+                    currentWarning = "HÃY ĐƯA MẶT VÀO GIỮA KHUNG";
+                } else if (!isStraight) {
+                    isValid = false;
+                    currentWarning = poseWarning;
+                } else if (faceSize < FACE_MIN_SIZE) {
+                    isValid = false;
+                    currentWarning = "HÃY LẠI GẦN HƠN";
+                } else if (faceSize > FACE_MAX_SIZE) {
+                    isValid = false;
+                    currentWarning = "HÃY ĐỨNG XA RA CHÚT";
+                }
+
+                if (!isProcessing) {
+                    if (!isValid) {
+                        consecutiveGoodFrames = 0;
+                        statusDisplay.innerText = currentWarning;
+                        statusDisplay.style.color = currentWarning.includes("MÃ NHÂN VIÊN") ? "#007bff" : "#ffb800";
+                        guideCircle.classList.remove('guide-active');
+                        regBtn.disabled = true;
+                    } else {
+                        guideCircle.classList.add('guide-active');
+                        regBtn.disabled = false;
+                        
+                        consecutiveGoodFrames++;
+                        statusDisplay.innerText = `ĐANG LẤY MẪU CHUẨN... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
+                        statusDisplay.style.color = "#2ed573";
+
+                        // Khi đủ Frame => Kiểm tra Độ Nét & Ánh Sáng => Tự động Enroll
+                        if (consecutiveGoodFrames >= REQUIRED_GOOD_FRAMES) {
+                            captureCroppedFace(); // Bơm ảnh nháp vào Canvas
+                            
+                            const isSharp = isImageSharp(cropCanvas);
+                            const isGoodLight = isLightingGood(cropCanvas);
+
+                            if (!isSharp || !isGoodLight) {
+                                let errorMsg = !isSharp ? "⚠️ ẢNH MỜ, VUI LÒNG GIỮ YÊN ĐẦU" : "⚠️ ÁNH SÁNG KHÔNG ĐẢM BẢO (QUÁ TỐI/CHÓI)";
+                                statusDisplay.innerText = errorMsg;
+                                statusDisplay.style.color = "#ffb800";
+                                consecutiveGoodFrames = 0; // Reset đếm lại
+                            } else {
+                                handleAction('register'); // GỌI API AUTO
+                            }
+                        }
+                    }
                 }
             } else {
                 lastDetection = null;
                 distanceFill.style.width = "0%";
-                statusDisplay.innerText = "KHÔNG TÌM THẤY KHUÔN MẶT";
-                statusDisplay.style.color = "#94a3b8";
-                guideCircle.classList.remove('guide-active');
-                regBtn.disabled = true;
+                consecutiveGoodFrames = 0;
+                
+                if (!isProcessing) {
+                    statusDisplay.innerText = "KHÔNG TÌM THẤY KHUÔN MẶT";
+                    statusDisplay.style.color = "#94a3b8";
+                    guideCircle.classList.remove('guide-active');
+                    regBtn.disabled = true;
+                }
             }
         });
 
@@ -260,7 +382,7 @@
             const videoH = video.videoHeight;
             let { xCenter, yCenter, width, height } = lastDetection;
 
-            const padding = 0.25; // Lề cho ảnh crop
+            const padding = 0.25;
             let cropW = width * (1 + padding) * videoW;
             let cropH = height * (1 + padding) * videoH;
             
@@ -284,7 +406,9 @@
         }
 
         async function handleAction(action) {
-            const userId = userIdInput.value.trim().toUpperCase(); // Ép chuẩn in hoa khi submit
+            if (isProcessing) return; 
+            
+            const userId = userIdInput.value.trim().toUpperCase(); 
             if (!userId) {
                 notify("Vui lòng nhập ID nhân viên!", "error");
                 return;
@@ -292,14 +416,19 @@
 
             if (action === 'unregister' && !confirm(`Xác nhận xóa dữ liệu của ${userId}?`)) return;
 
-            statusDisplay.innerText = "ĐANG XỬ LÝ...";
+            isProcessing = true;
+            regBtn.disabled = true;
+            statusDisplay.innerText = action === 'register' ? "ĐANG ĐẨY DỮ LIỆU LÊN SERVER..." : "ĐANG XÓA...";
+            statusDisplay.style.color = "#007bff";
             
             try {
                 let response;
                 if (action === 'register') {
+                    // Chụp khung hình mới nhất để gửi đi
                     const faceBase64 = captureCroppedFace();
                     if (!faceBase64) {
                         notify("Lỗi xén ảnh, hãy thử lại!", "error");
+                        isProcessing = false;
                         return;
                     }
 
@@ -319,21 +448,39 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    notify(`${action === 'register' ? 'Đã đăng ký' : 'Đã xóa'}: ${userId}`, "success");
-                    if (action === 'unregister') userIdInput.value = "";
+                    notify(`${action === 'register' ? 'Đã đăng ký' : 'Đã xóa'} mẫu khuôn mặt của: ${userId}`, "success");
+                    if (action === 'unregister') {
+                        userIdInput.value = "";
+                    } else {
+                        statusDisplay.innerText = "✅ ĐĂNG KÝ HOÀN TẤT";
+                        statusDisplay.style.color = "#2ed573";
+                    }
                 } else {
                     notify(data.detail || data.message || "Thất bại", "error");
                 }
             } catch (err) {
                 notify("Lỗi kết nối Server!", "error");
+            } finally {
+                // Khóa hệ thống 3 giây để người dùng lùi ra, tránh đăng ký chồng chéo
+                setTimeout(() => {
+                    isProcessing = false;
+                    consecutiveGoodFrames = 0;
+                }, 3000);
             }
+        }
+
+        // Vòng lặp tối ưu bằng requestAnimationFrame
+        async function processVideoFrame() {
+            if (video.readyState >= 2 && !isFaceDetectionRunning) {
+                isFaceDetectionRunning = true;
+                await faceDetection.send({ image: video });
+            }
+            requestAnimationFrame(processVideoFrame);
         }
 
         initCamera();
         video.onloadedmetadata = () => {
-            setInterval(() => {
-                if (video.readyState >= 2) faceDetection.send({ image: video });
-            }, 100);
+            processVideoFrame();
         };
     </script>
 </body>

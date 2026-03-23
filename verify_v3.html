@@ -98,6 +98,7 @@
             background: #334155;
             transition: all 0.3s ease;
             border: 2px solid transparent;
+            display: none; /* Ẩn bớt đi nếu chỉ dùng 2 frame, sẽ hiện lại qua JS */
         }
 
         .frame-dot.active {
@@ -113,17 +114,8 @@
         }
 
         @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-
-            50% {
-                opacity: 0.7;
-                transform: scale(1.1);
-            }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
         }
 
         .main-wrapper {
@@ -173,45 +165,15 @@
         }
 
         @keyframes scan {
-
-            0%,
-            100% {
-                top: 5%;
-            }
-
-            50% {
-                top: 95%;
-            }
+            0%, 100% { top: 5%; }
+            50% { top: 95%; }
         }
 
-        .status-scanning {
-            color: var(--primary);
-            border-color: var(--primary);
-        }
-
-        .status-ok {
-            color: var(--success);
-            border-color: var(--success);
-            background: rgba(0, 255, 136, 0.1);
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
-        }
-
-        .status-warning {
-            color: var(--warning);
-            border-color: var(--warning);
-        }
-
-        .status-err {
-            color: var(--error);
-            border-color: var(--error);
-            background: rgba(255, 68, 68, 0.1);
-        }
-
-        .status-sleep {
-            color: #94a3b8;
-            border-color: #475569;
-            background: #1e293b;
-        }
+        .status-scanning { color: var(--primary); border-color: var(--primary); }
+        .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
+        .status-warning { color: var(--warning); border-color: var(--warning); }
+        .status-err { color: var(--error); border-color: var(--error); background: rgba(255, 68, 68, 0.1); }
+        .status-sleep { color: #94a3b8; border-color: #475569; background: #1e293b; }
 
         .loader {
             width: 18px;
@@ -222,15 +184,7 @@
             animation: spin 0.8s linear infinite;
         }
 
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* BẢNG LỊCH SỬ */
         .history-container {
@@ -287,12 +241,7 @@
             box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
         }
 
-        .history-time {
-            color: #cbd5e1;
-            font-family: monospace;
-            font-size: 0.75rem;
-        }
-
+        .history-time { color: #cbd5e1; font-family: monospace; font-size: 0.75rem; }
         .history-name {
             font-weight: bold;
             color: var(--success);
@@ -318,30 +267,17 @@
         }
 
         @keyframes popIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
         }
 
         /* POPUP XIN CHÀO */
         .popup-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(15, 23, 42, 0.9);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            backdrop-filter: blur(8px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 10000; backdrop-filter: blur(8px);
         }
 
         .popup-content {
@@ -357,97 +293,38 @@
         }
 
         .popup-close {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: #94a3b8;
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: 0.2s;
+            position: absolute; top: 10px; right: 15px;
+            background: none; border: none; color: #94a3b8; font-size: 1.5rem;
+            cursor: pointer; transition: 0.2s;
         }
-
-        .popup-close:hover {
-            color: #fff;
-            transform: scale(1.1);
-        }
-
-        .popup-icon {
-            font-size: 3.5rem;
-            margin-bottom: 10px;
-        }
-
-        .popup-title {
-            color: #fff;
-            font-size: 1.1rem;
-            margin: 0 0 5px 0;
-            font-weight: normal;
-        }
-
+        .popup-close:hover { color: #fff; transform: scale(1.1); }
+        .popup-icon { font-size: 3.5rem; margin-bottom: 10px; }
+        .popup-title { color: #fff; font-size: 1.1rem; margin: 0 0 5px 0; font-weight: normal; }
         .popup-name {
-            color: var(--success);
-            font-size: 1.8rem;
-            font-family: 'Orbitron', sans-serif;
-            margin: 0;
-            text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
-            font-weight: bold;
+            color: var(--success); font-size: 1.8rem; font-family: 'Orbitron', sans-serif;
+            margin: 0; text-shadow: 0 0 15px rgba(0, 255, 136, 0.5); font-weight: bold;
         }
 
         /* MÀN HÌNH NGỦ ĐÔNG */
         #sleepOverlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(15, 23, 42, 0.95);
-            z-index: 50;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); z-index: 50; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
             backdrop-filter: blur(10px);
         }
 
         .btn-wake {
-            background: var(--primary);
-            color: #000;
-            border: none;
-            padding: 18px 35px;
-            font-size: 1.2rem;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            border-radius: 40px;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            background: var(--primary); color: #000; border: none; padding: 18px 35px;
+            font-size: 1.2rem; font-family: 'Orbitron', sans-serif; font-weight: bold;
+            border-radius: 40px; cursor: pointer; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+            transition: 0.3s; display: flex; align-items: center; gap: 10px;
         }
-
-        .btn-wake:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 35px rgba(0, 242, 255, 0.8);
-        }
-
-        .icon-sleep {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            animation: float 3s ease-in-out infinite;
-        }
+        .btn-wake:hover { transform: scale(1.05); box-shadow: 0 0 35px rgba(0, 242, 255, 0.8); }
+        .icon-sleep { font-size: 3rem; margin-bottom: 15px; animation: float 3s ease-in-out infinite; }
 
         @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-10px);
-            }
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
     </style>
 </head>
@@ -462,11 +339,8 @@
         <div class="distance-meter">
             <div id="distanceFill"></div>
         </div>
-        <div class="frame-progress">
-            <div id="frame1" class="frame-dot"></div>
-            <div id="frame2" class="frame-dot"></div>
-            <div id="frame3" class="frame-dot"></div>
-        </div>
+        <div class="frame-progress" id="progressContainer">
+            </div>
     </header>
 
     <div class="main-wrapper">
@@ -503,8 +377,8 @@
         const distanceFill = document.getElementById('distanceFill');
         const cropCanvas = document.getElementById('cropCanvas');
         const historyList = document.getElementById('historyList');
+        const progressContainer = document.getElementById('progressContainer');
 
-        let lastProcessingTime = 0;
         let isProcessing = false;
         let lastDetection = null;
         let isFaceDetectionRunning = false;
@@ -516,22 +390,26 @@
         const IDLE_TIMEOUT = 5 * 60 * 1000;
 
         let consecutiveGoodFrames = 0;
-        const REQUIRED_GOOD_FRAMES = 3;
-        let lastProcessedFrameTime = 0;
-        let hasCalledAPIForCurrentSession = false;
-
         let isLoopRunning = false;
         let emptyFrames = 0;
-
         let isFetchingAPI = false;
         let lastAttemptTime = 0;
 
         const USER_COOLDOWN_MS = 30 * 1000;
         const userCooldowns = {};
 
-        const SHARPNESS_THRESHOLD = 60;
-        const FACE_MIN_SIZE = 0.20;
-        const FACE_MAX_SIZE = 0.60;
+        // ---------------- CÁC THÔNG SỐ TỐI ƯU (NHANH - XA - CHÍNH XÁC) ----------------
+        const REQUIRED_GOOD_FRAMES = 2;   // Giảm từ 3 xuống 2 để bắn API siêu nhanh
+        const SHARPNESS_THRESHOLD = 40;   // Hạ ngưỡng từ 60 xuống 40 vì mặt ở xa sẽ ít pixel hơn
+        const FACE_MIN_SIZE = 0.12;       // Giảm từ 0.20 -> 0.12 để cho phép bắt mặt ở xa 1.5m - 2m
+        const FACE_MAX_SIZE = 0.65;       // Nới lỏng kích thước tối đa
+        // -----------------------------------------------------------------------------
+
+        // Tạo số lượng chấm frame động theo REQUIRED_GOOD_FRAMES
+        progressContainer.innerHTML = '';
+        for(let i = 1; i <= REQUIRED_GOOD_FRAMES; i++) {
+            progressContainer.innerHTML += `<div id="frame${i}" class="frame-dot" style="display:block;"></div>`;
+        }
 
         function isImageSharp(canvas, threshold = SHARPNESS_THRESHOLD) {
             try {
@@ -565,26 +443,26 @@
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
         });
 
-        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.85 });
+        // ĐỔI MODEL SANG FULL & HẠ CONFIDENCE ĐỂ BẮT XA TỐT HƠN
+        faceDetection.setOptions({ model: 'full', minDetectionConfidence: 0.60 });
 
         function updateFrameProgress(count) {
-            const dots = ['frame1', 'frame2', 'frame3'];
-            dots.forEach((id, index) => {
-                const dot = document.getElementById(id);
+            for(let i = 1; i <= REQUIRED_GOOD_FRAMES; i++) {
+                const dot = document.getElementById(`frame${i}`);
                 if (dot) {
-                    if (index < count) {
+                    if (i <= count) {
                         dot.classList.add('active');
                         dot.classList.remove('processing');
                     } else {
                         dot.classList.remove('active');
-                        if (isProcessing && index === count) {
+                        if (isProcessing && i === count + 1) {
                             dot.classList.add('processing');
                         } else {
                             dot.classList.remove('processing');
                         }
                     }
                 }
-            });
+            }
         }
 
         function drawTargetingFrame(ctx, x, y, width, height, color, isSolid = false) {
@@ -602,7 +480,6 @@
 
         faceDetection.onResults((results) => {
             isFaceDetectionRunning = false;
-
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
             const w = overlayCanvas.width;
@@ -754,7 +631,8 @@
             const videoH = video.videoHeight;
             let { xCenter, yCenter, width, height } = lastDetection;
 
-            const padding = 0.25;
+            // Nới padding ra 0.35 để lấy đủ toàn bộ phần đầu/cằm khi ở xa
+            const padding = 0.35;
             let cropW = width * (1 + padding) * videoW;
             let cropH = height * (1 + padding) * videoH;
 
@@ -825,7 +703,7 @@
         async function sendToAPI() {
             const now = Date.now();
 
-            if (isFetchingAPI || now - lastAttemptTime < 1500) {
+            if (isFetchingAPI || now - lastAttemptTime < 800) {
                 return;
             }
 
@@ -860,7 +738,7 @@
                         hasCalledAPIForCurrentSession = false;
                         consecutiveGoodFrames = 0;
                         updateFrameProgress(0);
-                    }, 1000);
+                    }, 800); // Thử lại cực nhanh
 
                     clearTimeout(timeoutId);
                     return;
@@ -873,7 +751,7 @@
                         image_base64: croppedImage,
                         full_image_base64: fullImage,
                         client_public_ip: currentPublicIp,
-                        attendance_type: 'Tập trung v2'
+                        attendance_type: 'Tập trung v3'
                     }),
                     signal: controller.signal
                 });
@@ -908,17 +786,14 @@
                     resultBox.innerHTML = `⚠️ LỖI KẾT NỐI - ĐANG THỬ LẠI...`;
                 }
             } finally {
-                // FIX: Timeout 2s để cho phép quét tiếp (dù thành công hay thất bại)
+                // Rút ngắn timeout mở khóa để hệ thống chớp thời cơ thử lại liên tục
                 setTimeout(() => {
                     isProcessing = false;
                     isFetchingAPI = false;
-
-                    // Xóa khóa nhận diện
                     hasCalledAPIForCurrentSession = false;
-
                     consecutiveGoodFrames = 0;
                     updateFrameProgress(0);
-                }, 2000);
+                }, 800); 
             }
         }
 
@@ -973,11 +848,8 @@
             const isMorningWindow = currentHour >= 6 && currentHour < 8;
             const isAfternoonWindow = currentHour >= 16 && currentHour < 18;
 
-            // Trường hợp 1: Nằm trong khung 6h00 - 7h59 HOẶC 16h00 - 17h59
             if (isMorningWindow || isAfternoonWindow) {
-                // Tính mốc 10 phút tiếp theo (VD: 12p -> 20p, 20p -> 30p, 55p -> 60p)
                 const next10MinMark = Math.ceil((currentMinute + 1) / 10) * 10;
-
                 if (next10MinMark === 60) {
                     targetTime.setHours(currentHour + 1);
                     targetTime.setMinutes(0);
@@ -985,15 +857,12 @@
                     targetTime.setMinutes(next10MinMark);
                 }
             }
-            // Trường hợp 2: Trước 6h sáng -> Hẹn đúng 6h00 sáng nay
             else if (currentHour < 6) {
                 targetTime.setHours(6, 0, 0, 0);
             }
-            // Trường hợp 3: Từ 8h00 sáng đến trước 16h00 chiều -> Hẹn đúng 16h00 chiều nay
             else if (currentHour >= 8 && currentHour < 16) {
                 targetTime.setHours(16, 0, 0, 0);
             }
-            // Trường hợp 4: Từ 18h00 tối trở đi -> Hẹn đúng 6h00 sáng ngày mai
             else {
                 targetTime.setDate(targetTime.getDate() + 1);
                 targetTime.setHours(6, 0, 0, 0);
@@ -1013,8 +882,6 @@
         resetSleepTimer();
         schedulePeriodicReload();
     </script>
-
-
 </body>
 
 </html>
