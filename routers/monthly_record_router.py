@@ -1,4 +1,4 @@
-﻿# --- 1. IMPORT CÁC THƯ VIỆN CHUẨN (STANDARD LIBS) ---
+# --- 1. IMPORT CÁC THƯ VIỆN CHUẨN (STANDARD LIBS) ---
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import date, datetime, time, timedelta
@@ -60,6 +60,8 @@ def sync_monthly_records(
                 existing.status = rec.status
                 existing.late_minutes = rec.late_minutes
                 existing.early_minutes = rec.early_minutes
+                existing.checkin_image_path = rec.checkin_image_path
+                existing.checkout_image_path = rec.checkout_image_path
                 existing.note = f"Updated via Sync at {datetime.now().strftime('%H:%M:%S')}"
             else:
                 # Nếu chưa có -> Thêm mới (Insert)
@@ -154,6 +156,8 @@ def get_monthly_report(
             "status": r.status,
             "explanation_reason": r.explanation_reason,
             "explanation_status": r.explanation_status,
+            "checkin_image_path": r.checkin_image_path,
+            "checkout_image_path": r.checkout_image_path,
             "note": r.note,
             "full_name": emp.full_name if emp else "Unknown",
             "username": emp.username if emp else "Unknown",

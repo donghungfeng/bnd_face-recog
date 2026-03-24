@@ -141,6 +141,8 @@ class MonthlyRecordBase(BaseModel):
     status: int = 0
     explanation_reason: Optional[str] = None
     explanation_status: int = 0
+    checkin_image_path: Optional[str] = None
+    checkout_image_path: Optional[str] = None
     note: Optional[str] = None
 
 class MonthlyRecordOut(MonthlyRecordBase):

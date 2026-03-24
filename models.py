@@ -116,6 +116,8 @@ class MonthlyRecord(Base):
     status = Column(Integer, default=0)
     explanation_reason = Column(Text, nullable=True)
     explanation_status = Column(Integer, default=0)
+    checkin_image_path = Column(String, nullable=True)
+    checkout_image_path = Column(String, nullable=True)
     note = Column(Text, nullable=True)
 
 class AppConfig(Base):
