@@ -399,11 +399,11 @@
         const USER_COOLDOWN_MS = 30 * 1000;
         const userCooldowns = {};
 
-        // ---------------- CÁC THÔNG SỐ TỐI ƯU CHẤT LƯỢNG (Khó tính hơn) ----------------
-        const REQUIRED_GOOD_FRAMES = 4;   // Ép giữ yên mặt để lấy nét
-        const SHARPNESS_THRESHOLD = 80;   // Tăng vọt độ nét để loại bỏ ảnh mờ chuyển động
-        const FACE_MIN_SIZE = 0.20;       // Ép đứng gần camera, tăng độ sáng và pixel
-        const FACE_MAX_SIZE = 0.65;       // Giữ giới hạn kích thước tối đa
+        // ---------------- CÁC THÔNG SỐ TỐI ƯU CÂN BẰNG TỐC ĐỘ VÀ CHẤT LƯỢNG ----------------
+        const REQUIRED_GOOD_FRAMES = 3;   // Giảm xuống 3 frame để tốc độ quét mượt hơn
+        const SHARPNESS_THRESHOLD = 35;   // Giảm xuống 35, thân thiện với các webcam và môi trường sáng khác nhau
+        const FACE_MIN_SIZE = 0.15;       // Cho phép khoảng cách xa vừa phải
+        const FACE_MAX_SIZE = 0.65;       
         // -----------------------------------------------------------------------------
 
         // Tạo số lượng chấm frame động theo REQUIRED_GOOD_FRAMES
@@ -482,6 +482,10 @@
             isFaceDetectionRunning = false;
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
+            if (isApiLocked) {
+                return;
+            }
+
             const w = overlayCanvas.width;
             const h = overlayCanvas.height;
             const targetSize = Math.min(w, h) * 0.5;
@@ -513,8 +517,8 @@
                     const eyeDistX = Math.abs(eyeL.x - eyeR.x);
                     const eyeDistY = Math.abs(eyeL.y - eyeR.y);
 
-                    // SIẾT GÓC: Giảm từ 0.28 xuống 0.20 để ép nhìn thẳng camera tuyệt đối
-                    if (eyeDistY / eyeDistX > 0.20) {
+                    // Nới lỏng góc nghiêng đầu từ 0.20 lên 0.35
+                    if (eyeDistY / eyeDistX > 0.35) {
                         isStraight = false;
                         poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
                     }
@@ -522,8 +526,8 @@
                         const noseDistL = Math.abs(nose.x - eyeL.x);
                         const noseDistR = Math.abs(nose.x - eyeR.x);
 
-                        // SIẾT GÓC: Giảm từ 0.28 xuống 0.20 để ép nhìn thẳng camera tuyệt đối
-                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.20) {
+                        // Nới lỏng góc quay mặt từ 0.20 lên 0.35
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.35) {
                             isStraight = false;
                             poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
                         }
@@ -549,13 +553,11 @@
                 const boxW = faceSize * w;
                 const boxH = lastDetection.height * h;
 
-                // Màu sắc hướng dẫn
                 const guideColor = isValid ? "#00ff88" : "#ffb800";
                 
-                // Hiệu ứng Solid nháy khi đủ frame để báo người dùng giữ yên
                 let frameColor = guideColor;
                 if(consecutiveGoodFrames === REQUIRED_GOOD_FRAMES) {
-                    frameColor = Date.now() % 200 < 100 ? "#ffffff" : guideColor; // Nháy trắng khi đủ
+                    frameColor = Date.now() % 200 < 100 ? "#ffffff" : guideColor; 
                 }
                 
                 drawTargetingFrame(overlayCtx, originX, originY, boxW, boxH, frameColor, isValid && consecutiveGoodFrames === REQUIRED_GOOD_FRAMES);
@@ -577,10 +579,10 @@
                             resultBox.innerHTML = `📸 ĐANG ĐẾM FRAME... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
                         } else {
                             resultBox.className = "info status-scanning";
-                            // Thêm hiệu ứng nháy Solid để báo người dùng biết ảnh tốt
                             resultBox.innerHTML = `✅ GIỮ NGUYÊN TƯ THẾ ĐỂ CHỤP...`;
-                            // Trigger gọi API với delay
-                            setTimeout(() => sendToAPI(), 500); // Thêm delay 500ms để camera lấy nét ổn định
+                            
+                            // Nhanh hơn: Thời gian chờ để camera focus được rút ngắn còn 150ms thay vì 500ms
+                            setTimeout(() => sendToAPI(), 150); 
                         }
                     }
                 }
@@ -643,7 +645,9 @@
             const videoH = video.videoHeight;
             let { xCenter, yCenter, width, height } = lastDetection;
 
-            const padding = 0.3;
+            // ĐỒNG BỘ TUYỆT ĐỐI VỚI BACKEND LÀ 0.25
+            const padding = 0.25; 
+            
             let cropW = width * (1 + padding) * videoW;
             let cropH = height * (1 + padding) * videoH;
 
@@ -678,7 +682,7 @@
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
 
-            return tempCanvas.toDataURL('image/jpeg', 0.7);
+            return tempCanvas.toDataURL('image/jpeg', 0.6);
         }
 
         function addHistoryItem(userId, probability) {
@@ -714,15 +718,11 @@
         async function sendToAPI() {
             const now = Date.now();
             
-            // CHỐT CHẶN NETWORK: Đang gọi API thì tuyệt đối không được gọi thêm request nào
             if (isFetchingAPI || isApiLocked) {
-                console.warn("Spam request bị chặn");
                 return;
             }
 
-            // CHỐT CHẶN THỜI GIAN: Chống rung nhiễu gọi liên tục
             if (now - lastAttemptTime < 800) { 
-                console.warn("Attempt quá nhanh");
                 return;
             }
 
@@ -733,14 +733,12 @@
             resultBox.className = "info status-scanning";
             resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
             
-            // Xóa khung xanh
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             try {
-                // Capture ảnh để đảm bảo lấy đúng frame lúc nháy frame (sau 500ms delay)
                 const croppedImage = captureCroppedFace();
                 const fullImage = captureFullFrame();
 
@@ -748,15 +746,14 @@
                     throw new Error("Không capture được ảnh");
                 }
 
-                // Kiểm tra độ nét lần cuối TRÊN ẢNH SẮP GỬI (Siêu quan trọng)
                 if (!isImageSharp(cropCanvas)) {
                     resultBox.className = "info status-warning";
                     resultBox.innerHTML = `⚠️ ẢNH CHƯA RÕ NÉT, VUI LÒNG ĐỨNG YÊN`;
-                    // Reset ngay lập tức
+                    
                     consecutiveGoodFrames = 0;
                     updateFrameProgress(0);
-                    // Tăng delay unlock lên 1.2s để người dùng có thời gian đứng yên
-                    setTimeout(() => { isApiLocked = false; isProcessing = false; isFetchingAPI = false; }, 1200); 
+                    
+                    setTimeout(() => { isApiLocked = false; isProcessing = false; isFetchingAPI = false; }, 800); 
                     clearTimeout(timeoutId);
                     return;
                 }
@@ -803,21 +800,26 @@
                     resultBox.innerHTML = `⚠️ LỖI KẾT NỐI - ĐANG THỬ LẠI...`;
                 }
             } finally {
-                // Tăng delay unlock lên 1.2s để người dùng có thời gian đứng yên
                 setTimeout(() => {
                     isApiLocked = false;
                     isProcessing = false;
                     isFetchingAPI = false;
                     consecutiveGoodFrames = 0;
                     updateFrameProgress(0);
-                }, 1200); 
+                }, 1000); 
             }
         }
 
         async function processVideoFrame() {
             if (!isSleeping && video.readyState >= 2 && !isFaceDetectionRunning) {
                 isFaceDetectionRunning = true;
-                await faceDetection.send({ image: video });
+                try {
+                    await faceDetection.send({ image: video });
+                } catch (err) {
+                    console.error("🔥 LỖI MEDIAPIPE - Đang tải lại AI...", err);
+                    window.location.reload(true);
+                    return;
+                }
             }
             requestAnimationFrame(processVideoFrame);
         }
