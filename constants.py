@@ -17,3 +17,12 @@ class ExplanationStatus(IntEnum):
     PENDING = 1          # Chờ duyệt
     APPROVED = 2         # Đã duyệt
     REJECTED = 3         # Từ chối
+
+class Reason(IntEnum):
+    """Lý do vi phạm / giải trình"""
+    LATE = 1                 # Đi muộn
+    EARLY_LEAVE = 2          # Về sớm
+    LATE_AND_EARLY_LEAVE = 3 # Đi muộn & về sớm
+    FORGOT_CHECKIN = 4       # Quên chấm công vào
+    FORGOT_CHECKOUT = 5      # Quên chấm công ra
+    FORGOT_BOTH = 6          # Quên chấm công cả ngày

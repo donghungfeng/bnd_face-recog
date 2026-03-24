@@ -7,6 +7,7 @@ templates = Jinja2Templates(directory="templates")
 
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import datetime, date, time
 from collections import defaultdict
 import openpyxl, io
@@ -36,8 +37,7 @@ def get_attendance(
 ):
     role = current_user.get("role", "user")
     current_username = current_user.get("username")
-    
-    from sqlalchemy import func
+
     
     # 1. Khởi tạo điều kiện lọc theo phân quyền
     filter_conditions = []
@@ -258,6 +258,95 @@ def delete_attendance_record(
 
     return {"status": "success", "message": f"Đã xóa vĩnh viễn bản ghi ID {record_id}"}
 
+@router.get("/api/attendance/calculate-monthly-records")
+def get_calculated_monthly_records(
+    start_date: date = Query(..., description="Ngày bắt đầu (YYYY-MM-DD)"),
+    end_date: date = Query(..., description="Ngày kết thúc (YYYY-MM-DD)"),
+    username: str = Query(None, description="Lọc theo username cụ thể (tùy chọn)"),
+    db: Session = Depends(get_db)
+):
+    # 1. Truy vấn dữ liệu Attendance thô từ Database
+    query = db.query(models.Attendance).filter(
+        models.Attendance.check_in_time >= datetime.combine(start_date, time.min),
+        models.Attendance.check_in_time <= datetime.combine(end_date, time.max)
+    )
+    
+    if username:
+        query = query.filter(models.Attendance.username == username)
+    
+    raw_attendance = query.all()
+
+    if not raw_attendance:
+        raise HTTPException(status_code=404, detail="Không tìm thấy dữ liệu chấm công trong khoảng thời gian này.")
+    return attendance_service.process_attendance_to_monthly(db, raw_attendance)
+
+# Sửa lỗi 1: Đổi response_model hoặc tạm bỏ đi nếu chưa định nghĩa Schema chi tiết
+@router.get("/api/attendance/raw-details") 
+def get_raw_attendance_details(
+    employee_id: int, 
+    target_date: date, 
+    db: Session = Depends(get_db)
+):
+    # 1. Tìm nhân viên để lấy username
+    employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
+
+    # 2. Query toàn bộ các bản ghi trong ngày (00:00 -> 23:59)
+    start_dt = datetime.combine(target_date, time.min)
+    end_dt = datetime.combine(target_date, time.max)
+
+    # Lấy toàn bộ các cột từ bảng attendance
+    query = db.query(models.Attendance).filter(
+        models.Attendance.username == employee.username,
+        models.Attendance.check_in_time >= start_dt,
+        models.Attendance.check_in_time <= end_dt
+    ).order_by(models.Attendance.check_in_time.asc())
+
+    scans = query.all()
+
+    if not scans:
+        return []
+
+    # 3. Logic: Nếu <= 2 lấy hết, nếu > 2 lấy đầu và cuối
+    if len(scans) <= 2:
+        return scans
+    
+    return [scans[0], scans[-1]]
+
+
+@router.put("/api/attendance/update-explanation")
+def update_attendance_explanation(
+    data: schemas.UpdateExplanationRequest, 
+    db: Session = Depends(get_db)
+):
+    # SỬA LỖI 2: Update vào bảng MonthlyRecord thay vì Attendance
+    db_record = db.query(models.Attendance).filter(models.Attendance.id == data.id).first()
+    
+    if not db_record:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi chấm công tổng hợp")
+
+    try:
+        # Cập nhật các trường dữ liệu
+        db_record.explanation_reason = data.explanation_reason
+        db_record.explanation_status = data.explanation_status
+        
+        # Lưu thay đổi vào Database
+        db.commit()
+        db.refresh(db_record)
+        
+        return {
+            "status": "success",
+            "message": "Cập nhật giải trình thành công",
+            "data": {
+                "id": db_record.id,
+                "explanation_status": db_record.explanation_status
+            }
+        }
+        
+    except Exception as e:
+        db.rollback() # Hoàn tác nếu có lỗi xảy ra
+        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
 
 @router.put("/api/attendance/{record_id}")
 def update_attendance_record(
@@ -304,24 +393,111 @@ def update_attendance_record(
         db.rollback()
         raise HTTPException(status_code=500, detail="Lỗi SQL khi lưu dữ liệu.")
 
-@router.get("/api/attendance/calculate-monthly-records")
-def get_calculated_monthly_records(
-    start_date: date = Query(..., description="Ngày bắt đầu (YYYY-MM-DD)"),
-    end_date: date = Query(..., description="Ngày kết thúc (YYYY-MM-DD)"),
-    username: str = Query(None, description="Lọc theo username cụ thể (tùy chọn)"),
-    db: Session = Depends(get_db)
+@router.get("/api/attendance/pending-explanations-count")
+def count_pending_explanations(
+    start_date: date = Query(..., alias="startDate"),
+    end_date: date = Query(..., alias="endDate"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user) # Sửa kiểu dữ liệu ở đây thành dict
 ):
-    # 1. Truy vấn dữ liệu Attendance thô từ Database
-    query = db.query(models.Attendance).filter(
-        models.Attendance.check_in_time >= datetime.combine(start_date, time.min),
-        models.Attendance.check_in_time <= datetime.combine(end_date, time.max)
+    """
+    API đếm tổng số lượng đơn giải trình đang chờ xét duyệt (Trạng thái = 1)
+    """
+    start_dt = datetime.combine(start_date, time.min)
+    end_dt = datetime.combine(end_date, time.max)  
+
+    query = db.query(func.count(models.Attendance.id)).filter(
+        models.Attendance.explanation_status == "1",
+        models.Attendance.check_in_time >= start_dt,
+        models.Attendance.check_in_time <= end_dt
     )
+
+    # 2. XỬ LÝ LOGIC PHÂN QUYỀN (Dùng .get() vì current_user là dict)
+    user_role = current_user.get("role")
+    user_name = current_user.get("username") # Lấy username từ dict
+
+    if user_role == "admin":
+        pass # Admin xem tất cả
+        
+    elif user_role == "manager":
+        # Với manager, bạn cần tìm department_id của họ từ DB trước
+        manager_db = db.query(models.Employee).filter(models.Employee.username == user_name).first()
+        if manager_db and manager_db.department_id:
+            query = query.join(
+                models.Employee, 
+                models.Attendance.username == models.Employee.username
+            ).filter(
+                models.Employee.department_id == manager_db.department_id
+            )
+        else:
+             # Tránh lỗi nếu manager không thuộc phòng ban nào, cho mảng rỗng
+             return {"status": "success", "total_pending": 0}
+        
+    else:
+        # User thường chỉ xem của họ
+        query = query.filter(models.Attendance.username == user_name)
+
+    # 3. Thực thi query
+    count = query.scalar()
     
+    return {
+        "status": "success",
+        "total_pending": count or 0
+    }
+
+@router.get("/api/attendance/pending-explanations-records")
+def get_all_attendance_records(
+    start_date: date = Query(..., alias="startDate"),
+    end_date: date = Query(..., alias="endDate"),
+    username: Optional[str] = Query(None, description="Mã nhân viên cần lọc"),
+    skip: int = Query(0, description="Bỏ qua bao nhiêu bản ghi (dùng cho phân trang)"),
+    limit: int = Query(100, description="Số lượng bản ghi tối đa lấy về"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    start_dt = datetime.combine(start_date, time.min)
+    end_dt = datetime.combine(end_date, time.max)
+
+    # 1. Khởi tạo query cơ sở (Lọc theo thời gian)
+    query = db.query(models.Attendance).filter(
+        models.Attendance.check_in_time >= start_dt,
+        models.Attendance.check_in_time <= end_dt
+    )
+
+    # 2. XỬ LÝ LỌC THEO USERNAME TỪ PARAM (Nếu Client có truyền lên)
     if username:
         query = query.filter(models.Attendance.username == username)
-    
-    raw_attendance = query.all()
 
-    if not raw_attendance:
-        raise HTTPException(status_code=404, detail="Không tìm thấy dữ liệu chấm công trong khoảng thời gian này.")
-    return attendance_service.process_attendance_to_monthly(db, raw_attendance)
+    # 3. XỬ LÝ LOGIC PHÂN QUYỀN
+    user_role = current_user.get("role")
+    current_username = current_user.get("username")
+
+    if user_role == "admin":
+        # Admin xem tất cả -> Không cần đè thêm điều kiện gì
+        pass
+        
+    elif user_role == "manager":
+        # Manager -> Tìm department_id của họ, lấy user cùng phòng
+        manager_db = db.query(models.Employee).filter(models.Employee.username == current_username).first()
+        
+        if manager_db and manager_db.department_id:
+            query = query.join(
+                models.Employee, 
+                models.Attendance.username == models.Employee.username
+            ).filter(
+                models.Employee.department_id == manager_db.department_id
+            )
+        else:
+            return [] # Lỗi phòng ban -> Trả về mảng rỗng cho an toàn
+            
+    else:
+        # LƯU Ý BẢO MẬT CHO USER THƯỜNG: 
+        # Đè lại điều kiện username của chính họ. Giúp chống lỗi khi User cố tình truyền param ?username=nguoi_khac
+        query = query.filter(models.Attendance.username == current_username)
+
+    # 4. SẮP XẾP VÀ PHÂN TRANG
+    # .offset(skip): Bỏ qua số lượng bản ghi (vd: trang 2 giới hạn 10 -> skip 10)
+    # .limit(limit): Lấy đúng số lượng bản ghi yêu cầu
+    records = query.order_by(models.Attendance.check_in_time.asc()).offset(skip).limit(limit).all()
+
+    return records

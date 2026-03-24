@@ -1,0 +1,426 @@
+﻿<div id="pendingExplanationsModal" class="exp-modal-overlay" onclick="closePendingExplanationsModal(event)">
+    <div class="exp-detail-modal" onclick="event.stopPropagation()">
+
+        <div class="exp-modal-header">
+            <div>
+                <p class="exp-modal-title">✍️ Danh sách Đơn giải trình chờ duyệt</p>
+                <p style="margin:4px 0 0; font-size:0.8rem; color:#94a3b8;">Từ đầu tháng đến hiện tại</p>
+            </div>
+            <button class="exp-close-btn" onclick="closePendingExplanationsModal()">✕</button>
+        </div>
+
+        <div class="exp-modal-body">
+
+            <div class="exp-filter-bar">
+                <label style="font-weight: 700; font-size: 0.85rem; color: #475569; white-space: nowrap;">🔍 Mã
+                    NV:</label>
+                <input type="text" id="expSearchUsername" placeholder="Nhập username để lọc..."
+                    class="exp-search-input">
+                <button onclick="triggerSearchExplanations()" class="exp-search-btn">Tìm kiếm</button>
+            </div>
+
+            <div class="exp-table-container">
+                <table class="exp-table">
+                    <thead>
+                        <tr>
+                            <th>NGÀY</th>
+                            <th>NHÂN VIÊN</th>
+                            <th style="text-align: center;">ẢNH CHỤP</th>
+                            <th>GIỜ QUẸT</th>
+                            <th>LÝ DO GIẢI TRÌNH</th>
+                            <th style="text-align: center;">THAO TÁC</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingExplanationsBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                <div class="spinner" style="margin: 0 auto 10px;"></div> Đang tải dữ liệu...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ============================================================
+       CSS ĐẢM BẢO POPUP LUÔN NẰM GIỮA MÀN HÌNH VÀ BÔI MỜ
+       ============================================================ */
+    .exp-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.75);
+        /* Nền tối */
+        display: none;
+        /* Ẩn mặc định, JS sẽ chuyển thành flex */
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        /* Đảm bảo nằm trên tất cả mọi thứ */
+        backdrop-filter: blur(5px);
+        /* Làm mờ background */
+        padding: 16px;
+    }
+
+    .exp-detail-modal {
+        background: #fff;
+        border-radius: 20px;
+        width: 100%;
+        max-width: 1000px;
+        height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+        animation: slideUpExp 0.3s ease;
+    }
+
+    @keyframes slideUpExp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .exp-modal-header {
+        padding: 22px 24px 18px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        background: #fff;
+        border-radius: 20px 20px 0 0;
+    }
+
+    .exp-modal-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+
+    .exp-close-btn {
+        background: #f1f5f9;
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: 0.2s;
+    }
+
+    .exp-close-btn:hover {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .exp-modal-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        overflow: hidden;
+    }
+
+    .exp-filter-bar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        align-items: center;
+        background: #f8fafc;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .exp-search-input {
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        flex: 1;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .exp-search-input:focus {
+        border-color: #3b82f6;
+        outline: none;
+    }
+
+    .exp-search-btn {
+        padding: 8px 16px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .exp-search-btn:hover {
+        background: #2563eb;
+    }
+
+    .exp-table-container {
+        flex: 1;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+    }
+
+    .exp-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    .exp-table th {
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.8rem;
+        padding: 12px 16px;
+        font-weight: 800;
+        text-transform: uppercase;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        box-shadow: 0 1px 0 #e2e8f0;
+    }
+
+    .exp-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .exp-reason-text {
+        font-size: 0.85rem;
+        color: #475569;
+        font-style: italic;
+        background: #fffbeb;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border-left: 3px solid #f59e0b;
+        white-space: normal;
+        min-width: 180px;
+        max-width: 300px;
+        line-height: 1.4;
+    }
+
+    .exp-img {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        object-fit: cover;
+        cursor: pointer;
+        border: 1px solid #cbd5e1;
+        transition: 0.2s;
+    }
+
+    .exp-img:hover {
+        transform: scale(1.5);
+        border-color: #3b82f6;
+        z-index: 10;
+        position: relative;
+    }
+
+    .btn-action-exp {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .btn-approve-exp {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .btn-approve-exp:hover {
+        background: #22c55e;
+        color: white;
+    }
+
+    .btn-reject-exp {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+        margin-top: 4px;
+    }
+
+    .btn-reject-exp:hover {
+        background: #ef4444;
+        color: white;
+    }
+
+    .exp-time-box {
+        display: inline-block;
+        font-family: 'Orbitron', monospace;
+        font-size: 0.85rem;
+        font-weight: bold;
+        color: #3b82f6;
+        background: #eff6ff;
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid #bfdbfe;
+    }
+</style>
+
+<script>
+    // --- MỞ MODAL & GỌI API ---
+    async function openPendingExplanationsModal() {
+        document.getElementById('pendingExplanationsModal').style.display = 'flex';
+        document.getElementById('expSearchUsername').value = '';
+        await loadExplanationsData();
+    }
+
+    function closePendingExplanationsModal(e) {
+        if (e && e.target !== document.getElementById('pendingExplanationsModal')) return;
+        document.getElementById('pendingExplanationsModal').style.display = 'none';
+    }
+
+    function triggerSearchExplanations() {
+        loadExplanationsData();
+    }
+
+    async function loadExplanationsData() {
+        const tbody = document.getElementById('pendingExplanationsBody');
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;"><div class="spinner" style="margin: 0 auto 10px;"></div>Đang tải danh sách...</td></tr>';
+
+        const token = localStorage.getItem("hrm_token");
+        if (!token) return;
+
+        const todayObj = new Date();
+        const yyyy = todayObj.getFullYear();
+        const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(todayObj.getDate()).padStart(2, '0');
+        const startOfMonth = `${yyyy}-${mm}-01`;
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        const searchUsername = document.getElementById('expSearchUsername').value.trim();
+
+        let apiUrl = `/api/attendance/pending-explanations-records?startDate=${startOfMonth}&endDate=${todayStr}&skip=0&limit=500`;
+        if (searchUsername) {
+            apiUrl += `&username=${encodeURIComponent(searchUsername)}`;
+        }
+
+        try {
+            const res = await fetch(apiUrl, { method: "GET", headers: { "Authorization": `Bearer ${token}` } });
+            if (!res.ok) throw new Error("API lỗi");
+            const records = await res.json();
+
+            renderPendingExplanationsTable(records);
+        } catch (error) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Lỗi kết nối máy chủ!</td></tr>';
+        }
+    }
+
+    function renderPendingExplanationsTable(records) {
+        const tbody = document.getElementById('pendingExplanationsBody');
+
+        if (!records || records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 50px; color: #10b981; font-weight: bold; font-size: 1.1rem;">🎉 Tuyệt vời! Không có đơn giải trình nào cần duyệt.</td></tr>';
+            return;
+        }
+
+        const userRole = localStorage.getItem("hrm_role") || "user";
+        let html = '';
+
+        records.forEach(item => {
+            let dateStr = "---";
+            let timeStr = "---";
+            if (item.check_in_time) {
+                const dt = new Date(item.check_in_time);
+                dateStr = dt.toLocaleDateString('vi-VN');
+                timeStr = dt.toLocaleTimeString('vi-VN', { hour12: false });
+            }
+
+            const safeEscape = (s) => (s || "").replace(/'/g, "\\'");
+            const imgSrc = item.image_path || '/static/img/no-image.png';
+            const imgHtml = `<img src="${imgSrc}" class="exp-img" title="Xem ảnh lớn" onclick="openImageModal('${safeEscape(imgSrc)}', '${safeEscape(item.full_name)}')">`;
+
+            let actionHtml = `<span style="font-size: 0.8rem; color: #f59e0b; font-weight:bold;">⏳ Chờ duyệt</span>`;
+            if (userRole === 'admin' || userRole === 'manager') {
+                actionHtml = `
+                    <div style="display: flex; flex-direction: column; gap: 4px; justify-content: center; align-items: center;">
+                        <button class="btn-action-exp btn-approve-exp" style="width: 100%; justify-content: center;" onclick="processExplanation(${item.id}, 2, this)">✔️ Đồng ý</button>
+                        <button class="btn-action-exp btn-reject-exp" style="width: 100%; justify-content: center;" onclick="processExplanation(${item.id}, 3, this)">✖ Từ chối</button>
+                    </div>
+                `;
+            }
+
+            html += `
+                <tr>
+                    <td data-label="NGÀY"><strong>${dateStr}</strong></td>
+                    <td data-label="NHÂN VIÊN">
+                        <strong style="color: #1e293b; font-size:0.9rem;">${item.full_name || "---"}</strong><br>
+                        <small style="color:#94a3b8; font-family:monospace;">Mã: ${item.username || "---"}</small>
+                    </td>
+                    <td data-label="ẢNH CHỤP" style="text-align: center;">${imgHtml}</td>
+                    <td data-label="GIỜ QUẸT"><span class="exp-time-box">${timeStr}</span></td>
+                    <td data-label="LÝ DO"><div class="exp-reason-text">${item.explanation_reason || "Không ghi rõ lý do"}</div></td>
+                    <td data-label="THAO TÁC" style="text-align: center; vertical-align: middle;">${actionHtml}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    async function processExplanation(scanId, newStatus, btnElement) {
+        const isApprove = newStatus === 2;
+        if (!confirm(`Xác nhận ${isApprove ? 'ĐỒNG Ý' : 'TỪ CHỐI'} đơn giải trình này?`)) return;
+
+        const token = localStorage.getItem("hrm_token");
+        const role = localStorage.getItem("hrm_role");
+        const origHtml = btnElement.innerHTML;
+        btnElement.innerHTML = "⏳...";
+        btnElement.disabled = true;
+
+        try {
+            const res = await fetch('/api/attendance/review_explain', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ id: scanId, status: newStatus, role: role })
+            });
+
+            if (res.ok) {
+                const row = btnElement.closest('tr');
+                if (row) row.remove();
+
+                // Cập nhật lại số liệu hiển thị bên ngoài bảng chính
+                if (typeof fetchPendingExplanations === "function") fetchPendingExplanations();
+                if (typeof fetchDashboardRecords === "function") fetchDashboardRecords();
+            } else {
+                alert("Lỗi khi xử lý đơn giải trình!");
+                btnElement.innerHTML = origHtml;
+                btnElement.disabled = false;
+            }
+        } catch (e) {
+            alert("Lỗi kết nối máy chủ!");
+            btnElement.innerHTML = origHtml;
+            btnElement.disabled = false;
+        }
+    }
+</script>

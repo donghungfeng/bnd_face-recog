@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+
+{% block title %}Quản Lý Giải Trình{% endblock %}
+{% block page_title %}Quản Lý Giải Trình Chấm Công{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- BỘ CỤC LƯỚI 2 CỘT --- */
+    .grid-container {
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        gap: 20px;
+        align-items: start;
+    }
+
+    .card {
+        background: #fff;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border);
+    }
+
+    .card h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        color: var(--theme-dark);
+        font-size: 1.1rem;
+        border-bottom: 2px solid #f1f5f9;
+        padding-bottom: 10px;
+    }
+
+    /* --- FORM STYLES --- */
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-muted);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+        transition: 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: var(--primary);
+        outline: none;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+        transition: 0.2s;
+    }
+
+    .btn-primary:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-secondary {
+        background: #94a3b8;
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+        transition: 0.2s;
+        margin-top: 8px;
+    }
+
+    /* --- TABLE STYLES --- */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    th {
+        background: #f8fafc;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        padding: 12px 15px;
+        font-weight: 800;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--border);
+    }
+
+    td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        font-size: 0.9rem;
+    }
+
+    /* --- BADGES --- */
+    .badge {
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 0.75rem;
+        display: inline-block;
+    }
+
+    .badge-pending {
+        background: #fef3c7;
+        color: #d97706;
+        border: 1px solid #fde68a;
+    }
+
+    .badge-approved {
+        background: #dcfce7;
+        color: #16a34a;
+        border: 1px solid #bbf7d0;
+    }
+
+    .badge-rejected {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+
+    .btn-action {
+        padding: 5px 8px;
+        border-radius: 6px;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 0.75rem;
+        transition: 0.2s;
+    }
+
+    /* --- FILTER --- */
+    .filter-container label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-muted);
+    }
+
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 9px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+        transition: 0.2s;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+        border-color: var(--primary);
+        outline: none;
+    }
+
+    /* --- PHÂN TRANG --- */
+    .btn-pagination {
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 4px 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+    }
+
+    .btn-pagination:hover:not(:disabled) {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+    }
+
+    .btn-pagination:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    @media (max-width: 1024px) {
+        .grid-container {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid-container">
+
+    <div class="card">
+        <h3 id="formTitle">+ Thêm Giải Trình Mới</h3>
+        <form id="explainForm">
+            <div class="form-group">
+                <label>Người Gửi (Mã NV)</label>
+                <input type="text" id="post_username" disabled style="background: #f1f5f9; color: #64748b;">
+            </div>
+
+            <div class="form-group">
+                <label>Ngày Vi Phạm*</label>
+                <input type="date" id="post_date" required>
+            </div>
+
+            <div class="form-group">
+                <label>Lý do giải trình*</label>
+                <textarea id="post_reason" rows="4" placeholder="Nhập lý do chi tiết..." required></textarea>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn-primary" id="saveBtn">LƯU GIẢI TRÌNH</button>
+                <button type="button" class="btn-secondary" id="cancelEditBtn" style="display: none;"
+                    onclick="cancelEdit()">HỦY CẬP NHẬT</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card" style="max-width: 100%; overflow: hidden;">
+        <h3>Danh Sách Giải Trình</h3>
+
+        <div class="filter-container" style="display: flex; gap: 15px; margin-bottom: 15px;">
+            <div class="filter-group" style="flex: 1.5;">
+                <label>🔍 Mã Nhân Viên</label>
+                <input type="text" id="filter_username" placeholder="Mã NV..." oninput="applyFilter()">
+            </div>
+            <div class="filter-group" style="flex: 1.5;">
+                <label>Trạng Thái</label>
+                <select id="filter_status" onchange="applyFilter()">
+                    <option value="">Tất cả</option>
+                    <option value="1" selected>⏳ Chờ duyệt</option>
+                    <option value="2">✔️ Đã duyệt</option>
+                    <option value="3">❌ Từ chối</option>
+                </select>
+            </div>
+    
+        </div>
+
+        <div style="width: 100%; overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%">MÃ NV</th>
+                        <th style="width: 15%">NGÀY</th>
+                        <th style="width: 35%">LÝ DO</th>
+                        <th style="width: 15%">TRẠNG THÁI</th>
+                        <th style="width: 20%; text-align: center;">THAO TÁC</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="paginationControls"
+            style="display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; margin-top: 12px; border-top: 1px solid #e2e8f0; font-size: 0.85rem;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <button class="btn-pagination" id="btnFirst" onclick="jumpToPage(1)" title="Trang đầu">⏮️</button>
+                <button class="btn-pagination" id="btnPrev" onclick="changePage(-1)" title="Trang trước">◀️</button>
+                <span style="margin: 0 8px;">
+                    Trang <input type="number" id="pageInput" value="1" min="1" onchange="jumpToPage(this.value)"
+                        style="width: 45px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px;">
+                    / <span id="totalPageDisplay">1</span>
+                </span>
+                <button class="btn-pagination" id="btnNext" onclick="changePage(1)" title="Trang sau">▶️</button>
+                <button class="btn-pagination" id="btnLast" onclick="jumpToPage(totalPages)" title="Trang cuối">⏭️</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px; color: #64748b;">
+                <span id="pageInfo">Tổng số: 0</span>
+                <span>Số dòng:
+                    <select id="pageSizeSelect" onchange="updatePageSize(this.value)"
+                        style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px;">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const API_URL = "/api/explanations";
+    let currentPage = 1;
+    let isEditMode = false;
+    let currentEditId = null;
+    let cachedItems = []; // Lưu trữ để điền form khi sửa
+
+    const currentUser = {
+        username: localStorage.getItem("hrm_username") || "",
+        role: localStorage.getItem("hrm_role") || "user"
+    };
+
+    // --- 1. TẢI DỮ LIỆU ---
+    async function fetchExplanations() {
+        const username = document.getElementById("filter_username").value.trim();
+        const status = document.getElementById("filter_status").value;
+        const limit = parseInt(document.getElementById("pageSizeSelect").value);
+        const skip = (currentPage - 1) * limit;
+
+        let url = `${API_URL}?skip=${skip}&limit=${limit}`;
+        if (username) url += `&username=${username}`;
+        if (status !== "") url += `&status=${status}`;
+
+        try {
+            const token = localStorage.getItem("hrm_token");
+            const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+            const data = await res.json();
+            cachedItems = data.items;
+            renderTable(data.items);
+            renderPagination(data.total, limit, skip);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function renderTable(items) {
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = items.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94a3b8;">Không có dữ liệu</td></tr>' : "";
+
+        const statusMap = {
+            1: { text: "⏳ Chờ duyệt", class: "badge-pending" },
+            2: { text: "✔️ Đã duyệt", class: "badge-approved" },
+            3: { text: "❌ Từ chối", class: "badge-rejected" }
+        };
+
+        items.forEach(item => {
+            const statusInt = parseInt(item.status);
+            const st = statusMap[statusInt] || { text: item.status, class: "" };
+
+            // Format ngày hiển thị VN
+            const [y, m, d] = item.date.split("-");
+            const dateStr = `${d}/${m}/${y}`;
+
+            let actionHtml = "";
+
+            // Logic nút Duyệt/Hủy (Admin/Manager)
+            if ((currentUser.role === "admin" || currentUser.role === "manager") && statusInt === 1) {
+                actionHtml += `
+                    <button onclick="approveRecord(${item.id})" class="btn-action" style="background:#10b981; color:white; margin-right:4px;">Duyệt</button>
+                    <button onclick="rejectRecord(${item.id})" class="btn-action" style="background:#ef4444; color:white;">Hủy</button>
+                `;
+            }
+
+            // Logic nút Sửa (Chính chủ hoặc Admin/Manager - Chỉ khi đang Pending)
+            if (statusInt === 1 && (currentUser.role !== "user" || item.username === currentUser.username)) {
+                actionHtml += `<button onclick="editRecord(${item.id})" class="btn-action" style="background:#e0f2fe; color:#0284c7; margin-left:4px;">✏️ Sửa</button>`;
+            }
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><b style="color:var(--primary);">${item.username}</b></td>
+                    <td>${dateStr}</td>
+                    <td><i>${item.reason}</i></td>
+                    <td><span class="badge ${st.class}">${st.text}</span></td>
+                    <td style="text-align: center;">${actionHtml || "---"}</td>
+                </tr>
+            `;
+        });
+    }
+
+    // --- 2. LOGIC SỬA (UPDATE) ---
+    function editRecord(id) {
+        const item = cachedItems.find(i => i.id === id);
+        if (!item) return;
+
+        isEditMode = true;
+        currentEditId = id;
+
+        // Điền dữ liệu vào form
+        document.getElementById("formTitle").innerText = "✏️ Cập Nhật Giải Trình #" + id;
+        document.getElementById("post_date").value = item.date;
+        document.getElementById("post_reason").value = item.reason;
+        document.getElementById("post_username").value = item.username;
+
+        document.getElementById("saveBtn").innerText = "💾 CẬP NHẬT THAY ĐỔI";
+        document.getElementById("cancelEditBtn").style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+        isEditMode = false;
+        currentEditId = null;
+        document.getElementById("explainForm").reset();
+        document.getElementById("formTitle").innerText = "+ Thêm Giải Trình Mới";
+        document.getElementById("saveBtn").innerText = "LƯU GIẢI TRÌNH";
+        document.getElementById("cancelEditBtn").style.display = "none";
+        document.getElementById("post_username").value = currentUser.username;
+        // Reset date về hôm qua
+        const d = new Date(); d.setDate(d.getDate() - 1);
+        document.getElementById("post_date").valueAsDate = d;
+    }
+
+    // --- 3. SUBMIT FORM (CREATE & UPDATE) ---
+    document.getElementById("explainForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("saveBtn");
+        btn.disabled = true;
+
+        const payload = {
+            date: document.getElementById("post_date").value,
+            reason: document.getElementById("post_reason").value.trim()
+        };
+
+        try {
+            const token = localStorage.getItem("hrm_token");
+            let url = API_URL;
+            let method = "POST";
+
+            if (isEditMode) {
+                url = `${API_URL}/${currentEditId}`;
+                method = "PUT";
+            } else {
+                // Nếu tạo mới thì thêm các trường mặc định
+                payload.username = currentUser.username;
+                payload.status = "1";
+            }
+
+            const res = await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert(isEditMode ? "Cập nhật thành công!" : "Gửi giải trình thành công!");
+                cancelEdit();
+                fetchExplanations();
+            } else {
+                const err = await res.json();
+                alert("Lỗi: " + err.detail);
+            }
+        } catch (err) {
+            alert("Lỗi kết nối!");
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // --- 4. CÁC THAO TÁC DUYỆT/HỦY ---
+    async function approveRecord(id) {
+        if (!confirm("Duyệt giải trình này?")) return;
+        await callStatusAPI(id, "approve");
+    }
+
+    async function rejectRecord(id) {
+        if (!confirm("Từ chối giải trình này?")) return;
+        await callStatusAPI(id, "reject");
+    }
+
+    async function callStatusAPI(id, action) {
+        try {
+            const token = localStorage.getItem("hrm_token");
+            const res = await fetch(`${API_URL}/${id}/${action}`, {
+                method: "PUT",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (res.ok) { fetchExplanations(); }
+            else { const err = await res.json(); alert(err.detail); }
+        } catch (e) { alert("Lỗi kết nối!"); }
+    }
+
+    // --- PHÂN TRANG & FILTER ---
+    let totalPages = 1;
+
+    function renderPagination(total, limit, skip) {
+        totalPages = Math.ceil(total / limit) || 1;
+        document.getElementById("pageInfo").innerText = `Tổng số: ${total}`;
+        document.getElementById("pageInput").value = currentPage;
+        document.getElementById("totalPageDisplay").innerText = totalPages;
+        document.getElementById("btnFirst").disabled = (currentPage <= 1);
+        document.getElementById("btnPrev").disabled = (currentPage <= 1);
+        document.getElementById("btnNext").disabled = (currentPage >= totalPages);
+        document.getElementById("btnLast").disabled = (currentPage >= totalPages);
+    }
+
+    function changePage(delta) {
+        jumpToPage(currentPage + delta);
+    }
+
+    function jumpToPage(page) {
+        const p = parseInt(page);
+        if (isNaN(p) || p < 1) { document.getElementById("pageInput").value = currentPage; return; }
+        currentPage = Math.min(p, totalPages || 1);
+        fetchExplanations();
+    }
+
+    function updatePageSize(newSize) {
+        currentPage = 1;
+        fetchExplanations();
+    }
+
+    let tid; function applyFilter() { clearTimeout(tid); tid = setTimeout(() => { currentPage = 1; fetchExplanations(); }, 400); }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("post_username").value = currentUser.username;
+        const d = new Date(); d.setDate(d.getDate() - 1);
+        document.getElementById("post_date").valueAsDate = d;
+        fetchExplanations();
+    });
+</script>
+{% endblock %}

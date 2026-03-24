@@ -1,0 +1,7 @@
+﻿CREATE TABLE explanation (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(255) NOT NULL,
+    date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status VARCHAR(50) NOT NULL
+);
