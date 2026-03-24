@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Float, Integer, String, Date, Time, DateTime, Text, Boolean
 from datetime import datetime
 from database import Base
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import relationship
 
 class Employee(Base):
@@ -118,6 +118,8 @@ class MonthlyRecord(Base):
     explanation_status = Column(Integer, default=0)
     checkin_image_path = Column(String, nullable=True)
     checkout_image_path = Column(String, nullable=True)
+    actual_hours = Column(Float, default=0)
+    actual_workday = Column(Float, default=0)
     note = Column(Text, nullable=True)
 
 class AppConfig(Base):
@@ -129,3 +131,11 @@ class AppConfig(Base):
     description = Column(String(255), nullable=True)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
+class Explanation(Base):
+    __tablename__ = "explanation"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(255), index=True, nullable=False)
+    date = Column(Date, server_default=func.current_date()) 
+    reason = Column(Text, nullable=False)
+    status = Column(String(50), nullable=False)

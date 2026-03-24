@@ -10,6 +10,7 @@ import models
 import schemas
 import constants
 import service.attendace_service as attendance_service
+from routers.auth_router import get_current_user
 
 # Khai báo router
 router = APIRouter(prefix="/api/monthly-records", tags=["Sync Data"])
@@ -84,9 +85,6 @@ def sync_monthly_records(
     except Exception as e:
         db.rollback() # Hoàn tác nếu có lỗi xảy ra trong quá trình lưu
         raise HTTPException(status_code=500, detail=f"Lỗi Database: {str(e)}")
-    
-    
-from routers.auth_router import get_current_user
 
 @router.get("", response_model=list[schemas.MonthlyRecordOut])
 def get_monthly_report(
@@ -158,6 +156,8 @@ def get_monthly_report(
             "explanation_status": r.explanation_status,
             "checkin_image_path": r.checkin_image_path,
             "checkout_image_path": r.checkout_image_path,
+            "actual_hours": r.actual_hours,
+            "actual_workday": r.actual_workday,
             "note": r.note,
             "full_name": emp.full_name if emp else "Unknown",
             "username": emp.username if emp else "Unknown",

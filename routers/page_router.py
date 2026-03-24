@@ -30,6 +30,9 @@ def read_shifts(request: Request): return templates.TemplateResponse("shifts.htm
 @router.get("/attendance")
 def read_attendance(request: Request): return templates.TemplateResponse("attendance.html", {"request": request})
 
+@router.get("/explanation")
+def read_explanation(request: Request): return templates.TemplateResponse("explanation.html", {"request": request})
+
 @router.get("/calendar")
 def read_calendar(request: Request): return templates.TemplateResponse("calendar.html", {"request": request})
 

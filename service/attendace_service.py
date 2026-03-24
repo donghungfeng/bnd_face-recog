@@ -59,11 +59,15 @@ def calculate_shift_details(shift_cat, summary, next_day_summary=None):
     status = constants.AttendanceStatus.ABSENT
     late_min = 0
     early_min = 0
+    
+    # Khởi tạo giá trị mặc định cho logic mới
+    actual_hours = 0.0
+    actual_workday = 0.0
 
     if not summary or not summary.scans:
-        return c_in, c_out, status, late_min, early_min, img_in, img_out
+        return c_in, c_out, status, late_min, early_min, img_in, img_out, actual_hours, actual_workday
 
-    # --- 1. XÁC ĐỊNH GIỜ VÀO & ẢNH VÀO (Luôn lấy scan đầu tiên) ---
+    # --- 1. XÁC ĐỊNH GIỜ VÀO & ẢNH VÀO (Giữ nguyên) ---
     first_scan = summary.scans[0]
     dt_in = first_scan.check_in_time
     c_in = dt_in.time()
@@ -74,16 +78,14 @@ def calculate_shift_details(shift_cat, summary, next_day_summary=None):
         if dt_in > ref_checkin_to:
             late_min = int((dt_in - ref_checkin_to).total_seconds() / 60)
 
-    # --- 2. XÁC ĐỊNH GIỜ RA & ẢNH RA ---
+    # --- 2. XÁC ĐỊNH GIỜ RA & ẢNH RA (Giữ nguyên) ---
     dt_out = None
     now = datetime.now()
     
-    # Tính mốc thời gian tối đa của ca (Giờ tan ca)
     ref_date_out = summary.target_date + timedelta(days=1) if (shift_cat and shift_cat.shift_code == "T") else summary.target_date
     end_time_limit = shift_cat.checkout_from if shift_cat else time(23, 59)
     ref_checkout_limit = datetime.combine(ref_date_out, end_time_limit)
 
-    # Ưu tiên lấy scan cuối nếu có nhiều hơn 1 lần quẹt (hoặc ca T có data ngày sau)
     if shift_cat and shift_cat.shift_code == "T":
         if next_day_summary and next_day_summary.scans:
             last_scan = next_day_summary.scans[-1]
@@ -93,31 +95,25 @@ def calculate_shift_details(shift_cat, summary, next_day_summary=None):
             last_scan = summary.scans[-1]
             dt_out = last_scan.check_in_time
 
-    # LOGIC "CHỐT SỔ" TỰ ĐỘNG CỦA BẠN:
-    # Nếu đến giờ này vẫn chưa có dt_out (chỉ 1 lần quẹt) 
-    # VÀ thời gian hiện tại đã quá giờ tan ca (ref_checkout_limit)
     if dt_out is None and now >= ref_checkout_limit:
-        dt_out = dt_in  # Lấy luôn giờ vào làm giờ ra
+        dt_out = dt_in 
         
     if dt_out:
         c_out = dt_out.time()
-        # Nếu dt_out trùng dt_in thì lấy luôn ảnh vào làm ảnh ra
         if dt_out == dt_in:
             img_out = img_in
         else:
-            # Nếu là scan khác thì lấy ảnh của scan đó
-            # Tìm scan tương ứng với dt_out trong danh sách (hoặc next_day nếu ca T)
             img_out = getattr(last_scan, 'image_path', None) if 'last_scan' in locals() else img_in
 
-    # --- 3. PHÂN LOẠI TRẠNG THÁI ---
-    # A. Trường hợp ĐANG LÀM VIỆC (Chưa có dt_out và chưa quá giờ tan ca)
+    # --- 3. PHÂN LOẠI TRẠNG THÁI (Giữ nguyên logic xác định status) ---
     if dt_out is None and now < ref_checkout_limit:
         status = constants.AttendanceStatus.LATE if late_min > 0 else constants.AttendanceStatus.IN_PROGRESS
-        return c_in, None, status, late_min, 0, img_in, None
+        # Nếu đang trong quá trình làm việc, chưa tính công
+        return c_in, None, status, late_min, 0, img_in, None, 0.0, 0.0
 
-    # B. Trường hợp ĐÃ CHỐT (Có dt_out do quẹt thật hoặc do hệ thống tự chốt)
     if not shift_cat:
-        return c_in, c_out, constants.AttendanceStatus.PRESENT, 0, 0, img_in, img_out
+        # Không có ca định nghĩa thì mặc định PRESENT nhưng không có công chuẩn
+        return c_in, c_out, constants.AttendanceStatus.PRESENT, 0, 0, img_in, img_out, 0.0, 0.0
 
     ref_checkout_from = datetime.combine(ref_date_out, shift_cat.checkout_from)
     if dt_out:
@@ -135,7 +131,41 @@ def calculate_shift_details(shift_cat, summary, next_day_summary=None):
     else:
         status = constants.AttendanceStatus.ABSENT
 
-    return c_in, c_out, status, late_min, early_min, img_in, img_out
+    # --- 4. LOGIC MỚI: TÍNH TOÁN CÔNG THỰC TẾ (Chỉ check 4h cho status Vừa muộn vừa sớm) ---
+    base_h = float(getattr(shift_cat, 'work_hours', 0.0))
+    base_d = float(getattr(shift_cat, 'work_days', 0.0))
+
+    # 1. Logic PRESENT (Đúng giờ) -> Full công
+    if status == constants.AttendanceStatus.PRESENT:
+        actual_hours = base_h
+        actual_workday = base_d
+    
+    # 2. Logic LATE (2) hoặc EARLY_LEAVE (3) -> Luôn lấy nửa công (không check giờ)
+    elif status in [constants.AttendanceStatus.LATE, constants.AttendanceStatus.EARLY_LEAVE]:
+        actual_hours = base_h / 2
+        actual_workday = base_d / 2
+        
+    # 3. Logic LATE_AND_EARLY_LEAVE (6) -> Check điều kiện 4 tiếng
+    elif status == constants.AttendanceStatus.LATE_AND_EARLY_LEAVE:
+        # Tính thời gian ở lại thực tế (giờ)
+        work_duration_hours = 0.0
+        if dt_in and dt_out:
+            work_duration_hours = (dt_out - dt_in).total_seconds() / 3600
+
+        if work_duration_hours < 4.0:
+            actual_hours = 0.0
+            actual_workday = 0.0
+        else:
+            # Nếu vi phạm cả hai nhưng vẫn ở lại trên 4 tiếng thì tính nửa công
+            actual_hours = base_h / 2
+            actual_workday = base_d / 2
+            
+    # 4. Logic mặc định (Vắng mặt / Đang làm việc)
+    else:
+        actual_hours = 0.0
+        actual_workday = 0.0
+
+    return c_in, c_out, status, late_min, early_min, img_in, img_out, actual_hours, actual_workday
 
 def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceSummary]):
     if not summary_list:
@@ -195,24 +225,27 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                     )
 
         # Tính toán chi tiết
-        c_in, c_out, stat, late, early, img_in, img_out = calculate_shift_details(
+        c_in, c_out, stat, late, early, img_in, img_out, actual_h, actual_w = calculate_shift_details(
             shift_cat, summary, next_day_summary
         )
-
         new_record = models.MonthlyRecord(
             employee_id=summary.employee_id,
             date=summary.target_date,
             shift_code=shift_code,
             checkin_time=c_in,
             checkout_time=c_out,
-            checkin_image_path=img_in,   # Gán ảnh vào cột mới
-            checkout_image_path=img_out, # Gán ảnh vào cột mới
+            checkin_image_path=img_in,
+            checkout_image_path=img_out,
             status=stat,
             late_minutes=late,
             early_minutes=early,
+            actual_hours=actual_h,
+            actual_workday=actual_w,
             explanation_status=0
         )
         result_records.append(new_record)
+        print("Nam check")
+        print(result_records)
 
     return result_records
 

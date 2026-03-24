@@ -143,6 +143,8 @@ class MonthlyRecordBase(BaseModel):
     explanation_status: int = 0
     checkin_image_path: Optional[str] = None
     checkout_image_path: Optional[str] = None
+    actual_hours: float = 0
+    actual_workday: float = 0
     note: Optional[str] = None
 
 class MonthlyRecordOut(MonthlyRecordBase):
@@ -196,3 +198,35 @@ class AttendanceSummaryByEmployee(BaseModel):
 class UpdateImageUrlRequest(BaseModel):
     filename: str
     image_url: str
+
+class UpdateExplanationRequest(BaseModel):
+    id: int
+    explanation_reason: str
+    explanation_status: int
+
+# Thêm các class này vào cuối file schemas.py
+
+class ExplanationCreate(BaseModel):
+    username: str
+    reason: str
+    status: str
+    date: date
+
+class ExplanationResponse(BaseModel):
+    id: int
+    username: str
+    date: date
+    reason: str
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PaginatedExplanationResponse(BaseModel):
+    total: int
+    items: list[ExplanationResponse]
+    skip: int
+    limit: int
+
+class ExplanationUpdate(BaseModel):
+    date: date
+    reason: str
