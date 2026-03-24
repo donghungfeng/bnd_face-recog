@@ -334,6 +334,7 @@
             <a href="/employees" id="nav-employees">👤 Quản lý Nhân sự</a>
             <a href="/shifts" id="nav-shifts">📋 Danh mục Ca trực</a>
             <a href="/assignments" id="nav-assignments">🤝 Phân công Ca trực</a>
+            <a href="/enroll?id=${userName}" id="nav-enroll">📸 Quét mặt bằng Camera</a>
             <a href="/attendance" id="nav-attendance">📊 Nhật ký chấm công</a>
             <a href="/explanation" id="nav-explanation">📈 Giải trình</a>
             <a href="/calendar" id="nav-calendar">📅 Lịch Chấm công</a>
@@ -342,6 +343,9 @@
             <a href="/verify_personal" id="nav-ipad" target="_blank"
                 style="margin-top: auto; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.1); color: var(--success);">📷
                 Mở TB Chấm Công</a>
+
+            
+
         </div>
     </nav>
 
@@ -391,9 +395,9 @@
         // Cấu hình các menu được phép nhìn thấy theo từng chức vụ:
         const allowedMenus = {
             // THÊM "nav-faces" VÀO CUỐI DANH SÁCH ADMIN:
-            "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad", "nav-explanation" ],
-            "manager": [ "nav-dashboard", "nav-employees", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-explanation" ],
-            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad", "nav-explanation" ]
+            "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad","nav-enroll", "nav-explanation" ],
+            "manager": [ "nav-dashboard", "nav-employees", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation" ],
+            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation" ]
         };
         if (!isAuthPage) {
             // Bước A: Ẩn TOÀN BỘ menu đi trước
@@ -477,6 +481,25 @@
                 }
             }
         });
+
+
+        if(token && !isAuthPage) {
+            const userName = localStorage.getItem("hrm_username") || "guest"; // Lấy username (ID đăng nhập)
+            const displayName = localStorage.getItem("hrm_name") || "Khách"; // Lấy tên hiển thị
+            
+            let roleName = "Nhân viên";
+            if (userRole === 'admin') roleName = "Quản trị hệ thống";
+            if (userRole === 'manager') roleName = "Quản lý / Trưởng khoa";
+            
+            // Binding tên vào Header
+            document.getElementById('displayUserName').innerHTML = `Xin chào, <strong>${displayName}</strong> (${roleName})`;
+
+            // FIX LỖI TẠI ĐÂY: Binding username vào link Quét mặt
+            const enrollLink = document.getElementById('nav-enroll');
+            if (enrollLink) {
+                enrollLink.href = `/enroll?id=${userName}`;
+            }
+        }
 
         
     </script>

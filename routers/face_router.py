@@ -113,10 +113,12 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
         
         THRESHOLD = float(services.get_config("FACE_THRESHOLD", "0.75"))
 
+        MARGIN_THRESHOLD = float(services.get_config("FACE_MARGIN_THRESHOLD", "4.0"))
+        ABSOLUTE_SAFE_ZONE = 0.85
+
         if max_sim >= THRESHOLD:
-            if second_best_match and margin_percent < 4.0:
-                # Lưu vào DB lịch sử bị từ chối do nhiễu
-                note_str = f"Từ chối do quá giống {second_best_match} (Lệch {round(margin_percent, 2)}% < 4%)"
+            if max_sim < ABSOLUTE_SAFE_ZONE and second_best_match and margin_percent < MARGIN_THRESHOLD:
+                note_str = f"Từ chối do quá giống {second_best_match} (Lệch {round(margin_percent, 2)}% < {MARGIN_THRESHOLD}%)"
                 background_tasks.add_task(services.background_logging, "UNKNOWN", img_to_save, max_sim, request.client_public_ip, 0, 0, request.attendance_type, note_str)
                 
                 return {

@@ -145,7 +145,7 @@ def background_logging(
                 latitude=latitude,                    
                 longitude=longitude,                  
                 attendance_type=attendance_type,        
-                note="Không nhận diện được"                               
+                note=note                              
             )
             db.add(new_log)
 

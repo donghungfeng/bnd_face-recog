@@ -379,6 +379,7 @@
         const historyList = document.getElementById('historyList');
         const progressContainer = document.getElementById('progressContainer');
 
+        let isProcessing = false;
         let lastDetection = null;
         let isFaceDetectionRunning = false;
         let currentPublicIp = '';
@@ -391,21 +392,21 @@
         let consecutiveGoodFrames = 0;
         let isLoopRunning = false;
         let emptyFrames = 0;
-
-        // BỘ KHÓA CHỐNG SPAM API
-        let isApiLocked = false; 
+        let isFetchingAPI = false;
+        let lastAttemptTime = 0;
+        let isApiLocked = false;
 
         const USER_COOLDOWN_MS = 30 * 1000;
         const userCooldowns = {};
 
-        // ---------------- CÁC THÔNG SỐ TỐI ƯU CHẤT LƯỢNG ----------------
-        const REQUIRED_GOOD_FRAMES = 4;   // Ép giữ yên mặt để lấy nét
-        const SHARPNESS_THRESHOLD = 50;   // Ép ảnh nét
-        const FACE_MIN_SIZE = 0.15;       // Tránh đứng quá xa
+        // ---------------- CÁC THÔNG SỐ TỐI ƯU CÂN BẰNG TỐC ĐỘ VÀ CHẤT LƯỢNG ----------------
+        const REQUIRED_GOOD_FRAMES = 3;   // Giảm xuống 3 frame để tốc độ quét mượt hơn
+        const SHARPNESS_THRESHOLD = 35;   // Giảm xuống 35, thân thiện với các webcam và môi trường sáng khác nhau
+        const FACE_MIN_SIZE = 0.15;       // Cho phép khoảng cách xa vừa phải
         const FACE_MAX_SIZE = 0.65;       
         // -----------------------------------------------------------------------------
 
-        // Tạo số lượng chấm frame động
+        // Tạo số lượng chấm frame động theo REQUIRED_GOOD_FRAMES
         progressContainer.innerHTML = '';
         for(let i = 1; i <= REQUIRED_GOOD_FRAMES; i++) {
             progressContainer.innerHTML += `<div id="frame${i}" class="frame-dot" style="display:block;"></div>`;
@@ -454,7 +455,7 @@
                         dot.classList.remove('processing');
                     } else {
                         dot.classList.remove('active');
-                        if (isApiLocked && i === count + 1) {
+                        if (isProcessing && i === count + 1) {
                             dot.classList.add('processing');
                         } else {
                             dot.classList.remove('processing');
@@ -481,7 +482,6 @@
             isFaceDetectionRunning = false;
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-            // CHỐT CHẶN: Dừng phân tích nếu đang gọi API
             if (isApiLocked) {
                 return;
             }
@@ -517,8 +517,8 @@
                     const eyeDistX = Math.abs(eyeL.x - eyeR.x);
                     const eyeDistY = Math.abs(eyeL.y - eyeR.y);
 
-                    // Siết góc nghiêng trái/phải
-                    if (eyeDistY / eyeDistX > 0.28) {
+                    // Nới lỏng góc nghiêng đầu từ 0.20 lên 0.35
+                    if (eyeDistY / eyeDistX > 0.35) {
                         isStraight = false;
                         poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
                     }
@@ -526,8 +526,8 @@
                         const noseDistL = Math.abs(nose.x - eyeL.x);
                         const noseDistR = Math.abs(nose.x - eyeR.x);
 
-                        // Siết góc quay mặt
-                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.28) {
+                        // Nới lỏng góc quay mặt từ 0.20 lên 0.35
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.35) {
                             isStraight = false;
                             poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
                         }
@@ -554,33 +554,52 @@
                 const boxH = lastDetection.height * h;
 
                 const guideColor = isValid ? "#00ff88" : "#ffb800";
-                drawTargetingFrame(overlayCtx, originX, originY, boxW, boxH, guideColor, isValid);
+                
+                let frameColor = guideColor;
+                if(consecutiveGoodFrames === REQUIRED_GOOD_FRAMES) {
+                    frameColor = Date.now() % 200 < 100 ? "#ffffff" : guideColor; 
+                }
+                
+                drawTargetingFrame(overlayCtx, originX, originY, boxW, boxH, frameColor, isValid && consecutiveGoodFrames === REQUIRED_GOOD_FRAMES);
 
                 if (!isValid) {
                     consecutiveGoodFrames = 0;
                     updateFrameProgress(0);
-                    resultBox.className = "info status-warning";
-                    resultBox.innerHTML = currentWarning;
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = currentWarning;
+                    }
                 } else {
-                    consecutiveGoodFrames++;
-                    updateFrameProgress(Math.min(consecutiveGoodFrames, REQUIRED_GOOD_FRAMES));
+                    if (!isProcessing) {
+                        consecutiveGoodFrames = Math.min(consecutiveGoodFrames + 1, REQUIRED_GOOD_FRAMES);
+                        updateFrameProgress(consecutiveGoodFrames);
 
-                    if (consecutiveGoodFrames >= REQUIRED_GOOD_FRAMES) {
-                        isApiLocked = true; // Khóa luồng
-                        resultBox.className = "info status-scanning";
-                        resultBox.innerHTML = `📸 ĐANG XÁC NHẬN...`;
-                        sendToAPI();
+                        if (consecutiveGoodFrames < REQUIRED_GOOD_FRAMES) {
+                            resultBox.className = "info status-scanning";
+                            resultBox.innerHTML = `📸 ĐANG ĐẾM FRAME... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
+                        } else {
+                            resultBox.className = "info status-scanning";
+                            resultBox.innerHTML = `✅ GIỮ NGUYÊN TƯ THẾ ĐỂ CHỤP...`;
+                            
+                            // Nhanh hơn: Thời gian chờ để camera focus được rút ngắn còn 150ms thay vì 500ms
+                            setTimeout(() => sendToAPI(), 150); 
+                        }
                     }
                 }
 
             } else {
                 emptyFrames++;
+                if (emptyFrames > 15) {
+                    consecutiveGoodFrames = 0;
+                    updateFrameProgress(0);
+                }
+
                 lastDetection = null;
                 distanceFill.style.width = "0%";
                 consecutiveGoodFrames = 0;
                 updateFrameProgress(0);
 
-                if (!isSleeping) {
+                if (!isProcessing && !isSleeping) {
                     drawTargetingFrame(overlayCtx, targetX, targetY, targetSize, "rgba(255, 255, 255, 0.4)", false);
                     resultBox.className = "info status-scanning";
                     resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
@@ -626,8 +645,9 @@
             const videoH = video.videoHeight;
             let { xCenter, yCenter, width, height } = lastDetection;
 
-            // Padding 0.35 để lấy toàn bộ cằm/đỉnh đầu
-            const padding = 0.35;
+            // ĐỒNG BỘ TUYỆT ĐỐI VỚI BACKEND LÀ 0.25
+            const padding = 0.25; 
+            
             let cropW = width * (1 + padding) * videoW;
             let cropH = height * (1 + padding) * videoH;
 
@@ -696,8 +716,24 @@
         }
 
         async function sendToAPI() {
+            const now = Date.now();
+            
+            if (isFetchingAPI || isApiLocked) {
+                return;
+            }
+
+            if (now - lastAttemptTime < 800) { 
+                return;
+            }
+
+            isFetchingAPI = true;
+            isProcessing = true;
+            lastAttemptTime = now;
+
             resultBox.className = "info status-scanning";
             resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
+            
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -707,18 +743,18 @@
                 const fullImage = captureFullFrame();
 
                 if (!croppedImage || !fullImage) {
-                    throw new Error("Lỗi capture ảnh");
+                    throw new Error("Không capture được ảnh");
                 }
 
                 if (!isImageSharp(cropCanvas)) {
                     resultBox.className = "info status-warning";
                     resultBox.innerHTML = `⚠️ ẢNH CHƯA RÕ NÉT, VUI LÒNG ĐỨNG YÊN`;
+                    
+                    consecutiveGoodFrames = 0;
+                    updateFrameProgress(0);
+                    
+                    setTimeout(() => { isApiLocked = false; isProcessing = false; isFetchingAPI = false; }, 800); 
                     clearTimeout(timeoutId);
-                    setTimeout(() => {
-                        isApiLocked = false;
-                        consecutiveGoodFrames = 0;
-                        updateFrameProgress(0);
-                    }, 800);
                     return;
                 }
 
@@ -766,9 +802,11 @@
             } finally {
                 setTimeout(() => {
                     isApiLocked = false;
+                    isProcessing = false;
+                    isFetchingAPI = false;
                     consecutiveGoodFrames = 0;
                     updateFrameProgress(0);
-                }, 1200); 
+                }, 1000); 
             }
         }
 
@@ -789,10 +827,8 @@
         async function startCamera() {
             verifyNetwork();
             try {
-                // CHỐT CHẶN: Ép tải xong Model AI
                 document.getElementById('resultBox').innerHTML = `<div class="loader"></div> ĐANG TẢI MÔ HÌNH AI...`;
                 await faceDetection.initialize();
-
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
                 });
@@ -800,9 +836,6 @@
                 video.onloadedmetadata = () => {
                     overlayCanvas.width = video.videoWidth;
                     overlayCanvas.height = video.videoHeight;
-                    
-                    document.getElementById('resultBox').innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
-
                     if (!isLoopRunning) {
                         isLoopRunning = true;
                         processVideoFrame();
@@ -810,7 +843,7 @@
                 }
             } catch (err) {
                 resultBox.className = "info status-err";
-                resultBox.innerHTML = "❌ LỖI KHỞI TẠO CAMERA HOẶC AI";
+                resultBox.innerHTML = "❌ LỖI TRUY CẬP CAMERA";
             }
         }
 
