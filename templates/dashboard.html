@@ -5,114 +5,808 @@
 
 {% block extra_css %}
 <style>
-    /* Bọc toàn bộ nội dung */
-    .dashboard-container { max-width: 1400px; margin: 0 auto; padding-bottom: 30px; }
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding-bottom: 30px;
+    }
 
-    /* Tiêu đề & Đồng hồ thời gian thực */
-    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;}
-    
-    /* CSS cho thông tin User đang đăng nhập */
-    .user-greeting h3 { margin: 0; color: var(--text-main); font-size: 1.4rem; font-weight: 800; }
-    .user-greeting h3 span { color: var(--primary); }
-    .user-greeting p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
-    
-    .role-badge { padding: 3px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;}
-    .role-admin { background: #fee2e2; color: #dc2626; border: 1px solid #f87171;}
-    .role-manager { background: #fef3c7; color: #d97706; border: 1px solid #fbbf24;}
-    .role-user { background: #dcfce7; color: #166534; border: 1px solid #4ade80;}
-    
-    .header-controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-    .live-clock { background: #fff; padding: 8px 15px; border-radius: 8px; border: 1px solid var(--border); font-family: 'Orbitron', monospace; font-weight: bold; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-    
-    /* Dropdown tự làm mới */
-    .reload-select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-main); background: #fff; cursor: pointer; outline: none; }
-    .reload-select:focus { border-color: var(--primary); }
+    /* ============================================================
+       PHẦN BÔI ĐỎ — GIỮ NGUYÊN HOÀN TOÀN
+       ============================================================ */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
 
-    /* Dòng thông báo Wifi Bệnh Viện */
+    .user-greeting h3 {
+        margin: 0;
+        color: var(--text-main);
+        font-size: 1.4rem;
+        font-weight: 800;
+    }
+
+    .user-greeting h3 span {
+        color: var(--primary);
+    }
+
+    .user-greeting p {
+        margin: 5px 0 0 0;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .role-badge {
+        padding: 3px 10px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .role-admin {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #f87171;
+    }
+
+    .role-manager {
+        background: #fef3c7;
+        color: #d97706;
+        border: 1px solid #fbbf24;
+    }
+
+    .role-user {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #4ade80;
+    }
+
+    .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .live-clock {
+        background: #fff;
+        padding: 8px 15px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-family: 'Orbitron', monospace;
+        font-weight: bold;
+        color: var(--primary);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+    }
+
+    .reload-select {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.85rem;
+        color: var(--text-main);
+        background: #fff;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .reload-select:focus {
+        border-color: var(--primary);
+    }
+
     .wifi-notice {
-        background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1;
-        padding: 12px 20px; border-radius: 12px; margin-bottom: 25px;
-        display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 0.9rem;
+        background: #e0f2fe;
+        border: 1px solid #bae6fd;
+        color: #0369a1;
+        padding: 12px 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
         box-shadow: 0 4px 6px rgba(14, 165, 233, 0.05);
     }
-    .wifi-icon { font-size: 1.2rem; }
-    .wifi-notice strong { color: #0ea5e9; font-size: 1rem; letter-spacing: 0.5px; background: white; padding: 2px 8px; border-radius: 6px; margin: 0 3px;}
 
-    /* CSS Lưới 4 cột chuẩn cho Stats */
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-    
+    .wifi-icon {
+        font-size: 1.2rem;
+    }
+
+    .wifi-notice strong {
+        color: #0ea5e9;
+        font-size: 1rem;
+        letter-spacing: 0.5px;
+        background: white;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin: 0 3px;
+    }
+
+    /* Stats Grid gốc — 4 cột */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
     .stat-card {
-        background: #fff; padding: 20px; border-radius: 16px; border: 1px solid var(--border);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.03); display: flex; align-items: center; justify-content: space-between;
+        background: #fff;
+        padding: 20px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         transition: transform 0.2s, box-shadow 0.2s;
     }
-    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
 
-    .stat-info { display: flex; flex-direction: column; }
-    .stat-title { color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
-    .stat-value { font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin: 0; line-height: 1; }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+    }
 
-    /* Icon Box màu Pastel */
-    .icon-box { width: 55px; height: 55px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
-    .bg-blue { background: #eff6ff; color: #3b82f6; }
-    .bg-orange { background: #fff7ed; color: #f97316; }
-    .bg-green { background: #f0fdf4; color: #22c55e; }
-    .bg-purple { background: #faf5ff; color: #a855f7; }
+    .stat-info {
+        display: flex;
+        flex-direction: column;
+    }
 
-    /* Bảng hoạt động */
-    .recent-activity { background: #fff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); overflow: hidden; }
-    .recent-header { padding: 20px 25px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
-    .recent-header h3 { margin: 0; color: var(--text-main); font-size: 1.1rem; font-weight: 700; }
-    .recent-header a { color: var(--primary); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
-    .recent-header a:hover { text-decoration: underline; }
+    .stat-title {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
 
-    .table-container { overflow-x: auto; min-height: 400px; }
-    table { width: 100%; border-collapse: collapse; text-align: left; }
-    th { background: #f8fafc; color: var(--text-muted); font-size: 0.8rem; padding: 15px 25px; font-weight: 700; text-transform: uppercase; white-space: nowrap;}
-    td { padding: 15px 25px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap;}
-    tr:hover { background: #f8fafc; }
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--text-main);
+        margin: 0;
+        line-height: 1;
+    }
 
-    /* Thiết kế User Profile trong bảng */
-    .user-profile { display: flex; align-items: center; gap: 12px; }
-    .avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0; background: #f1f5f9; }
-    .user-info { display: flex; flex-direction: column; }
-    .user-name { font-weight: 700; color: var(--text-main); font-size: 0.95rem; }
-    .user-id { color: var(--text-muted); font-size: 0.8rem; font-family: monospace; }
-    
-    .time-badge { color: var(--primary); font-size: 0.95rem; font-weight: 700; font-family: 'Orbitron', monospace;}
-    .date-badge { color: var(--text-muted); font-size: 0.75rem; display: block;}
-    .status-success { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
-    .status-err { background: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+    .icon-box {
+        width: 55px;
+        height: 55px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
 
-    /* Phân trang (Pagination) */
-    .pagination { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background: #fff; border-top: 1px solid var(--border); }
-    .page-info { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
-    .btn-page { padding: 6px 12px; border: 1px solid var(--border); background: #fff; border-radius: 6px; cursor: pointer; color: var(--text-main); font-weight: 600; transition: 0.2s; font-size: 0.85rem;}
-    .btn-page:hover:not(:disabled) { background: #f1f5f9; border-color: #cbd5e1; }
-    .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
+    .bg-blue {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
 
-    /* Responsive */
-    @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 640px) {
-        .stats-grid { grid-template-columns: 1fr; }
-        .dashboard-header, .header-controls { flex-direction: column; align-items: flex-start; width: 100%;}
-        .live-clock, .reload-select { width: 100%; text-align: center; box-sizing: border-box;}
+    .bg-orange {
+        background: #fff7ed;
+        color: #f97316;
+    }
+
+    .bg-green {
+        background: #f0fdf4;
+        color: #22c55e;
+    }
+
+    .bg-purple {
+        background: #faf5ff;
+        color: #a855f7;
+    }
+
+    .bg-red {
+        background: #fff1f2;
+        color: #ef4444;
+    }
+
+    /* Mini Stats (hàng 2) */
+    .mini-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-bottom: 25px;
+    }
+
+    .mini-stat-card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 10px;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        transition: 0.2s;
+    }
+
+    .mini-stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+    }
+
+    .mini-stat-card h4 {
+        margin: 0 0 6px 0;
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+    }
+
+    .mini-stat-card .mnum {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin: 0;
+        line-height: 1;
+    }
+
+    /* ============================================================
+       BỘ LỌC MỚI (giống trang Nhật Ký)
+       ============================================================ */
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-end;
+        background: #fff;
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-group label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        padding: 9px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.88rem;
+        background: #fff;
+        transition: 0.2s;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+        border-color: var(--primary);
+        outline: none;
+    }
+
+    /* ── Ảnh thumbnail giờ vào/ra (giống attendance) ── */
+    .time-img {
+        width: 32px;
+        height: 32px;
+        border-radius: 5px;
+        object-fit: cover;
+        cursor: pointer;
+        border: 1px solid #e2e8f0;
+        transition: 0.2s;
+        flex-shrink: 0;
+    }
+
+    .time-img:hover {
+        transform: scale(1.5);
+        border-color: var(--primary);
+        z-index: 20;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Modal xem ảnh */
+    .img-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.85);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+    }
+
+    .img-modal-inner {
+        position: relative;
+        max-width: 90%;
+        max-height: 90%;
+        text-align: center;
+    }
+
+    .img-modal-inner img {
+        max-width: 100%;
+        max-height: 80vh;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        border: 3px solid white;
+    }
+
+    .img-modal-close {
+        position: absolute;
+        top: -15px;
+        right: -15px;
+        background: #ef4444;
+        color: white;
+        border: none;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        transition: 0.2s;
+    }
+
+    .img-modal-close:hover {
+        background: #dc2626;
+        transform: scale(1.1);
+    }
+
+    .recent-activity {
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+    }
+
+    .recent-header {
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .recent-header h3 {
+        margin: 0;
+        color: var(--text-main);
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+
+    .recent-header a {
+        color: var(--primary);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .recent-header a:hover {
+        text-decoration: underline;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    th {
+        background: #f8fafc;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        padding: 13px 20px;
+        font-weight: 700;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    td {
+        padding: 13px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    /* ===== DOUBLE-CLICK HIGHLIGHT ===== */
+    tbody tr.att-row {
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    tbody tr.att-row:hover {
+        background: #f0f9ff !important;
+    }
+
+    tbody tr.att-row:active {
+        background: #dbeafe !important;
+    }
+
+    /* Tooltip gợi ý double-click */
+    .dbl-hint {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: #64748b;
+        padding: 8px 22px;
+        background: #f8fafc;
+        border-top: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .dbl-hint span {
+        background: #eff6ff;
+        color: #3b82f6;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+        border: 1px solid #bfdbfe;
+    }
+
+    /* User profile */
+    .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #e2e8f0;
+        background: #f1f5f9;
+    }
+
+    .user-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .user-name {
+        font-weight: 700;
+        color: var(--text-main);
+        font-size: 0.9rem;
+    }
+
+    .user-id {
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        font-family: monospace;
+    }
+
+    /* Time cells */
+    .time-badge {
+        color: var(--primary);
+        font-size: 0.9rem;
+        font-weight: 700;
+        font-family: 'Orbitron', monospace;
+    }
+
+    .date-badge {
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        display: block;
+    }
+
+    /* Time in/out boxes */
+    .time-box {
+        display: inline-block;
+        font-family: 'Orbitron', monospace;
+        font-size: 0.82rem;
+        font-weight: bold;
+        color: var(--primary);
+        background: #f0fdf4;
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid #bbf7d0;
+    }
+
+    .time-box.out {
+        background: #fff1f2;
+        color: #e11d48;
+        border-color: #fecdd3;
+    }
+
+    /* Status badges */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .badge-present {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-late {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .badge-absent {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .badge-approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-inprogress {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    .status-success {
+        background: #dcfce7;
+        color: #166534;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+
+    .status-err {
+        background: #fee2e2;
+        color: #dc2626;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+
+    /* Pagination */
+    .pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 13px 20px;
+        background: #f8fafc;
+        border-top: 1px solid var(--border);
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
+    }
+
+    .page-info {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .btn-page {
+        padding: 6px 12px;
+        border: 1px solid var(--border);
+        background: #fff;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-main);
+        font-weight: 600;
+        transition: 0.2s;
+        font-size: 0.85rem;
+    }
+
+    .btn-page:hover:not(:disabled) {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .btn-page:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* ============================================================
+       RESPONSIVE
+       ============================================================ */
+    @media (max-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .mini-stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .filter-bar {
+            flex-direction: column;
+        }
+    }
+
+    @media (max-width: 768px) {
+
+        .dashboard-header,
+        .header-controls {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .header-controls {
+            width: 100%;
+            gap: 8px;
+        }
+
+        .live-clock,
+        .reload-select {
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .wifi-notice {
+            font-size: 0.82rem;
+            padding: 10px 14px;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .mini-stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 7px;
+            margin-bottom: 18px;
+        }
+
+        .stat-card {
+            padding: 14px 12px;
+            border-radius: 12px;
+        }
+
+        .stat-title {
+            font-size: 0.72rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+
+        .icon-box {
+            width: 44px;
+            height: 44px;
+            font-size: 1.2rem;
+        }
+
+        .mini-stat-card h4 {
+            font-size: 0.58rem;
+        }
+
+        .mini-stat-card .mnum {
+            font-size: 1.25rem;
+        }
+
+        table,
+        thead,
+        tbody,
+        th,
+        td,
+        tr {
+            display: block;
+            width: 100%;
+        }
+
+        table {
+            min-width: 100%;
+        }
+
+        thead tr {
+            display: none;
+        }
+
+        tbody tr {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            overflow: hidden;
+        }
+
+        tbody td {
+            padding: 9px 11px;
+            border: none;
+            border-bottom: 1px solid #f1f5f9;
+            border-right: 1px solid #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            white-space: normal;
+        }
+
+        tbody td:nth-child(even) {
+            border-right: none;
+        }
+
+        tbody td:nth-last-child(-n+2) {
+            border-bottom: none;
+        }
+
+        tbody td::before {
+            content: attr(data-label);
+            font-weight: 800;
+            color: #94a3b8;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 3px;
+            display: block;
+        }
+
+        .recent-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .pagination {
+            flex-direction: column;
+            gap: 10px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-container">
-    
+
+    <!-- ======================= HEADER (GIỮ NGUYÊN) ======================= -->
     <div class="dashboard-header">
         <div class="user-greeting">
             <h3>Xin chào, <span id="display_fullname">Đang tải...</span> 👋</h3>
             <p>
-                Mã NV: <strong id="display_username" style="color: var(--text-main);">...</strong> 
+                Mã NV: <strong id="display_username" style="color: var(--text-main);">...</strong>
                 <span class="role-badge" id="display_role">...</span>
             </p>
         </div>
-        
+
         <div class="header-controls">
             <select class="reload-select" id="reloadInterval" onchange="changeInterval()">
                 <option value="0">Tắt tự động cập nhật</option>
@@ -121,16 +815,17 @@
                 <option value="20000">Làm mới: 20 giây</option>
                 <option value="30000">Làm mới: 30 giây</option>
             </select>
-            
             <div class="live-clock" id="clock">00:00:00</div>
         </div>
     </div>
 
     <div class="wifi-notice">
-        <span class="wifi-icon">📶</span> 
-        <span>Hệ thống chấm công yêu cầu kết nối mạng nội bộ. Các Wifi tại Bệnh viện Bệnh Nhiệt Đới sử dụng mật khẩu: <strong>88888888@</strong> hoặc <strong>88889999</strong>.</span>
+        <span class="wifi-icon">📶</span>
+        <span>Hệ thống chấm công yêu cầu kết nối mạng nội bộ. Các Wifi tại Bệnh viện Bệnh Nhiệt Đới sử dụng mật khẩu:
+            <strong>88888888@</strong> hoặc <strong>88889999</strong>.</span>
     </div>
 
+    <!-- ======================= STAT CARDS (GIỮ NGUYÊN) ======================= -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-info">
@@ -139,7 +834,6 @@
             </div>
             <div class="icon-box bg-blue">👥</div>
         </div>
-        
         <div class="stat-card">
             <div class="stat-info">
                 <span class="stat-title">TỔNG SỐ CA</span>
@@ -147,7 +841,6 @@
             </div>
             <div class="icon-box bg-orange">🕒</div>
         </div>
-        
         <div class="stat-card">
             <div class="stat-info">
                 <span class="stat-title">ĐI LÀM HÔM NAY</span>
@@ -155,7 +848,6 @@
             </div>
             <div class="icon-box bg-green">✅</div>
         </div>
-        
         <div class="stat-card">
             <div class="stat-info">
                 <span class="stat-title">LƯỢT QUẸT THẺ</span>
@@ -165,34 +857,115 @@
         </div>
     </div>
 
+    <!-- ======================= MINI STATS (GIỮ NGUYÊN) ======================= -->
+    <div class="mini-stats-grid">
+        <div class="mini-stat-card">
+            <h4>Đúng giờ</h4>
+            <p class="mnum" style="color:#10b981;" id="ms_present">0</p>
+        </div>
+        <div class="mini-stat-card">
+            <h4>Đi muộn</h4>
+            <p class="mnum" style="color:#f59e0b;" id="ms_late">0</p>
+        </div>
+        <div class="mini-stat-card">
+            <h4>Về sớm</h4>
+            <p class="mnum" style="color:#ec4899;" id="ms_early">0</p>
+        </div>
+        <div class="mini-stat-card">
+            <h4>Muộn & Sớm</h4>
+            <p class="mnum" style="color:#ef4444;" id="ms_late_early">0</p>
+        </div>
+        <div class="mini-stat-card" style="border-color: #fecaca; background: #fff1f2;">
+            <h4 style="color:#dc2626;">Chưa chấm công</h4>
+            <p class="mnum" style="color:#dc2626;" id="ms_absent">0</p>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         BỘ LỌC MỚI — giống trang Nhật Ký Chấm Công
+         ===================================================== -->
+    <div class="filter-bar">
+        <div class="filter-group" id="dashSearchGroup" style="flex: 2;">
+            <label>🔍 Tìm kiếm nhân viên</label>
+            <input type="text" id="dashSearchInput" placeholder="Nhập tên hoặc mã NV..." oninput="applyDashFilters()">
+        </div>
+        <div class="filter-group" style="flex: 1;">
+            <label>📅 Từ ngày</label>
+            <input type="date" id="dashStartDate" onchange="fetchDashboardRecords()">
+        </div>
+        <div class="filter-group" style="flex: 1;">
+            <label>📅 Đến ngày</label>
+            <input type="date" id="dashEndDate" onchange="fetchDashboardRecords()">
+        </div>
+        <div class="filter-group" style="flex: 1;">
+            <label>Trạng thái</label>
+            <select id="dashStatusFilter" onchange="applyDashFilters()">
+                <option value="all">Tất cả trạng thái</option>
+                <option value="1">✔️ Đúng giờ</option>
+                <option value="2">⚠️ Đi muộn</option>
+                <option value="3">⏳ Về sớm</option>
+                <option value="6">❌ Muộn & Sớm</option>
+                <option value="0">🚫 Vắng mặt</option>
+                <option value="4">📅 Nghỉ phép</option>
+                <option value="5">📅 Nghỉ KL</option>
+                <option value="7">⚡ Đang có mặt</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         BẢNG LỊCH SỬ — ĐẦY ĐỦ CỘT NHƯ TRANG NHẬT KÝ
+         ===================================================== -->
     <div class="recent-activity">
         <div class="recent-header">
-            <h3>Lịch sử quét khuôn mặt mới nhất</h3>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <input type="text" id="searchRecent" placeholder="🔍 Tên / Mã NV..." style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); outline: none; font-family: 'Nunito', sans-serif; font-size: 0.85rem;" oninput="filterRecentTable()">
-                <a href="/attendance">Đến trang Nhật ký &rarr;</a>
-            </div>
+            <h3>📋 Lịch sử quét khuôn mặt</h3>
+            <a href="/attendance">Đến trang Nhật ký đầy đủ &rarr;</a>
         </div>
+
+        <!-- Hint double-click -->
+        <div class="dbl-hint">
+            💡 <span>Double-click</span> vào một dòng để mở trang Nhật Ký Chấm Công của nhân viên đó với tháng hiện tại
+            được điền sẵn.
+        </div>
+
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
+                        <th>NGÀY</th>
                         <th>NHÂN VIÊN</th>
-                        <th>THỜI GIAN QUẸT</th>
-                        <th>TRẠNG THÁI</th>
-                        <th>PHƯƠNG THỨC</th>
+                        <th>CA LÀM VIỆC</th>
+                        <th>GIỜ VÀO / RA</th>
+                        <th>VI PHẠM</th>
+                        <th>GIẢI TRÌNH</th>
                     </tr>
                 </thead>
                 <tbody id="recentTableBody">
-                    <tr><td colspan="4" style="text-align: center; padding: 40px; color: #94a3b8;"><div class="loader" style="margin: 0 auto;"></div>Đang kết nối Server...</td></tr>
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">Đang kết nối
+                            Server...</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
-        
+
         <div class="pagination">
-            <button class="btn-page" id="prevBtn" onclick="changePage(-1)">« Trước</button>
+            <button class="btn-page" id="prevBtn" onclick="changePage(-1)">❮ Trước</button>
             <span class="page-info" id="pageInfo">Trang 1 / 1</span>
-            <button class="btn-page" id="nextBtn" onclick="changePage(1)">Sau »</button>
+            <button class="btn-page" id="nextBtn" onclick="changePage(1)">Sau ❯</button>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         MODAL XEM ẢNH CHẤM CÔNG
+         ===================================================== -->
+    <div id="dashImageModal" class="img-modal-overlay" onclick="closeImageModal()">
+        <div class="img-modal-inner" onclick="event.stopPropagation()">
+            <button class="img-modal-close" onclick="closeImageModal()">✖</button>
+            <img id="dashPreviewImage" src="" alt="Ảnh chấm công">
+            <p id="dashPreviewName"
+                style="color:white; font-weight:bold; margin-top:12px; font-size:1rem; text-shadow:0 2px 4px rgba(0,0,0,0.5);">
+            </p>
         </div>
     </div>
 
@@ -201,7 +974,9 @@
 
 {% block extra_js %}
 <script>
-    // --- 1. ĐỒNG HỒ REAL-TIME ---
+    // ═══════════════════════════════════════════════════
+    // 1. ĐỒNG HỒ REAL-TIME (GIỮ NGUYÊN)
+    // ═══════════════════════════════════════════════════
     function updateClock() {
         const now = new Date();
         document.getElementById('clock').innerText = now.toLocaleTimeString('vi-VN', { hour12: false });
@@ -209,23 +984,27 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // --- 2. BIẾN TOÀN CỤC CHO PHÂN TRANG & THÔNG TIN USER ---
-    let allAttendanceData = [];
-    let filteredAttendanceData = [];
+    // ═══════════════════════════════════════════════════
+    // 2. BIẾN TOÀN CỤC
+    // ═══════════════════════════════════════════════════
+    let allRawData = [];          // Dữ liệu thô từ /api/monthly-records
+    let filteredData = [];        // Sau khi lọc
     let currentPage = 1;
     const itemsPerPage = 10;
     let refreshIntervalId = null;
 
-    // ÉP VIẾT HOA BẢO MẬT 100%
     const currentRole = localStorage.getItem("hrm_role") || "user";
     const currentUsername = (localStorage.getItem("hrm_username") || "").toUpperCase();
     const currentFullname = localStorage.getItem("hrm_fullname") || currentUsername || "Chưa đăng nhập";
 
-    // Khởi tạo hiển thị User trên Header
+    // ═══════════════════════════════════════════════════
+    // 3. KHỞI TẠO THÔNG TIN NGƯỜI DÙNG
+    // ═══════════════════════════════════════════════════
     document.addEventListener("DOMContentLoaded", () => {
+        // Hiển thị tên & role
         document.getElementById("display_fullname").innerText = currentFullname;
         document.getElementById("display_username").innerText = currentUsername;
-        
+
         const roleSpan = document.getElementById("display_role");
         if (currentRole === "admin") {
             roleSpan.innerText = "Quản trị viên";
@@ -237,9 +1016,31 @@
             roleSpan.innerText = "Nhân viên";
             roleSpan.classList.add("role-user");
         }
+
+        // Ẩn ô tìm kiếm với role user
+        if (currentRole === "user") {
+            document.getElementById("dashSearchGroup").style.display = "none";
+        }
+
+        // ── MẶC ĐỊNH: Ngày hôm nay cho cả 2 ô lọc ──
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        document.getElementById("dashStartDate").value = todayStr;
+        document.getElementById("dashEndDate").value = todayStr;
+
+        // Tải dữ liệu lần đầu
+        fetchDashboardData();
+        fetchDashboardRecords();
+        changeInterval();
     });
 
-    // --- 3. FETCH DỮ LIỆU TỪ SERVER ---
+    // ═══════════════════════════════════════════════════
+    // 4. FETCH STATS (GIỮ NGUYÊN)
+    // ═══════════════════════════════════════════════════
     async function fetchDashboardData() {
         const token = localStorage.getItem("hrm_token");
         if (!token) {
@@ -248,139 +1049,219 @@
             return;
         }
 
-        const headers = {
-            "Authorization": `Bearer ${token}`
-        };
+        const headers = { "Authorization": `Bearer ${token}` };
 
         try {
-            // Lấy dữ liệu Thống Kê
             const statsRes = await fetch('/api/stats', { headers });
             if (statsRes.ok) {
                 const stats = await statsRes.json();
-                document.getElementById('val_employees').innerText = stats.total_employees || 0;
+                const totalEmployees = stats.total_employees || 0;
+                document.getElementById('val_employees').innerText = totalEmployees;
                 document.getElementById('val_shifts').innerText = stats.total_shifts || 0;
                 document.getElementById('val_unique_today').innerText = stats.unique_checkins_today || 0;
                 document.getElementById('val_attendances_today').innerText = stats.today_attendances || 0;
+
+                document.getElementById('ms_present').innerText = stats.present_today || 0;
+                document.getElementById('ms_late').innerText = stats.late_today || 0;
+                document.getElementById('ms_early').innerText = stats.early_today || 0;
+                document.getElementById('ms_late_early').innerText = stats.late_early_today || 0;
+
+                const checkedIn = stats.unique_checkins_today || 0;
+                const notChecked = Math.max(0, totalEmployees - checkedIn);
+                document.getElementById('ms_absent').innerText = notChecked;
+
             } else if (statsRes.status === 401) {
                 alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
                 window.location.href = "/login";
-                return;
-            }
-
-            // Chặn ngay từ cửa nếu là Nhân viên mà quên đăng nhập (Không có ID)
-            if (currentRole === "user" && !currentUsername) {
-                console.error("LỖI: Trình duyệt chưa lưu hrm_username. Vui lòng đăng nhập lại!");
-                document.getElementById('recentTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #ff4757; font-weight: bold;">Chưa lưu thông tin đăng nhập. Vui lòng đăng xuất và đăng nhập lại!</td></tr>';
-                return;
-            }
-
-            // Kéo dữ liệu lịch sử quét khuôn mặt (Xóa tham số username để BE tự lo phân quyền)
-            const fetchUrl = `/api/attendance?limit=100`;
-            const recentRes = await fetch(fetchUrl, { headers });
-            
-            if (recentRes.ok) {
-                const data = await recentRes.json();
-                if (Array.isArray(data)) {
-                    allAttendanceData = data;
-                    filterRecentTable();
-                }
-            } else if (recentRes.status === 401) {
-                alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
-                window.location.href = "/login";
-                return;
-            } else {
-                console.warn("API Lịch sử lỗi:", recentRes.status);
-                document.getElementById('recentTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #ff4757;">Lỗi lấy dữ liệu lịch sử!</td></tr>';
             }
         } catch (error) {
             console.error("Mất kết nối Server:", error);
-            document.getElementById('recentTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #ff4757;">Mất kết nối máy chủ! Vui lòng kiểm tra lại mạng.</td></tr>';
         }
     }
 
-    // --- 4. RENDER BẢNG THEO TRANG VÀ LỌC ---
-    function filterRecentTable() {
-        const keyword = document.getElementById('searchRecent') ? document.getElementById('searchRecent').value.toLowerCase().trim() : "";
-        if (keyword) {
-            filteredAttendanceData = allAttendanceData.filter(log => {
-                const name = (log.full_name || "").toLowerCase();
-                const uid = (log.username || "").toLowerCase();
-                return name.includes(keyword) || uid.includes(keyword);
-            });
-        } else {
-            filteredAttendanceData = allAttendanceData;
+    // ═══════════════════════════════════════════════════
+    // 5. FETCH BẢNG — GỌI /api/monthly-records (MỚI)
+    // ═══════════════════════════════════════════════════
+    async function fetchDashboardRecords() {
+        const token = localStorage.getItem("hrm_token");
+        if (!token) return;
+
+        const startDate = document.getElementById('dashStartDate').value || "";
+        const endDate = document.getElementById('dashEndDate').value || "";
+
+        let apiUrl = `/api/monthly-records?startDate=${startDate}&endDate=${endDate}`;
+
+        const headers = { "Authorization": `Bearer ${token}` };
+
+        try {
+            document.getElementById('recentTableBody').innerHTML =
+                '<tr><td colspan="6" style="text-align:center; padding:30px; color:#94a3b8;">Đang tải dữ liệu...</td></tr>';
+
+            const res = await fetch(apiUrl, { method: "GET", headers });
+
+            if (!res.ok) {
+                if (res.status === 401) {
+                    alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
+                    window.location.href = "/login";
+                    return;
+                }
+                throw new Error("Mã lỗi: " + res.status);
+            }
+
+            allRawData = await res.json();
+
+            // Lọc theo role user: chỉ xem bản ghi của mình
+            if (currentRole === "user" && currentUsername) {
+                allRawData = allRawData.filter(item =>
+                    (item.username || "").toUpperCase() === currentUsername
+                );
+            }
+
+            applyDashFilters();
+
+        } catch (error) {
+            console.error("Lỗi tải dữ liệu:", error);
+            document.getElementById('recentTableBody').innerHTML =
+                '<tr><td colspan="6" style="text-align:center; padding:30px; color:#ff4757;">Mất kết nối máy chủ!</td></tr>';
         }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 6. LỌC DỮ LIỆU (TÌM KIẾM + TRẠNG THÁI)
+    // ═══════════════════════════════════════════════════
+    function applyDashFilters() {
+        const keyword = (document.getElementById('dashSearchInput')?.value || "").toLowerCase().trim();
+        const statusFilter = document.getElementById('dashStatusFilter').value;
+
+        filteredData = allRawData.filter(item => {
+            const matchKw = !keyword ||
+                (item.full_name && item.full_name.toLowerCase().includes(keyword)) ||
+                (item.username && item.username.toLowerCase().includes(keyword));
+
+            const matchStatus = statusFilter === 'all' ||
+                item.status === parseInt(statusFilter);
+
+            return matchKw && matchStatus;
+        });
+
         currentPage = 1;
         renderTable();
     }
 
+    // ═══════════════════════════════════════════════════
+    // 7. RENDER BẢNG — ĐẦY ĐỦ CỘT NHƯ TRANG NHẬT KÝ
+    // ═══════════════════════════════════════════════════
     function renderTable() {
         const tbody = document.getElementById('recentTableBody');
-        
-        if(!filteredAttendanceData || filteredAttendanceData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">Chưa có lượt chấm công nào phù hợp.</td></tr>';
+
+        if (!filteredData || filteredData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#94a3b8;">Chưa có dữ liệu phù hợp.</td></tr>';
             document.getElementById('pageInfo').innerText = "Trang 1 / 1";
             document.getElementById('prevBtn').disabled = true;
             document.getElementById('nextBtn').disabled = true;
             return;
         }
 
-        // Tính toán phân trang
-        const totalPages = Math.ceil(filteredAttendanceData.length / itemsPerPage);
+        const totalPages = Math.ceil(filteredData.length / itemsPerPage);
         if (currentPage > totalPages) currentPage = totalPages;
         if (currentPage < 1) currentPage = 1;
 
         const startIdx = (currentPage - 1) * itemsPerPage;
-        const endIdx = startIdx + itemsPerPage;
-        const pageData = filteredAttendanceData.slice(startIdx, endIdx);
+        const pageData = filteredData.slice(startIdx, startIdx + itemsPerPage);
 
         tbody.innerHTML = '';
-        pageData.forEach(log => {
-            let timeStr = log.scan_time || "---";
+
+        pageData.forEach(item => {
+            // Định dạng ngày
             let dateStr = "---";
-            if (log.date) {
-                const [y, m, d] = log.date.split('-');
+            if (item.date) {
+                const [y, m, d] = item.date.split('-');
                 dateStr = `${d}/${m}/${y}`;
             }
-            
-            let displayName = log.full_name || "Người lạ / Chưa đăng ký";
-            let displayUser = log.username || "UNKNOWN";
-            
-            const avatarSrc = (log.image_path && log.image_path !== "") 
-                ? `${log.image_path}?t=${Date.now()}` 
-                : `https://ui-avatars.com/api/?name=${displayUser}&background=random`;
 
-            let statusHtml = `<span class="status-success">Thành công</span>`;
-            if (log.is_fraud) {
-                statusHtml = `<span class="status-err">Nghi vấn gian lận</span>`;
-            } else if (log.late_minutes && log.late_minutes > 0 && log.explanation_status !== 'Đã duyệt') {
-                statusHtml = `<span class="status-err" style="background:#fef3c7; color:#d97706;">Đi muộn</span>`;
-            }
+            // Badge trạng thái
+            let statusBadge = `<span class="badge badge-absent">🚫 Vắng mặt</span>`;
+            if (item.status === 1) statusBadge = `<span class="badge badge-present">✔️ Đúng giờ</span>`;
+            else if (item.status === 2) statusBadge = `<span class="badge badge-late">⚠️ Đi muộn</span>`;
+            else if (item.status === 3) statusBadge = `<span class="badge badge-late">⏳ Về sớm</span>`;
+            else if (item.status === 6) statusBadge = `<span class="badge badge-late">⚠️ Muộn & Sớm</span>`;
+            else if (item.status === 4) statusBadge = `<span class="badge" style="background:#eff6ff; color:#0284c7;">📅 Nghỉ phép</span>`;
+            else if (item.status === 5) statusBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b;">📅 Nghỉ KL</span>`;
+            else if (item.status === 7) statusBadge = `<span class="badge badge-inprogress">⚡ Đang có mặt</span>`;
+            if (item.explanation_status === 2) statusBadge = `<span class="badge badge-approved">✔️ Đã duyệt</span>`;
 
-            let typeIcon = log.attendance_type === 'Cá nhân' ? '📱 Cá nhân' : '🖥️ Kiosk';
+            // Vi phạm phụ
+            let subViolation = "";
+            if (item.late_minutes > 0) subViolation += `<div style="font-size:0.75rem; color:#d97706; font-weight:600; margin-top:3px;">Muộn: ${item.late_minutes}p</div>`;
+            if (item.early_minutes > 0) subViolation += `<div style="font-size:0.75rem; color:#ea580c; font-weight:600; margin-top:3px;">Sớm: ${item.early_minutes}p</div>`;
 
-            tbody.innerHTML += `
-                <tr>
-                    <td>
-                        <div class="user-profile">
-                            <img src="${avatarSrc}" class="avatar" alt="avatar" onerror="this.src='https://ui-avatars.com/api/?name=Err'">
-                            <div class="user-info">
-                                <span class="user-name">${displayName}</span>
-                                <span class="user-id">Mã: ${displayUser}</span>
-                            </div>
+            // Giờ vào / ra
+            const fmt = (t) => (t && t !== "---") ? t.split('.')[0] : "---";
+            const cin = fmt(item.checkin_time);
+            const cout = fmt(item.checkout_time);
+
+            // ── Ảnh checkin / checkout (giống trang attendance) ──
+            const safeEscape = (s) => (s || "").replace(/'/g, "\\'");
+            const cinImgHtml = item.checkin_image_path
+                ? `<img src="${item.checkin_image_path}" class="time-img"
+                        title="Ảnh lúc vào"
+                        onclick="openImageModal('${safeEscape(item.checkin_image_path)}','Ảnh vào: ${safeEscape(item.full_name)}')"
+                        onerror="this.style.display='none'">`
+                : '';
+            const coutImgHtml = item.checkout_image_path
+                ? `<img src="${item.checkout_image_path}" class="time-img"
+                        title="Ảnh lúc ra"
+                        onclick="openImageModal('${safeEscape(item.checkout_image_path)}','Ảnh ra: ${safeEscape(item.full_name)}')"
+                        onerror="this.style.display='none'">`
+                : '';
+
+            // Giải trình
+            const expTexts = { 0: "—", 1: "⏳ Đã gửi", 2: "✔️ Đã duyệt", 3: "✖ Từ chối" };
+            const expColors = { 0: "#94a3b8", 1: "#f59e0b", 2: "#10b981", 3: "#ef4444" };
+            const expStatus = item.explanation_status || 0;
+            const expHtml = `<span style="font-size:0.8rem; font-weight:700; color:${expColors[expStatus]};">${expTexts[expStatus]}</span>`;
+
+            // ── ROW: thêm class att-row + ondblclick ──
+            const row = document.createElement('tr');
+            row.className = 'att-row';
+            row.title = `Double-click để xem Nhật ký chấm công của ${item.full_name || item.username}`;
+            row.addEventListener('dblclick', () => {
+                navigateToAttendance(item.username, item.full_name, item.date);
+            });
+
+            row.innerHTML = `
+                <td data-label="NGÀY"><strong>${dateStr}</strong></td>
+                <td data-label="NHÂN VIÊN">
+                    <strong style="color: var(--text-main); font-size:0.9rem;">${item.full_name || "---"}</strong><br>
+                    <small style="color:#94a3b8; font-family:monospace;">Mã: ${item.username || "---"}</small>
+                </td>
+                <td data-label="CA LÀM VIỆC">
+                    <span style="font-weight:600; color:#0284c7;">${item.shift_display_name || item.shift_code || "---"}</span>
+                </td>
+                <td data-label="GIỜ VÀO / RA">
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="time-box">Vào: ${cin}</span>
+                            ${cinImgHtml}
                         </div>
-                    </td>
-                    <td>
-                        <span class="time-badge">${timeStr}</span>
-                        <span class="date-badge">${dateStr}</span>
-                    </td>
-                    <td>${statusHtml}</td>
-                    <td><span style="color: #475569; font-size: 0.85rem; font-weight:bold; background:#f1f5f9; padding:4px 8px; border-radius:6px;">${typeIcon}</span></td>
-                </tr>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="time-box out">Ra: ${cout}</span>
+                            ${coutImgHtml}
+                        </div>
+                    </div>
+                </td>
+                <td data-label="VI PHẠM">
+                    <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-start;">
+                        ${statusBadge}
+                        ${subViolation}
+                    </div>
+                </td>
+                <td data-label="GIẢI TRÌNH">${expHtml}</td>
             `;
+
+            tbody.appendChild(row);
         });
 
-        // Cập nhật số trang
         document.getElementById('pageInfo').innerText = `Trang ${currentPage} / ${totalPages}`;
         document.getElementById('prevBtn').disabled = currentPage === 1;
         document.getElementById('nextBtn').disabled = currentPage === totalPages;
@@ -391,16 +1272,55 @@
         renderTable();
     }
 
-    // --- 5. ĐIỀU KHIỂN AUTO-RELOAD ---
+    // ═══════════════════════════════════════════════════
+    // 8. DOUBLE-CLICK → CHUYỂN SANG /attendance
+    //    startDate = ngày 1 tháng này, endDate = hôm nay
+    // ═══════════════════════════════════════════════════
+    function navigateToAttendance(username, fullname, dateStr) {
+        // Luôn dùng tháng hiện tại (không phụ thuộc ngày của bản ghi)
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+
+        const startOfMonth = `${yyyy}-${mm}-01`;   // Ngày 1 tháng này
+        const todayStr = `${yyyy}-${mm}-${dd}`; // Hôm nay
+
+        // Lưu vào sessionStorage để trang /attendance đọc khi load
+        sessionStorage.setItem('att_goto_username', username || "");
+        sessionStorage.setItem('att_goto_fullname', fullname || "");
+        sessionStorage.setItem('att_goto_startDate', startOfMonth);
+        sessionStorage.setItem('att_goto_endDate', todayStr);
+
+        // Chuyển trang
+        window.location.href = '/attendance';
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 9. MODAL XEM ẢNH (giống trang attendance)
+    // ═══════════════════════════════════════════════════
+    function openImageModal(src, title) {
+        document.getElementById('dashImageModal').style.display = 'flex';
+        document.getElementById('dashPreviewImage').src = src;
+        document.getElementById('dashPreviewName').innerText = title;
+    }
+    function closeImageModal() {
+        document.getElementById('dashImageModal').style.display = 'none';
+        document.getElementById('dashPreviewImage').src = '';
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 9. AUTO-RELOAD (GIỮ NGUYÊN)
+    // ═══════════════════════════════════════════════════
     function changeInterval() {
         const val = parseInt(document.getElementById('reloadInterval').value);
         if (refreshIntervalId) clearInterval(refreshIntervalId);
-        if (val > 0) refreshIntervalId = setInterval(fetchDashboardData, val);
+        if (val > 0) {
+            refreshIntervalId = setInterval(() => {
+                fetchDashboardData();
+                fetchDashboardRecords();
+            }, val);
+        }
     }
-
-    // Khởi động chạy lần đầu
-    fetchDashboardData();
-    changeInterval();
-
 </script>
 {% endblock %}
