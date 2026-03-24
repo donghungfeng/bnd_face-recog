@@ -262,8 +262,6 @@
         border-color: #dbeafe;
     }
 
-    /* Badge cảnh báo gian lận */
-
     @keyframes pulseRed {
         0% {
             box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
@@ -545,9 +543,8 @@
     }
 
     /* ==========================================================
-       RESPONSIVE DESIGN (TABLETS & MOBILE)
+       RESPONSIVE DESIGN - TABLET (≤1024px)
        ========================================================== */
-
     @media (max-width: 1024px) {
         .filter-bar {
             flex-direction: column;
@@ -559,7 +556,7 @@
         }
 
         .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
         }
 
         .modal-content {
@@ -568,15 +565,50 @@
         }
     }
 
+    /* ==========================================================
+       RESPONSIVE DESIGN - MOBILE (≤768px)
+       Compact card 2 cột — giảm chiều cao mỗi record ~50%
+       ========================================================== */
     @media (max-width: 768px) {
-        .stat-card .num {
-            font-size: 1.6rem;
-        }
 
+        /* Stats: 3 cột thay vì 1 cột */
         .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
         }
 
+        .stat-card {
+            padding: 10px 6px;
+            border-radius: 10px;
+        }
+
+        .stat-card h4 {
+            font-size: 0.62rem;
+            margin-bottom: 4px;
+            letter-spacing: 0;
+        }
+
+        .stat-card .num {
+            font-size: 1.35rem;
+        }
+
+        /* Filter bar */
+        .filter-bar {
+            padding: 12px;
+            gap: 10px;
+        }
+
+        .filter-group-container {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group {
+            min-width: unset;
+        }
+
+        /* ---- TABLE → COMPACT CARD 2 CỘT ---- */
         table,
         thead,
         tbody,
@@ -595,107 +627,226 @@
             display: none;
         }
 
-        tr {
+        /* Mỗi record = card 2 cột */
+        tbody tr {
             background: #fff;
             border: 1px solid #e2e8f0;
             border-radius: 12px;
-            margin-bottom: 20px;
-            padding: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            margin-bottom: 10px;
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            overflow: hidden;
         }
 
-        td {
+        tbody tr:hover {
+            background: #fff;
+        }
+
+        tbody td {
+            padding: 9px 11px;
+            border: none;
+            border-bottom: 1px solid #f1f5f9;
+            border-right: 1px solid #f1f5f9;
+            background: #fff;
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 12px;
-            border: 1px solid #f1f5f9;
+            gap: 4px;
             text-align: left;
             box-sizing: border-box;
             width: 100%;
         }
 
-        td:last-child {
-            border-bottom: 1px solid #f1f5f9;
+        /* Cột phải: bỏ border-right */
+        tbody td:nth-child(even) {
+            border-right: none;
         }
 
-        td::before {
+        /* 2 ô cuối cùng: bỏ border-bottom */
+        tbody td:nth-last-child(-n+2) {
+            border-bottom: none;
+        }
+
+        /* Label data-label nhỏ gọn phía trên */
+        tbody td::before {
             content: attr(data-label);
             font-weight: 800;
-            color: var(--text-muted);
-            font-size: 0.75rem;
+            color: #94a3b8;
+            font-size: 0.6rem;
             text-transform: uppercase;
-            margin-bottom: 8px;
-            margin-right: 0;
-            text-align: left;
-            flex-shrink: 0;
-            width: 100%;
-            border-bottom: 1px dashed #cbd5e1;
-            padding-bottom: 6px;
+            letter-spacing: 0.4px;
+            margin-bottom: 3px;
+            display: block;
         }
 
-        td>div {
-            width: 100%;
-            align-items: flex-start !important;
+        /* Phân bố vị trí từng cột trong grid 2 cột */
+        tbody td[data-label="NGÀY"] {
+            grid-column: 1 / 2;
+            background: #f8fafc;
         }
 
+        tbody td[data-label="NHÂN VIÊN"] {
+            grid-column: 2 / 3;
+            background: #f8fafc;
+        }
+
+        tbody td[data-label="CA LÀM VIỆC"] {
+            grid-column: 1 / 2;
+        }
+
+        tbody td[data-label="GIỜ VÀO / RA"] {
+            grid-column: 2 / 3;
+        }
+
+        tbody td[data-label="VI PHẠM"] {
+            grid-column: 1 / 2;
+        }
+
+        tbody td[data-label="GIẢI TRÌNH & XÉT DUYỆT"] {
+            grid-column: 2 / 3;
+        }
+
+        /* Time box: full width trong ô, font nhỏ hơn */
         .time-box {
-            font-size: 0.95rem;
+            font-size: 0.72rem;
+            padding: 4px 7px;
+            width: 100%;
+            max-width: 100%;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* time-row: giữ nguyên flex, ảnh vẫn hiện cạnh giờ */
+        .time-row {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            gap: 4px;
+        }
+
+        /* Ảnh time-img: nhỏ lại chút, giữ nguyên click & hover */
+        .time-img {
+            width: 28px;
+            height: 28px;
+            margin-left: 4px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        /* Badge */
+        .badge {
+            padding: 3px 7px;
+            font-size: 0.68rem;
+            min-width: unset;
+            border-radius: 5px;
             width: fit-content;
         }
 
+        /* Buttons */
+        .btn-explain {
+            font-size: 0.68rem;
+            padding: 5px 8px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-fraud-alert {
+            font-size: 0.65rem;
+            padding: 3px 6px;
+            width: 100%;
+            justify-content: center;
+            margin-top: 3px;
+        }
+
+        /* Explain */
         .explain-wrapper {
             width: 100%;
             align-items: flex-start;
         }
 
         .explain-text {
+            font-size: 0.75rem;
             max-width: 100%;
             width: 100%;
-            font-size: 0.8rem;
+            padding: 5px;
             text-align: left;
         }
 
         .approve-actions {
             width: 100%;
-            justify-content: flex-start;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 5px;
         }
 
+        .btn-approve,
+        .btn-reject {
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Pagination */
         .pagination-container {
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
+            padding: 12px;
         }
 
         .pagination-controls {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 5px;
+            gap: 4px;
+        }
+
+        .page-btn {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        .page-info {
+            font-size: 0.78rem;
+            text-align: center;
+        }
+
+        /* Modal */
+        .modal-content {
+            max-width: 92%;
+            padding: 18px;
         }
     }
 
-    /* iPhone 12 Pro / Narrow screens (up to 390px) */
+    /* iPhone 12 Pro / ≤390px */
     @media (max-width: 400px) {
         .stats-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
         }
 
-        .filter-bar {
-            padding: 15px;
+        .stat-card h4 {
+            font-size: 0.58rem;
         }
 
         .stat-card .num {
-            font-size: 1.6rem;
+            font-size: 1.2rem;
         }
 
-        td::before {
-            font-size: 0.7rem;
+        .filter-bar {
+            padding: 10px;
+        }
+
+        tbody td {
+            padding: 7px 8px;
+        }
+
+        .time-box {
+            font-size: 0.68rem;
+        }
+
+        .time-img {
+            width: 24px;
+            height: 24px;
         }
 
         .btn-export {
@@ -1291,18 +1442,46 @@
 
     // Khởi chạy khi load trang
     document.addEventListener("DOMContentLoaded", () => {
-        // Tự động gán Ngày Hôm Nay cho 2 ô Lọc Thời Gian
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        const todayStr = `${yyyy}-${mm}-${dd}`;
 
-        document.getElementById("startDateFilter").value = todayStr;
-        document.getElementById("endDateFilter").value = todayStr;
+        // ── Đọc params từ Dashboard (double-click) ──
+        const gotoUsername = sessionStorage.getItem('att_goto_username') || "";
+        const gotoFullname = sessionStorage.getItem('att_goto_fullname') || "";
+        const gotoStartDate = sessionStorage.getItem('att_goto_startDate') || "";
+        const gotoEndDate = sessionStorage.getItem('att_goto_endDate') || "";
 
-        // Vừa tải xong ngày thì lập tức fetch để hiển thị 
-        fetchAttendance();
+        // Xoá ngay sau khi đọc (không để lại cho lần mở trang sau)
+        sessionStorage.removeItem('att_goto_username');
+        sessionStorage.removeItem('att_goto_fullname');
+        sessionStorage.removeItem('att_goto_startDate');
+        sessionStorage.removeItem('att_goto_endDate');
+
+        if (gotoStartDate && gotoEndDate) {
+            // ── Điều hướng TỪ DASHBOARD ──
+            // 1. Điền khoảng ngày: đầu tháng → hôm nay
+            document.getElementById("startDateFilter").value = gotoStartDate;
+            document.getElementById("endDateFilter").value = gotoEndDate;
+
+            // 2. Điền tên nhân viên vào ô tìm kiếm (admin/manager)
+            const searchInput = document.getElementById("searchInput");
+            if (searchInput && gotoFullname) {
+                searchInput.value = gotoFullname;
+            }
+
+            // 3. Fetch dữ liệu — applyFilters() sẽ tự lọc theo searchInput vừa điền
+            fetchAttendance();
+
+        } else {
+            // ── Mở trang bình thường: đầu tháng → hôm nay ──
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+
+            document.getElementById("startDateFilter").value = `${yyyy}-${mm}-01`;
+            document.getElementById("endDateFilter").value = `${yyyy}-${mm}-${dd}`;
+
+            fetchAttendance();
+        }
     });
 </script>
 {% endblock %}
