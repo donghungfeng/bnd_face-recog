@@ -1100,11 +1100,11 @@
                         <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px;">
                             <div class="time-row">
                                 <span class="time-box">Vào: ${c_in}</span>
-                                ${item.checkin_image_path ? `<img src="/${item.checkin_image_path}" class="time-img" title="Ảnh lúc vào" onclick="openImageModal('/${item.checkin_image_path}', 'Ảnh vào: ${item.full_name}')">` : ''}
+                                ${item.checkin_image_path ? `<img src="${item.checkin_image_path}" class="time-img" title="Ảnh lúc vào" onclick="openImageModal('${item.checkin_image_path}', 'Ảnh vào: ${item.full_name}')">` : ''}
                             </div>
                             <div class="time-row">
                                 <span class="time-box" style="background:#fff1f2; color:#e11d48; border-color:#fecdd3;">Ra: ${c_out}</span>
-                                ${item.checkout_image_path ? `<img src="/${item.checkout_image_path}" class="time-img" title="Ảnh lúc ra" onclick="openImageModal('/${item.checkout_image_path}', 'Ảnh ra: ${item.full_name}')">` : ''}
+                                ${item.checkout_image_path ? `<img src="${item.checkout_image_path}" class="time-img" title="Ảnh lúc ra" onclick="openImageModal('${item.checkout_image_path}', 'Ảnh ra: ${item.full_name}')">` : ''}
                             </div>
                         </div>
                     </td>
