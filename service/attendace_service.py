@@ -54,8 +54,8 @@ def group_attendance_to_summaries(db: Session, attendance_list: list[models.Atte
 def calculate_shift_details(shift_cat, summary, next_day_summary=None):
     c_in = None
     c_out = None
-    img_in = None  # Thêm biến lưu ảnh vào
-    img_out = None # Thêm biến lưu ảnh ra
+    img_in = None
+    img_out = None
     status = constants.AttendanceStatus.ABSENT
     late_min = 0
     early_min = 0
@@ -63,35 +63,78 @@ def calculate_shift_details(shift_cat, summary, next_day_summary=None):
     if not summary or not summary.scans:
         return c_in, c_out, status, late_min, early_min, img_in, img_out
 
-    # --- BƯỚC 1: XÁC ĐỊNH GIỜ VÀO & ẢNH VÀO ---
+    # --- 1. XÁC ĐỊNH GIỜ VÀO & ẢNH VÀO (Luôn lấy scan đầu tiên) ---
     first_scan = summary.scans[0]
     dt_in = first_scan.check_in_time
     c_in = dt_in.time()
-    img_in = getattr(first_scan, 'image_path', None) # Lấy image_path từ bản ghi Attendance đầu tiên
+    img_in = getattr(first_scan, 'image_path', None) 
 
     if shift_cat:
         ref_checkin_to = datetime.combine(summary.target_date, shift_cat.checkin_to)
         if dt_in > ref_checkin_to:
             late_min = int((dt_in - ref_checkin_to).total_seconds() / 60)
 
-    # --- BƯỚC 2: XÁC ĐỊNH GIỜ RA & ẢNH RA ---
+    # --- 2. XÁC ĐỊNH GIỜ RA & ẢNH RA ---
     dt_out = None
+    now = datetime.now()
+    
+    # Tính mốc thời gian tối đa của ca (Giờ tan ca)
+    ref_date_out = summary.target_date + timedelta(days=1) if (shift_cat and shift_cat.shift_code == "T") else summary.target_date
+    end_time_limit = shift_cat.checkout_from if shift_cat else time(23, 59)
+    ref_checkout_limit = datetime.combine(ref_date_out, end_time_limit)
+
+    # Ưu tiên lấy scan cuối nếu có nhiều hơn 1 lần quẹt (hoặc ca T có data ngày sau)
     if shift_cat and shift_cat.shift_code == "T":
         if next_day_summary and next_day_summary.scans:
             last_scan = next_day_summary.scans[-1]
             dt_out = last_scan.check_in_time
-            c_out = dt_out.time()
-            img_out = getattr(last_scan, 'image_path', None) # Ảnh của lần quẹt cuối ngày hôm sau
     else:
         if len(summary.scans) > 1:
             last_scan = summary.scans[-1]
             dt_out = last_scan.check_in_time
-            c_out = dt_out.time()
-            img_out = getattr(last_scan, 'image_path', None) # Ảnh của lần quẹt cuối trong ngày
 
-    # ... (Giữ nguyên logic tính Status và Early_min ở giữa) ...
-    
-    # Cập nhật phần return (thêm img_in, img_out)
+    # LOGIC "CHỐT SỔ" TỰ ĐỘNG CỦA BẠN:
+    # Nếu đến giờ này vẫn chưa có dt_out (chỉ 1 lần quẹt) 
+    # VÀ thời gian hiện tại đã quá giờ tan ca (ref_checkout_limit)
+    if dt_out is None and now >= ref_checkout_limit:
+        dt_out = dt_in  # Lấy luôn giờ vào làm giờ ra
+        
+    if dt_out:
+        c_out = dt_out.time()
+        # Nếu dt_out trùng dt_in thì lấy luôn ảnh vào làm ảnh ra
+        if dt_out == dt_in:
+            img_out = img_in
+        else:
+            # Nếu là scan khác thì lấy ảnh của scan đó
+            # Tìm scan tương ứng với dt_out trong danh sách (hoặc next_day nếu ca T)
+            img_out = getattr(last_scan, 'image_path', None) if 'last_scan' in locals() else img_in
+
+    # --- 3. PHÂN LOẠI TRẠNG THÁI ---
+    # A. Trường hợp ĐANG LÀM VIỆC (Chưa có dt_out và chưa quá giờ tan ca)
+    if dt_out is None and now < ref_checkout_limit:
+        status = constants.AttendanceStatus.LATE if late_min > 0 else constants.AttendanceStatus.IN_PROGRESS
+        return c_in, None, status, late_min, 0, img_in, None
+
+    # B. Trường hợp ĐÃ CHỐT (Có dt_out do quẹt thật hoặc do hệ thống tự chốt)
+    if not shift_cat:
+        return c_in, c_out, constants.AttendanceStatus.PRESENT, 0, 0, img_in, img_out
+
+    ref_checkout_from = datetime.combine(ref_date_out, shift_cat.checkout_from)
+    if dt_out:
+        if dt_out < ref_checkout_from:
+            early_min = int((ref_checkout_from - dt_out).total_seconds() / 60)
+        
+        if late_min > 0 and early_min > 0:
+            status = constants.AttendanceStatus.LATE_AND_EARLY_LEAVE
+        elif late_min > 0:
+            status = constants.AttendanceStatus.LATE
+        elif early_min > 0:
+            status = constants.AttendanceStatus.EARLY_LEAVE
+        else:
+            status = constants.AttendanceStatus.PRESENT
+    else:
+        status = constants.AttendanceStatus.ABSENT
+
     return c_in, c_out, status, late_min, early_min, img_in, img_out
 
 def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceSummary]):
