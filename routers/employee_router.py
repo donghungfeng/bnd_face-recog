@@ -21,7 +21,14 @@ def create_employee(emp: EmployeeCreate, db: Session = Depends(get_db)):
     if db_emp:
         raise HTTPException(status_code=400, detail="Mã nhân sự (Username) đã tồn tại")
     
-    new_emp = Employee(**emp.dict())
+    emp_data = emp.dict()
+    # Sync dob and date_of_birth
+    if emp.date_of_birth:
+        emp_data['dob'] = emp.date_of_birth
+    if emp.dob:
+        emp_data['date_of_birth'] = emp.dob
+        
+    new_emp = Employee(**emp_data)
     db.add(new_emp)
     db.commit()
     return {"status": "success", "message": "Thêm nhân sự thành công"}
@@ -114,7 +121,11 @@ def update_my_profile(
     db_emp.full_name = req.full_name
     db_emp.phone     = req.phone
     db_emp.email     = req.email
-    db_emp.dob       = req.dob
+    
+    # Sync dob and date_of_birth
+    db_emp.dob = req.dob
+    db_emp.date_of_birth = req.date_of_birth
+
     db_emp.notes     = req.notes
     db.commit()
     db.refresh(db_emp)
@@ -148,10 +159,20 @@ def update_employee(username: str, emp: EmployeeCreate, db: Session = Depends(ge
     
     db_emp.full_name = emp.full_name
     db_emp.phone = emp.phone
-    db_emp.department_id = emp.department_id # CẬP NHẬT THEO ID
+    db_emp.email = emp.email
+    
+    # Sync dob and date_of_birth
+    target_dob = emp.date_of_birth or emp.dob
+    db_emp.date_of_birth = target_dob
+    db_emp.dob = target_dob
+    
+    db_emp.department_id = emp.department_id
     db_emp.status = emp.status
     db_emp.role = emp.role
     db_emp.is_locked = emp.is_locked
+    db_emp.notes = emp.notes
+    db_emp.hourly_rate = emp.hourly_rate
+    db_emp.allowance = emp.allowance
     db_emp.username = emp.username # CẬP NHẬT THEO USERNAME MỚI (nếu có thay đổi)
 
     db.commit()
@@ -291,7 +312,8 @@ async def import_employees(file: UploadFile = File(...), db: Session = Depends(g
                 new_emp = Employee(
                     username=username,
                     full_name=full_name,
-                    date_of_birth=dob,        # <--- NGÀY SINH ĐÃ ĐƯỢC MAP CHUẨN XÁC
+                    date_of_birth=dob,
+                    dob=dob, # Sync
                     department_id=dept_id,
                     password="123456",           
                     role=role_val,            
@@ -449,3 +471,76 @@ def change_my_password(
     db.commit()
     
     return {"status": "success", "message": "Đổi mật khẩu thành công!"}
+
+@router.get("/api/employees/accessible")
+def get_accessible_employees(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    current_username = current_user.get("username")
+    current_role = current_user.get("role")
+
+    # 1. Lấy nhanh thông tin phòng ban của user hiện tại
+    # Chỉ lấy đúng giá trị (scalar), không lấy cả object Employee
+    current_dept_id = db.query(Employee.department_id).filter(Employee.username == current_username).scalar()
+
+    # 2. Định nghĩa danh sách các cột cần lấy (Đầy đủ như bạn muốn)
+    # Liệt kê cụ thể giúp DB tối ưu hóa tốc độ truy xuất hơn là dùng SELECT *
+    target_columns = [
+        Employee.id, Employee.username, Employee.full_name, 
+        Employee.department_id, Employee.phone, Employee.dob, 
+        Employee.status, Employee.role, Employee.is_locked, 
+        Employee.date_of_birth
+    ]
+    
+    # Kiểm tra nếu model có email thì lấy luôn
+    if hasattr(Employee, 'email'):
+        target_columns.append(Employee.email)
+
+    Dept = aliased(OrganizationUnit)
+    ParentUnit = aliased(OrganizationUnit)
+
+    # 3. Xây dựng Query tập trung vào tốc độ
+    query = db.query(
+        *target_columns,
+        Dept.unit_name.label("dept_name"),
+        ParentUnit.unit_name.label("parent_name")
+    ).outerjoin(
+        Dept, Employee.department_id == Dept.id
+    ).outerjoin(
+        ParentUnit, Dept.parent_id == ParentUnit.id
+    )
+
+    # 4. Phân quyền
+    if current_role == "manager" and current_dept_id:
+        query = query.filter(Employee.department_id == current_dept_id)
+    elif current_role != "admin":
+        query = query.filter(Employee.username == current_username)
+
+    # 5. Lấy dữ liệu dạng Row (Tốc độ cao hơn lấy dạng Object)
+    rows = query.order_by(Employee.id.desc()).all()
+
+    # 6. Dùng List Comprehension (Cách nhanh nhất trong Python để tạo List)
+    return {
+        "status": "success",
+        "items": [
+            {
+                "id": r.id,
+                "username": r.username,
+                "full_name": r.full_name,
+                "department_id": r.department_id,
+                "department_name": r.dept_name or "",
+                "ten_don_vi": r.parent_name if r.parent_name else (r.dept_name or ""),
+                "ten_phong_ban": r.dept_name if r.parent_name else "",
+                "phone": r.phone,
+                "dob": r.dob,
+                "status": r.status,
+                "role": r.role,
+                "is_locked": r.is_locked,
+                "date_of_birth": r.date_of_birth,
+                "email": getattr(r, "email", "")
+            }
+            for r in rows
+        ],
+        "total": len(rows)
+    }

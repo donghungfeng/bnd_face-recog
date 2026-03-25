@@ -244,8 +244,6 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
             explanation_status=0
         )
         result_records.append(new_record)
-        print("Nam check")
-        print(result_records)
 
     return result_records
 

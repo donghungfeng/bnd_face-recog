@@ -240,4 +240,5 @@ class UpdateMyProfile(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     dob: Optional[date] = None
-    notes: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    notes: Optional[str] = None
