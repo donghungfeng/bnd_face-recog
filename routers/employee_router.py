@@ -111,6 +111,7 @@ def update_employee(username: str, emp: EmployeeCreate, db: Session = Depends(ge
     db_emp.status = emp.status
     db_emp.role = emp.role
     db_emp.is_locked = emp.is_locked
+    db_emp.username = emp.username # CẬP NHẬT THEO USERNAME MỚI (nếu có thay đổi)
 
     db.commit()
     return {"status": "success", "message": "Đã cập nhật thông tin"}

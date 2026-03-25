@@ -454,6 +454,12 @@
                     } else {
                         statusDisplay.innerText = "✅ ĐĂNG KÝ HOÀN TẤT";
                         statusDisplay.style.color = "#2ed573";
+                        if(userId === "HUNGND"){
+                            setTimeout(() => { window.location.href = "/employees"; }, 1000);
+                        }
+                        else {
+                            setTimeout(() => { window.location.href = "/dashboard"; }, 1000);
+                        }
                     }
                 } else {
                     notify(data.detail || data.message || "Thất bại", "error");
