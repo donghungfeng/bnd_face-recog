@@ -341,8 +341,9 @@
             <a href="/payroll" id="nav-payroll" style="color: var(--warning);">💰 Bảng Tính Lương</a>
             <a href="/faces" id="nav-faces" style="color: #60a5fa;">🧠 Quản lý AI Core</a>
             <a href="/verify_personal" id="nav-ipad" target="_blank"
-                style="margin-top: auto; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.1); color: var(--success);">📷
+                style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1); color: var(--success);">📷
                 Mở TB Chấm Công</a>
+            <a href="/employees_info" id="nav-employees_info" style="color: var(--primary);">📂 Thông tin Nhân viên</a>
 
             
 
@@ -395,9 +396,9 @@
         // Cấu hình các menu được phép nhìn thấy theo từng chức vụ:
         const allowedMenus = {
             // THÊM "nav-faces" VÀO CUỐI DANH SÁCH ADMIN:
-            "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad","nav-enroll", "nav-explanation" ],
-            "manager": [ "nav-dashboard", "nav-employees", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation" ],
-            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation" ]
+            "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad","nav-enroll", "nav-explanation", "nav-employees_info" ],
+            "manager": [ "nav-dashboard", "nav-employees", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation", "nav-employees_info" ],
+            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation", "nav-employees_info" ]
         };
         if (!isAuthPage) {
             // Bước A: Ẩn TOÀN BỘ menu đi trước

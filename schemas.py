@@ -230,3 +230,14 @@ class PaginatedExplanationResponse(BaseModel):
 class ExplanationUpdate(BaseModel):
     date: date
     reason: str
+
+class ChangeMyPassword(BaseModel):
+    old_password: str
+    new_password: str
+
+class UpdateMyProfile(BaseModel):
+    full_name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    dob: Optional[date] = None
+    notes: Optional[str] = None
