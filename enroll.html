@@ -69,7 +69,8 @@
             border-radius: 50% / 45%; width: 260px; height: 340px;
             transition: all 0.3s; z-index: 5;
         }
-        .guide-active { border-color: var(--success); box-shadow: 0 0 20px var(--success); border-style: solid; background: rgba(46, 213, 115, 0.05); }
+        .guide-active { border-color: var(--warning); box-shadow: 0 0 20px var(--warning); border-style: solid; background: rgba(255, 184, 0, 0.05); }
+        .guide-success { border-color: var(--success); box-shadow: 0 0 20px var(--success); border-style: solid; background: rgba(46, 213, 115, 0.05); }
 
         .controls { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
         input {
@@ -161,10 +162,10 @@
         let isFaceDetectionRunning = false;
         let isProcessing = false;
         
-        // Cấu hình Tự động Đăng ký
-        let consecutiveGoodFrames = 0;
-        const REQUIRED_GOOD_FRAMES = 5; // Yêu cầu 5 frame hoàn hảo liên tiếp
-        const SHARPNESS_THRESHOLD = 60; // Ngưỡng chống mờ
+        // --- LOGIC TIMER MỚI ---
+        let holdStartTime = 0;
+        const HOLD_DURATION = 5000; // 5 giây (Thời gian ép người dùng giữ tư thế)
+        const SHARPNESS_THRESHOLD = 50; // Ngưỡng nét
 
         // Tự động điền ID từ tham số URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -187,11 +188,8 @@
             toast.style.backgroundColor = type === 'success' ? '#2ed573' : '#ff4757';
             toast.classList.add('show');
             setTimeout(() => { toast.classList.remove('show'); }, 3000);
-            
-            if (!isProcessing) statusDisplay.innerText = msg;
         }
 
-        // 1. Kiểm tra độ nét của ảnh (Chống mờ/rung tay)
         function isImageSharp(canvas, threshold = SHARPNESS_THRESHOLD) {
             try {
                 const ctx = canvas.getContext('2d');
@@ -218,7 +216,6 @@
             }
         }
 
-        // 2. Kiểm tra độ sáng (Chống ngược sáng hoặc quá tối)
         function isLightingGood(canvas, minBrightness = 40, maxBrightness = 210) {
             try {
                 const ctx = canvas.getContext('2d');
@@ -227,7 +224,7 @@
                 const d = imageData.data;
                 let sum = 0;
                 for (let i = 0; i < d.length; i += 4) {
-                    sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; // Tính Luma
+                    sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; 
                 }
                 const avgBrightness = sum / (width * height);
                 return avgBrightness >= minBrightness && avgBrightness <= maxBrightness;
@@ -257,13 +254,12 @@
             isFaceDetectionRunning = false;
 
             if (results.detections.length > 0) {
-                // ĐIỀU KIỆN 1: Bắt buộc chỉ có 1 khuôn mặt trong hình (Tránh lộn xộn dữ liệu)
                 if (results.detections.length > 1) {
-                    consecutiveGoodFrames = 0;
+                    holdStartTime = 0;
                     if (!isProcessing) {
                         statusDisplay.innerText = "⚠️ CÓ NHIỀU NGƯỜI TRONG KHUNG HÌNH. HÃY ĐỨNG MỘT MÌNH!";
                         statusDisplay.style.color = "#ff4757";
-                        guideCircle.classList.remove('guide-active');
+                        guideCircle.className = "guide-overlay";
                         regBtn.disabled = true;
                     }
                     return; 
@@ -284,7 +280,6 @@
                 let isStraight = true;
                 let poseWarning = ""; 
 
-                // ĐIỀU KIỆN 2: Góc mặt thẳng
                 if (landmarks && landmarks.length >= 3) {
                     const eyeR = landmarks[0];
                     const eyeL = landmarks[1];
@@ -293,14 +288,14 @@
                     const eyeDistX = Math.abs(eyeL.x - eyeR.x);
                     const eyeDistY = Math.abs(eyeL.y - eyeR.y);
 
-                    if (eyeDistY / eyeDistX > 0.40) {
+                    if (eyeDistY / eyeDistX > 0.35) {
                         isStraight = false;
                         poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
                     } else {
                         const noseDistL = Math.abs(nose.x - eyeL.x);
                         const noseDistR = Math.abs(nose.x - eyeR.x);
 
-                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.40) { 
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.35) { 
                             isStraight = false;
                             poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
                         }
@@ -310,7 +305,6 @@
                 let isValid = true;
                 let currentWarning = "";
 
-                // Bộ lọc vị trí vật lý
                 if (!userIdInput.value.trim()) {
                     isValid = false;
                     currentWarning = "VUI LÒNG NHẬP MÃ NHÂN VIÊN ĐỂ BẮT ĐẦU";
@@ -330,33 +324,43 @@
 
                 if (!isProcessing) {
                     if (!isValid) {
-                        consecutiveGoodFrames = 0;
+                        // Nếu mặt sai quy chuẩn => Bị reset đếm thời gian
+                        holdStartTime = 0; 
                         statusDisplay.innerText = currentWarning;
                         statusDisplay.style.color = currentWarning.includes("MÃ NHÂN VIÊN") ? "#007bff" : "#ffb800";
-                        guideCircle.classList.remove('guide-active');
+                        guideCircle.className = "guide-overlay";
                         regBtn.disabled = true;
                     } else {
-                        guideCircle.classList.add('guide-active');
                         regBtn.disabled = false;
                         
-                        consecutiveGoodFrames++;
-                        statusDisplay.innerText = `ĐANG LẤY MẪU CHUẨN... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
-                        statusDisplay.style.color = "#2ed573";
+                        // Khởi động đồng hồ đếm ngược 5s
+                        if (holdStartTime === 0) holdStartTime = Date.now();
+                        let elapsed = Date.now() - holdStartTime;
+                        let remaining = Math.ceil((HOLD_DURATION - elapsed) / 1000);
 
-                        // Khi đủ Frame => Kiểm tra Độ Nét & Ánh Sáng => Tự động Enroll
-                        if (consecutiveGoodFrames >= REQUIRED_GOOD_FRAMES) {
-                            captureCroppedFace(); // Bơm ảnh nháp vào Canvas
+                        if (elapsed < HOLD_DURATION) {
+                            guideCircle.className = "guide-overlay guide-active";
+                            statusDisplay.innerText = `GIỮ NGUYÊN TƯ THẾ TRONG ${remaining}s...`;
+                            statusDisplay.style.color = "#ffb800";
+                        } else {
+                            // Mốc thời gian 5s đã đạt => Giờ mới test độ nét
+                            guideCircle.className = "guide-overlay guide-success";
+                            const faceBase64 = captureCroppedFace(); 
                             
                             const isSharp = isImageSharp(cropCanvas);
                             const isGoodLight = isLightingGood(cropCanvas);
 
                             if (!isSharp || !isGoodLight) {
-                                let errorMsg = !isSharp ? "⚠️ ẢNH MỜ, VUI LÒNG GIỮ YÊN ĐẦU" : "⚠️ ÁNH SÁNG KHÔNG ĐẢM BẢO (QUÁ TỐI/CHÓI)";
+                                // Nếu mờ/tối thì báo lỗi nhưng KHÔNG RESET TIMER, 
+                                // cứ tiếp tục chộp frame sau liên tục đến khi nét.
+                                let errorMsg = !isSharp ? "⚠️ ẢNH ĐANG MỜ, HÃY GIỮ YÊN ĐẦU..." : "⚠️ ÁNH SÁNG KHÔNG ĐẢM BẢO...";
                                 statusDisplay.innerText = errorMsg;
-                                statusDisplay.style.color = "#ffb800";
-                                consecutiveGoodFrames = 0; // Reset đếm lại
+                                statusDisplay.style.color = "#ff4757";
                             } else {
-                                handleAction('register'); // GỌI API AUTO
+                                // Mọi thứ hoàn hảo => Tiến hành API
+                                statusDisplay.innerText = "✅ ẢNH ĐẠT CHUẨN, ĐANG ĐĂNG KÝ...";
+                                statusDisplay.style.color = "#2ed573";
+                                handleAction('register', faceBase64);
                             }
                         }
                     }
@@ -364,12 +368,12 @@
             } else {
                 lastDetection = null;
                 distanceFill.style.width = "0%";
-                consecutiveGoodFrames = 0;
+                holdStartTime = 0; // Mất mặt khỏi khung hình là reset timer
                 
                 if (!isProcessing) {
                     statusDisplay.innerText = "KHÔNG TÌM THẤY KHUÔN MẶT";
                     statusDisplay.style.color = "#94a3b8";
-                    guideCircle.classList.remove('guide-active');
+                    guideCircle.className = "guide-overlay";
                     regBtn.disabled = true;
                 }
             }
@@ -382,6 +386,7 @@
             const videoH = video.videoHeight;
             let { xCenter, yCenter, width, height } = lastDetection;
 
+            // Padding Backend
             const padding = 0.25;
             let cropW = width * (1 + padding) * videoW;
             let cropH = height * (1 + padding) * videoH;
@@ -405,7 +410,8 @@
             return cropCanvas.toDataURL('image/jpeg', 0.9);
         }
 
-        async function handleAction(action) {
+        // Bổ sung tham số base64Image để tiếp nhận ảnh đã crop từ luồng Timer
+        async function handleAction(action, base64Image = null) {
             if (isProcessing) return; 
             
             const userId = userIdInput.value.trim().toUpperCase(); 
@@ -424,11 +430,12 @@
             try {
                 let response;
                 if (action === 'register') {
-                    // Chụp khung hình mới nhất để gửi đi
-                    const faceBase64 = captureCroppedFace();
+                    // Dùng ảnh từ luồng Timer truyền sang (nếu có), không thì tự crop dự phòng
+                    const faceBase64 = base64Image || captureCroppedFace();
                     if (!faceBase64) {
                         notify("Lỗi xén ảnh, hãy thử lại!", "error");
                         isProcessing = false;
+                        holdStartTime = 0;
                         return;
                     }
 
@@ -451,31 +458,44 @@
                     notify(`${action === 'register' ? 'Đã đăng ký' : 'Đã xóa'} mẫu khuôn mặt của: ${userId}`, "success");
                     if (action === 'unregister') {
                         userIdInput.value = "";
+                        setTimeout(() => {
+                            isProcessing = false;
+                            holdStartTime = 0;
+                        }, 2000);
                     } else {
-                        statusDisplay.innerText = "✅ ĐĂNG KÝ HOÀN TẤT";
+                        // KẾT THÚC THÀNH CÔNG: Chờ hiển thị 3 GIÂY rồi mới chuyển trang
+                        statusDisplay.innerText = "✅ ĐĂNG KÝ HOÀN TẤT! ĐANG CHUYỂN TRANG...";
                         statusDisplay.style.color = "#2ed573";
-                        if(userId === "HUNGND"){
-                            setTimeout(() => { window.location.href = "/employees"; }, 1000);
-                        }
-                        else {
-                            setTimeout(() => { window.location.href = "/dashboard"; }, 1000);
-                        }
+                        
+                        setTimeout(() => { 
+                            if(userId === "HUNGND"){
+                                window.location.href = "/employees"; 
+                            }
+                            else {
+                                window.location.href = "/dashboard"; 
+                            }
+                        }, 3000); // 3 giây delay
                     }
                 } else {
                     notify(data.detail || data.message || "Thất bại", "error");
+                    statusDisplay.innerText = "❌ LỖI ĐĂNG KÝ";
+                    statusDisplay.style.color = "#ff4757";
+                    setTimeout(() => {
+                        isProcessing = false;
+                        holdStartTime = 0;
+                    }, 3000);
                 }
             } catch (err) {
                 notify("Lỗi kết nối Server!", "error");
-            } finally {
-                // Khóa hệ thống 3 giây để người dùng lùi ra, tránh đăng ký chồng chéo
+                statusDisplay.innerText = "❌ LỖI MẠNG";
+                statusDisplay.style.color = "#ff4757";
                 setTimeout(() => {
                     isProcessing = false;
-                    consecutiveGoodFrames = 0;
+                    holdStartTime = 0;
                 }, 3000);
             }
         }
 
-        // Vòng lặp tối ưu bằng requestAnimationFrame
         async function processVideoFrame() {
             if (video.readyState >= 2 && !isFaceDetectionRunning) {
                 isFaceDetectionRunning = true;
