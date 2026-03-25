@@ -153,7 +153,32 @@
         width: 100%;
         border-collapse: collapse;
         text-align: left;
-        min-width: 1000px;
+        min-width: 1100px;
+    }
+
+    .btn-giai-trinh {
+        padding: 6px 14px;
+        border-radius: 7px;
+        border: 1px solid var(--primary);
+        background: white;
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: 0.2s;
+        white-space: nowrap;
+    }
+
+    .btn-giai-trinh:hover:not(:disabled) {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-giai-trinh:disabled {
+        border-color: #cbd5e1;
+        color: #cbd5e1;
+        background: #f8fafc;
+        cursor: not-allowed;
     }
 
     th {
@@ -719,11 +744,12 @@
                         <th style="text-align:center;">GIỜ THỰC TẾ</th>
                         <th style="text-align:center;">CÔNG THỰC TẾ</th>
                         <th>VI PHẠM</th>
+                        <th style="text-align:center;">GIẢI TRÌNH</th>
                     </tr>
                 </thead>
                 <tbody id="attTableBody">
                     <tr>
-                        <td colspan="7" style="text-align:center; padding:40px; color:#94a3b8; font-style:italic;">
+                        <td colspan="8" style="text-align:center; padding:40px; color:#94a3b8; font-style:italic;">
                             Đang tải dữ liệu chấm công...</td>
                     </tr>
                 </tbody>
@@ -767,6 +793,30 @@
     </div>
 </div>
 
+<!-- MODAL GIẢI TRÌNH -->
+<div id="giaiTrinhModal" class="modal-overlay" onclick="closeGiaiTrinhModal()">
+    <div class="modal-content" style="border-top: 5px solid var(--primary); max-width: 460px;" onclick="event.stopPropagation()">
+        <h3 style="margin-top:0; color:var(--primary); font-size:1.1rem; padding-bottom:10px; border-bottom:1px solid #f1f5f9;">✍️ Viết Giải Trình</h3>
+        <div style="font-size:0.85rem; color:#64748b; margin-bottom:14px; background:#f8fafc; border-radius:8px; padding:10px 14px; border:1px solid #e2e8f0;">
+            <span id="gt_info_line"></span>
+        </div>
+        <form id="giaiTrinhForm">
+            <input type="hidden" id="gt_username">
+            <input type="hidden" id="gt_date">
+            <div style="margin-bottom:14px;">
+                <label style="display:block; font-size:0.82rem; font-weight:700; color:#64748b; margin-bottom:6px;">Lý do giải trình <span style="color:red;">*</span></label>
+                <textarea id="gt_reason" rows="4" required
+                    style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-family:'Nunito',sans-serif; font-size:0.9rem; resize:vertical; box-sizing:border-box; transition:0.2s;"
+                    placeholder="Nhập lý do chi tiết tại sao đi muộn / về sớm / vắng mặt..."></textarea>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:4px;">
+                <button type="button" class="btn-form-cancel" onclick="closeGiaiTrinhModal()">HỦY BỎ</button>
+                <button type="submit" class="btn-form-submit" id="gtSubmitBtn">GỬI GIẢI TRÌNH</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -796,7 +846,7 @@
 
         try {
             document.getElementById('attTableBody').innerHTML =
-                '<tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;">Đang tải dữ liệu...</td></tr>';
+                '<tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8;">Đang tải dữ liệu...</td></tr>';
 
             const token = localStorage.getItem("hrm_token");
             const res = await fetch(apiUrl, { method: "GET", headers: { "Authorization": `Bearer ${token}` } });
@@ -820,7 +870,7 @@
             applyFilters();
         } catch (error) {
             document.getElementById('attTableBody').innerHTML =
-                '<tr><td colspan="7" style="text-align:center; color:red;">Lỗi kết nối máy chủ!</td></tr>';
+                '<tr><td colspan="8" style="text-align:center; color:red;">Lỗi kết nối máy chủ!</td></tr>';
         }
     }
 
@@ -893,10 +943,18 @@
         tbody.innerHTML = '';
 
         if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;">Không tìm thấy dữ liệu phù hợp.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8;">Không tìm thấy dữ liệu phù hợp.</td></tr>';
             renderPagination(0);
             return;
         }
+
+        // Tính ngày đầu tháng và ngày hôm qua để kiểm tra điều kiện giải trình
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        firstOfMonth.setHours(0, 0, 0, 0);
 
         const startIndex = (currentPage - 1) * rowsPerPage;
         const endIndex = startIndex + rowsPerPage;
@@ -956,6 +1014,9 @@
                             ${statusBadge}${subViolation}
                         </div>
                     </td>
+                    <td data-label="GIẢI TRÌNH" style="text-align:center;">
+                        ${getGiaiTrinhButton(item, firstOfMonth, yesterday)}
+                    </td>
                 </tr>
             `;
         });
@@ -964,7 +1025,29 @@
             img.addEventListener('click', () => openImageModal(img.dataset.src, img.dataset.label));
         });
 
+        tbody.querySelectorAll('button.btn-giai-trinh:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', () => openGiaiTrinhModal(btn.dataset.gtId, btn.dataset.gtName, btn.dataset.gtDate));
+        });
+
         renderPagination(filteredData.length, startIndex, endIndex);
+    }
+
+    function getGiaiTrinhButton(item, firstOfMonth, yesterday) {
+        // Disabled nếu status là PRESENT (1) hoặc IN_PROGRESS (7)
+        const disabledByStatus = item.status === 1 || item.status === 7;
+
+        // Disabled nếu ngày bản ghi không nằm trong [đầu tháng, hôm qua]
+        let disabledByDate = true;
+        if (item.date) {
+            const recordDate = new Date(item.date + 'T00:00:00');
+            disabledByDate = recordDate < firstOfMonth || recordDate > yesterday;
+        }
+
+        const isDisabled = disabledByStatus || disabledByDate;
+        const safeId   = String(item.id || '');
+        const safeName = (item.full_name || '').replace(/'/g, '&#39;');
+        const safeDate = item.date || '';
+        return `<button class="btn-giai-trinh" ${isDisabled ? 'disabled' : ''} data-gt-id="${safeId}" data-gt-name="${safeName}" data-gt-date="${safeDate}">✍️ Viết giải trình</button>`;
     }
 
     function renderPagination(totalItems, start, end) {
@@ -999,6 +1082,62 @@
         document.getElementById('imageModal').style.display = 'none';
         document.getElementById('previewImage').src = "";
     }
+
+    // ═══════════════════════════════════════════════════
+    // 7. MODAL GIẢI TRÌNH
+    // ═══════════════════════════════════════════════════
+    function openGiaiTrinhModal(id, fullName, date) {
+        document.getElementById('gt_username').value = currentUsername;
+        document.getElementById('gt_date').value = date;
+        document.getElementById('gt_reason').value = '';
+
+        // Hiển thị thông tin bản ghi
+        const [y, m, d] = (date || '--').split('-');
+        const dateStr = date ? `${d}/${m}/${y}` : '---';
+        document.getElementById('gt_info_line').innerHTML =
+            `<strong>Nhân viên:</strong> ${fullName || currentUsername} &nbsp;|&nbsp; <strong>Ngày:</strong> ${dateStr}`;
+
+        document.getElementById('giaiTrinhModal').style.display = 'flex';
+    }
+
+    function closeGiaiTrinhModal() {
+        document.getElementById('giaiTrinhModal').style.display = 'none';
+    }
+
+    document.getElementById('giaiTrinhForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('gtSubmitBtn');
+        btn.disabled = true;
+        btn.innerText = 'ĐANG GỬI...';
+
+        const payload = {
+            username: document.getElementById('gt_username').value,
+            date: document.getElementById('gt_date').value,
+            reason: document.getElementById('gt_reason').value.trim(),
+            status: "1"
+        };
+
+        try {
+            const token = localStorage.getItem('hrm_token');
+            const res = await fetch('/api/explanations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                alert('Đã gửi giải trình thành công! Vui lòng chờ quản lý duyệt.');
+                closeGiaiTrinhModal();
+            } else {
+                const err = await res.json();
+                alert('Lỗi: ' + (err.detail || 'Không thể gửi giải trình'));
+            }
+        } catch (err) {
+            alert('Lỗi kết nối máy chủ!');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'GỬI GIẢI TRÌNH';
+        }
+    });
 
     // ═══════════════════════════════════════════════════
     // 6. GIAN LẬN

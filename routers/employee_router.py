@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models import Employee, OrganizationUnit
-from schemas import EmployeeCreate, PasswordUpdate
+from schemas import EmployeeCreate, PasswordUpdate, ChangeMyPassword, UpdateMyProfile
 from config import DB_PATH
 from sqlalchemy.orm import aliased
 from sqlalchemy import or_
+from routers.auth_router import get_current_user
 
 router = APIRouter()
 
@@ -97,6 +98,46 @@ def get_employees(
         "page": page,
         "size": size,
         "total_pages": (total + size - 1) // size if size > 0 else 1
+    }
+
+@router.put("/api/employees/me")
+def update_my_profile(
+    req: UpdateMyProfile,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    current_username = current_user.get("username")
+    db_emp = db.query(Employee).filter(Employee.username == current_username).first()
+    if not db_emp:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
+
+    db_emp.full_name = req.full_name
+    db_emp.phone     = req.phone
+    db_emp.email     = req.email
+    db_emp.dob       = req.dob
+    db_emp.notes     = req.notes
+    db.commit()
+    db.refresh(db_emp)
+
+    face_path = os.path.join(DB_PATH, f"{db_emp.username}.jpg")
+    return {
+        "status": "success",
+        "message": "Cập nhật thông tin thành công!",
+        "data": {
+            "id": db_emp.id,
+            "username": db_emp.username,
+            "full_name": db_emp.full_name,
+            "phone": db_emp.phone,
+            "email": db_emp.email,
+            "dob": db_emp.dob,
+            "date_of_birth": db_emp.date_of_birth,
+            "notes": db_emp.notes,
+            "role": db_emp.role,
+            "status": db_emp.status,
+            "department_id": db_emp.department_id,
+            "is_locked": db_emp.is_locked,
+            "has_face": os.path.exists(face_path)
+        }
     }
 
 @router.put("/api/employees/{username}")
@@ -319,3 +360,92 @@ def export_template(db: Session = Depends(get_db)):
     
     headers = {'Content-Disposition': 'attachment; filename="FileMau_NhapNhanSu.xlsx"'}
     return StreamingResponse(stream, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
+
+
+# Giả sử bạn có một hàm get_current_user để lấy username từ Token
+# from auth_dependencies import get_current_user 
+
+@router.get("/api/employees/me")
+def get_current_employee_info(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)  # trả về dict: {'username':..., 'role':...}
+):
+    current_username = current_user.get("username")
+
+    Dept = aliased(OrganizationUnit)
+    ParentUnit = aliased(OrganizationUnit)
+
+    # Query thông tin của user kèm theo tên phòng ban/đơn vị
+    result = db.query(
+        Employee,
+        Dept.unit_name.label("dept_name"),
+        ParentUnit.unit_name.label("parent_name")
+    ).outerjoin(
+        Dept, Employee.department_id == Dept.id
+    ).outerjoin(
+        ParentUnit, Dept.parent_id == ParentUnit.id
+    ).filter(Employee.username == current_username).first()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thông tin tài khoản hiện tại")
+
+    e, dept_name, parent_name = result
+    
+    # Kiểm tra ảnh khuôn mặt
+    face_path = os.path.join(DB_PATH, f"{e.username}.jpg")
+
+    # Xử lý logic tên đơn vị / phòng ban
+    if parent_name:
+        ten_don_vi = parent_name
+        ten_phong_ban = dept_name or ""
+    else:
+        ten_don_vi = dept_name or ""
+        ten_phong_ban = ""
+
+    # Trả về chi tiết bản ghi
+    return {
+        "status": "success",
+        "data": {
+            "id": e.id,
+            "username": e.username,
+            "full_name": e.full_name,
+            "department_id": e.department_id,
+            "department_name": dept_name,
+            "ten_don_vi": ten_don_vi,
+            "ten_phong_ban": ten_phong_ban,
+            "phone": e.phone,
+            "dob": e.dob, # Đảm bảo field này trùng khớp với model của bạn (dob hay date_of_birth)
+            "status": e.status,
+            "role": e.role,
+            "is_locked": e.is_locked,
+            "date_of_birth": e.date_of_birth,
+            "has_face": os.path.exists(face_path),
+            "email": e.email,
+        }
+    }
+
+@router.put("/api/employees/me/password")
+def change_my_password(
+    req: ChangeMyPassword,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)  # trả về dict
+):
+    current_username = current_user.get("username")
+    db_emp = db.query(Employee).filter(Employee.username == current_username).first()
+    if not db_emp:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
+    
+    # Xác minh mật khẩu cũ
+    # Lưu ý: Dựa theo code của bạn, mật khẩu đang được lưu dưới dạng plain-text (chữ thường).
+    if db_emp.password != req.old_password:
+        raise HTTPException(status_code=400, detail="Mật khẩu cũ không chính xác")
+    
+    # Tránh trường hợp mật khẩu mới giống mật khẩu cũ
+    if req.old_password == req.new_password:
+        raise HTTPException(status_code=400, detail="Mật khẩu mới phải khác mật khẩu hiện tại")
+    
+    # Cập nhật mật khẩu mới
+    db_emp.password = req.new_password
+    db.commit()
+    
+    return {"status": "success", "message": "Đổi mật khẩu thành công!"}

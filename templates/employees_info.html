@@ -1,0 +1,589 @@
+{% extends "base.html" %}
+
+{% block title %}Thông Tin Cá Nhân{% endblock %}
+{% block page_title %}Thông Tin Cá Nhân{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        align-items: start;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    @media (max-width: 900px) {
+        .info-layout { grid-template-columns: 1fr; }
+    }
+
+    .card {
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 18px 24px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--theme-dark);
+    }
+
+    .card-header .icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .icon-blue  { background: #eff6ff; }
+    .icon-purple{ background: #f5f3ff; }
+
+    .card-body { padding: 22px 24px; }
+
+    /* --- FORM GROUP --- */
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.93rem;
+        color: var(--text-main);
+        background: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    .form-group input[disabled],
+    .form-group input[readonly] {
+        background: #f8fafc;
+        color: #94a3b8;
+        cursor: not-allowed;
+        border-color: #e2e8f0;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+
+    /* --- AVATAR SECTION --- */
+    .avatar-section {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .avatar-circle {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #7c3aed);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: white;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+        letter-spacing: -1px;
+    }
+
+    .avatar-info h4 {
+        margin: 0 0 2px;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--theme-dark);
+    }
+
+    .avatar-info span {
+        font-size: 0.82rem;
+        color: #64748b;
+        font-family: monospace;
+    }
+
+    /* --- ROLE BADGE --- */
+    .role-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        margin-top: 5px;
+    }
+
+    .role-admin   { background: #fee2e2; color: #dc2626; }
+    .role-manager { background: #fef3c7; color: #d97706; }
+    .role-user    { background: #dcfce7; color: #16a34a; }
+
+    /* --- BUTTONS --- */
+    .btn-save {
+        width: 100%;
+        padding: 12px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 9px;
+        font-weight: 800;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: 0.2s;
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-save:hover { background: #1d4ed8; transform: translateY(-1px); }
+    .btn-save:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+
+    .btn-change-pw {
+        width: 100%;
+        padding: 12px;
+        background: #7c3aed;
+        color: white;
+        border: none;
+        border-radius: 9px;
+        font-weight: 800;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: 0.2s;
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-change-pw:hover { background: #6d28d9; transform: translateY(-1px); }
+    .btn-change-pw:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+
+    /* --- PASSWORD INPUT WRAPPER --- */
+    .pw-wrapper {
+        position: relative;
+    }
+
+    .pw-wrapper input {
+        padding-right: 44px;
+    }
+
+    .pw-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #94a3b8;
+        padding: 0;
+        line-height: 1;
+        transition: color 0.2s;
+    }
+
+    .pw-toggle:hover { color: var(--primary); }
+
+    /* --- DIVIDER --- */
+    .divider {
+        height: 1px;
+        background: #f1f5f9;
+        margin: 6px 0 18px;
+    }
+
+    /* --- ALERT MESSAGE --- */
+    .alert-msg {
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-top: 12px;
+        display: none;
+    }
+
+    .alert-success { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+    .alert-error   { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+
+    /* LOADING SKELETON */
+    .skeleton {
+        background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.2s infinite;
+        border-radius: 6px;
+        height: 38px;
+    }
+
+    @keyframes shimmer {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="info-layout">
+
+    <!-- ===== CARD THÔNG TIN CÁ NHÂN ===== -->
+    <div class="card">
+        <div class="avatar-section">
+            <div class="avatar-circle" id="avatarCircle">--</div>
+            <div class="avatar-info">
+                <h4 id="avatarName">Đang tải...</h4>
+                <span id="avatarUsername">...</span><br>
+                <span class="role-badge" id="roleBadge"></span>
+            </div>
+        </div>
+
+        <div class="card-header">
+            <div class="icon icon-blue">👤</div>
+            <h3>Thông Tin Cá Nhân</h3>
+        </div>
+
+        <div class="card-body">
+            <form id="profileForm" onsubmit="saveProfile(event)">
+
+                <div class="form-group">
+                    <label>Mã nhân viên (Tên đăng nhập)</label>
+                    <input type="text" id="f_username" disabled>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Đơn vị</label>
+                        <input type="text" id="f_don_vi" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Phòng / Khoa</label>
+                        <input type="text" id="f_phong_ban" disabled>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Họ và tên *</label>
+                        <input type="text" id="f_full_name" placeholder="Nguyễn Văn A" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Số điện thoại</label>
+                        <input type="tel" id="f_phone" placeholder="0912 345 678">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="f_email" placeholder="example@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày sinh</label>
+                        <input type="date" id="f_dob">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Ghi chú / Ghi chú bản thân</label>
+                    <textarea id="f_notes" rows="3" placeholder="Thêm ghi chú..."></textarea>
+                </div>
+
+                <div class="divider"></div>
+
+                <button type="submit" class="btn-save" id="btnSaveProfile">
+                    💾 Lưu thay đổi
+                </button>
+
+                <div class="alert-msg" id="profileAlert"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== CARD ĐỔI MẬT KHẨU ===== -->
+    <div class="card" style="align-self: start;">
+        <div class="card-header">
+            <div class="icon icon-purple">🔒</div>
+            <h3>Đổi Mật Khẩu</h3>
+        </div>
+
+        <div class="card-body">
+            <form id="passwordForm" onsubmit="changePassword(event)">
+
+                <div class="form-group">
+                    <label>Mật khẩu hiện tại *</label>
+                    <div class="pw-wrapper">
+                        <input type="password" id="pw_current" placeholder="Nhập mật khẩu hiện tại" required autocomplete="current-password">
+                        <button type="button" class="pw-toggle" onclick="togglePw('pw_current', this)">👁️</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Mật khẩu mới *</label>
+                    <div class="pw-wrapper">
+                        <input type="password" id="pw_new" placeholder="Tối thiểu 6 ký tự" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="pw-toggle" onclick="togglePw('pw_new', this)">👁️</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Xác nhận mật khẩu mới *</label>
+                    <div class="pw-wrapper">
+                        <input type="password" id="pw_confirm" placeholder="Nhập lại mật khẩu mới" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="pw-toggle" onclick="togglePw('pw_confirm', this)">👁️</button>
+                    </div>
+                </div>
+
+                <div style="background:#f8fafc; border-radius:9px; padding:12px 14px; font-size:0.82rem; color:#64748b; border: 1px solid #e2e8f0; margin-bottom:6px;">
+                    <strong>Yêu cầu mật khẩu:</strong>
+                    <ul style="margin:6px 0 0 0; padding-left:18px; line-height:1.8;">
+                        <li>Tối thiểu 6 ký tự</li>
+                        <li>Không chứa tên đăng nhập</li>
+                        <li>Mật khẩu mới và xác nhận phải khớp nhau</li>
+                    </ul>
+                </div>
+
+                <div class="divider"></div>
+
+                <button type="submit" class="btn-change-pw" id="btnChangePw">
+                    🔑 Đổi mật khẩu
+                </button>
+
+                <div class="alert-msg" id="pwAlert"></div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const currentUsername = localStorage.getItem('hrm_username') || '';
+    const currentToken    = localStorage.getItem('hrm_token') || '';
+    const currentRole     = localStorage.getItem('hrm_role') || 'user';
+
+    // ════════════════════════════════════
+    // 1. TẢI THÔNG TIN NHÂN VIÊN
+    // ════════════════════════════════════
+    async function loadProfile() {
+        try {
+            const res = await fetch(`/api/employees/me`, {
+                headers: { 'Authorization': `Bearer ${currentToken}` }
+            });
+
+            if (res.status === 401) { window.location.href = '/login'; return; }
+            if (!res.ok) throw new Error('Không tải được thông tin');
+
+            const json = await res.json();
+            // API trả về { status: "success", data: { ... } }
+            const emp = json.data || json;
+            fillForm(emp);
+        } catch (e) {
+            showAlert('profileAlert', 'error', '⚠️ Không thể tải thông tin nhân viên: ' + e.message);
+        }
+    }
+
+    function fillForm(emp) {
+        document.getElementById('f_username').value  = emp.username  || '';
+        document.getElementById('f_full_name').value = emp.full_name || '';
+        document.getElementById('f_phone').value     = emp.phone     || '';
+        document.getElementById('f_email').value     = emp.email     || '';
+        // API trả về cả dob lẫn date_of_birth
+        document.getElementById('f_dob').value       = emp.date_of_birth || emp.dob || '';
+        document.getElementById('f_notes').value     = emp.notes     || '';
+
+        // Phòng ban / đơn vị (readonly)
+        document.getElementById('f_don_vi').value    = emp.ten_don_vi   || emp.department_name || '';
+        document.getElementById('f_phong_ban').value = emp.ten_phong_ban || '';
+
+        // Avatar
+        const initials = (emp.full_name || emp.username || '?')
+            .split(' ').slice(-2).map(w => w[0]).join('').toUpperCase();
+        document.getElementById('avatarCircle').innerText  = initials;
+        document.getElementById('avatarName').innerText    = emp.full_name || emp.username;
+        document.getElementById('avatarUsername').innerText = '@' + emp.username;
+
+        // Role badge
+        const roleMap = {
+            admin:   { label: '👑 Admin',    cls: 'role-admin'   },
+            manager: { label: '🏢 Quản lý',  cls: 'role-manager' },
+            user:    { label: '👤 Nhân viên', cls: 'role-user'    }
+        };
+        const rb = roleMap[emp.role] || roleMap.user;
+        const badge = document.getElementById('roleBadge');
+        badge.innerText  = rb.label;
+        badge.className  = 'role-badge ' + rb.cls;
+    }
+
+    // ════════════════════════════════════
+    // 2. LƯU THÔNG TIN CÁ NHÂN
+    // ════════════════════════════════════
+    async function saveProfile(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSaveProfile');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Đang lưu...';
+
+        const payload = {
+            full_name : document.getElementById('f_full_name').value.trim(),
+            phone     : document.getElementById('f_phone').value.trim(),
+            email     : document.getElementById('f_email').value.trim(),
+            dob       : document.getElementById('f_dob').value || null,
+            notes     : document.getElementById('f_notes').value.trim()
+        };
+
+        try {
+            const res = await fetch(`/api/employees/me`, {
+                method : 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentToken}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const json = await res.json();
+                const updated = json.data || json;
+                fillForm(updated);
+                showAlert('profileAlert', 'success', '✅ Cập nhật thông tin thành công!');
+            } else {
+                const err = await res.json();
+                showAlert('profileAlert', 'error', '❌ Lỗi: ' + (err.detail || 'Không thể lưu'));
+            }
+        } catch (err) {
+            showAlert('profileAlert', 'error', '❌ Lỗi kết nối máy chủ!');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '💾 Lưu thay đổi';
+        }
+    }
+
+    // ════════════════════════════════════
+    // 3. ĐỔI MẬT KHẨU
+    // ════════════════════════════════════
+    async function changePassword(e) {
+        e.preventDefault();
+
+        const current = document.getElementById('pw_current').value;
+        const newPw   = document.getElementById('pw_new').value;
+        const confirm = document.getElementById('pw_confirm').value;
+
+        if (newPw !== confirm) {
+            showAlert('pwAlert', 'error', '❌ Mật khẩu mới và xác nhận không khớp!');
+            return;
+        }
+
+        if (newPw.toLowerCase().includes(currentUsername.toLowerCase())) {
+            showAlert('pwAlert', 'error', '❌ Mật khẩu không được chứa tên đăng nhập!');
+            return;
+        }
+
+        const btn = document.getElementById('btnChangePw');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Đang xử lý...';
+
+        const payload = {
+            new_password: newPw
+        };
+
+        try {
+            const res = await fetch(`/api/employees/${currentUsername}/password`, {
+                method : 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentToken}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                showAlert('pwAlert', 'success', '✅ Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
+                document.getElementById('passwordForm').reset();
+            } else {
+                const err = await res.json();
+                showAlert('pwAlert', 'error', '❌ Lỗi: ' + (err.detail || 'Không thể đổi mật khẩu'));
+            }
+        } catch (err) {
+            showAlert('pwAlert', 'error', '❌ Lỗi kết nối máy chủ!');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '🔑 Đổi mật khẩu';
+        }
+    }
+
+    // ════════════════════════════════════
+    // 4. TIỆN ÍCH
+    // ════════════════════════════════════
+    function togglePw(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        btn.innerText = isHidden ? '🙈' : '👁️';
+    }
+
+    function showAlert(containerId, type, msg) {
+        const el = document.getElementById(containerId);
+        el.className = 'alert-msg alert-' + type;
+        el.innerText = msg;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
+
+    // ════════════════════════════════════
+    // KHỞI TẠO
+    // ════════════════════════════════════
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!currentUsername) { window.location.href = '/login'; return; }
+        loadProfile();
+    });
+</script>
+{% endblock %}

@@ -33,6 +33,9 @@ def read_attendance(request: Request): return templates.TemplateResponse("attend
 @router.get("/explanation")
 def read_explanation(request: Request): return templates.TemplateResponse("explanation.html", {"request": request})
 
+@router.get("/user_info")
+def read_employees_info(request: Request): return templates.TemplateResponse("employees_info.html", {"request": request})
+
 @router.get("/calendar")
 def read_calendar(request: Request): return templates.TemplateResponse("calendar.html", {"request": request})
 
