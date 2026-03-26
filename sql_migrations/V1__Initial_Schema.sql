@@ -1,131 +1,159 @@
-﻿-- bnd_temp.app_configs definition
-
-CREATE TABLE `app_configs` (
-  `config_key` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
-  `config_value` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `description` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `updated_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`config_key`),
-  KEY `ix_app_configs_config_key` (`config_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-
--- bnd_temp.attendance definition
-
-CREATE TABLE `attendance` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `username` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `full_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `check_in_time` datetime DEFAULT NULL,
-  `image_path` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `late_minutes` int DEFAULT NULL,
-  `early_minutes` int DEFAULT NULL,
-  `explanation_status` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `explanation_reason` text COLLATE utf8mb4_general_ci,
-  `confidence` double DEFAULT NULL,
-  `is_fraud` int DEFAULT '0',
-  `fraud_note` text COLLATE utf8mb4_general_ci,
-  `client_ip` text COLLATE utf8mb4_general_ci,
-  `latitude` double DEFAULT NULL,
-  `longitude` double DEFAULT NULL,
-  `attendance_type` text COLLATE utf8mb4_general_ci DEFAULT (_utf8mb4'Tập trung'),
-  `note` text COLLATE utf8mb4_general_ci,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=110 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-
--- bnd_temp.leave_requests definition
-
-CREATE TABLE `leave_requests` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `username` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `full_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `leave_date` date DEFAULT NULL,
-  `reason` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `approver` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `ix_leave_requests_id` (`id`),
-  KEY `ix_leave_requests_leave_date` (`leave_date`),
-  KEY `ix_leave_requests_username` (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-
--- bnd_temp.shift_assignments definition
-
-CREATE TABLE `shift_assignments` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `username` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `shift_code` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `shift_date` date DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `ix_shift_assignments_shift_code` (`shift_code`),
-  KEY `ix_shift_assignments_username` (`username`),
-  KEY `ix_shift_assignments_shift_date` (`shift_date`),
-  KEY `ix_shift_assignments_id` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-
--- bnd_temp.shift_categories definition
-
-CREATE TABLE `shift_categories` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `shift_code` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `shift_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `start_time` time DEFAULT NULL,
-  `end_time` time DEFAULT NULL,
-  `is_overnight` int DEFAULT NULL,
-  `status` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `notes` text COLLATE utf8mb4_general_ci,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `ix_shift_categories_shift_code` (`shift_code`),
-  KEY `ix_shift_categories_id` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-
--- bnd_temp.organization_units definition
+﻿CREATE TABLE `app_configs` (
+	`config_key` VARCHAR(256) NOT NULL, 
+	`config_value` VARCHAR(2048) NOT NULL, 
+	`description` VARCHAR(2048), 
+	`updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 
+	PRIMARY KEY (`config_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `organization_units` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `unit_code` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `unit_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `unit_type` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `parent_id` int DEFAULT NULL,
-  `order_num` int DEFAULT NULL,
-  `level` int DEFAULT NULL,
-  `location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `notes` text COLLATE utf8mb4_general_ci,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `ix_organization_units_unit_code` (`unit_code`),
-  KEY `ix_organization_units_id` (`id`),
-  KEY `organization_units_FK_0_0` (`parent_id`),
-  CONSTRAINT `organization_units_FK_0_0` FOREIGN KEY (`parent_id`) REFERENCES `organization_units` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-
--- bnd_temp.employees definition
+    `id` INT NOT NULL AUTO_INCREMENT, 
+    `unit_code` VARCHAR(50), 
+    `unit_name` VARCHAR(255), 
+    `unit_type` VARCHAR(50), 
+    `parent_id` INT, 
+    `order_num` INT, 
+    `level` INT, 
+    `location` VARCHAR(255), 
+    `status` VARCHAR(50), 
+    `notes` TEXT, 
+    PRIMARY KEY (`id`), 
+    UNIQUE KEY `ix_organization_units_unit_code` (`unit_code`),
+    CONSTRAINT `fk_org_parent` FOREIGN KEY (`parent_id`) REFERENCES `organization_units` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `employees` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `username` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `full_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `phone` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `dob` date DEFAULT NULL,
-  `email` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `department_id` int DEFAULT NULL,
-  `status` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `notes` text COLLATE utf8mb4_general_ci,
-  `hourly_rate` int DEFAULT NULL,
-  `allowance` int DEFAULT NULL,
-  `password` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `role` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `is_locked` int DEFAULT NULL,
-  `date_of_birth` date DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `ix_employees_username` (`username`),
-  KEY `ix_employees_id` (`id`),
-  KEY `ix_employees_full_name` (`full_name`),
-  KEY `employees_FK_0_0` (`department_id`),
-  CONSTRAINT `employees_FK_0_0` FOREIGN KEY (`department_id`) REFERENCES `organization_units` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=111 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+	`id` INT NOT NULL AUTO_INCREMENT, 
+	`username` VARCHAR(50), 
+	`full_name` VARCHAR(512), 
+	`phone` VARCHAR(20), 
+	`dob` DATE, 
+	`email` VARCHAR(512), 
+	`department_id` INT, 
+	`status` VARCHAR(50),
+	`notes` TEXT, 
+	`hourly_rate` INT, 
+	`allowance` INT, 
+	`password` VARCHAR(512), 
+	`role` VARCHAR(256), 
+	`is_locked` INT, 
+	`date_of_birth` DATE, 
+	`ccCaNhan` INT DEFAULT 1, 
+	`ccTapTrung` INT DEFAULT 0, 
+	`checkViTri` INT DEFAULT 1,
+	`checkMang` INT DEFAULT 1, 
+	PRIMARY KEY (`id`), 
+	UNIQUE KEY `ix_employees_username` (`username`),
+	KEY `ix_employees_full_name` (`full_name`),
+	CONSTRAINT `FK_employees_department` FOREIGN KEY (`department_id`) REFERENCES `organization_units` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `attendance` (
+	`id` INT NOT NULL AUTO_INCREMENT,
+	`username` VARCHAR(512),
+	`full_name` VARCHAR(512),
+	`check_in_time` DATETIME,
+	`image_path` VARCHAR(2048),
+	`late_minutes` INT,
+	`early_minutes` INT,
+	`explanation_status` VARCHAR(50),
+	`explanation_reason` TEXT,
+	`confidence` DOUBLE, 
+	`client_ip` TEXT, 
+	`latitude` DOUBLE, 
+	`longitude` DOUBLE, 
+	`attendance_type` VARCHAR(256) DEFAULT 'Tập trung',
+	`is_fraud` INT DEFAULT 0, 
+	`fraud_note` TEXT, 
+	`note` TEXT,
+	CONSTRAINT `ATTENDANCE_PK` PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `explanation` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `username` VARCHAR(255) NOT NULL,
+    `date` DATE NOT NULL,
+    `reason` TEXT NOT NULL,
+    `status` VARCHAR(50) NOT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `leave_requests` (
+    `id` INT NOT NULL AUTO_INCREMENT, 
+    `username` VARCHAR(50), 
+    `full_name` VARCHAR(512), 
+    `leave_date` DATE, 
+    `reason` VARCHAR(512), 
+    `approver` VARCHAR(512), 
+    `status` VARCHAR(50), 
+    PRIMARY KEY (`id`),
+    KEY `ix_leave_requests_username` (`username`),
+    KEY `ix_leave_requests_leave_date` (`leave_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `monthly_records` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `employee_id` INT NOT NULL,
+    `shift_code` VARCHAR(50),
+    `date` DATE,
+    `checkin_time` TIME,
+    `checkout_time` TIME,
+    `late_minutes` INT DEFAULT 0,
+    `early_minutes` INT DEFAULT 0,
+    `status` INT DEFAULT 0,
+    `explanation_reason` TEXT,
+    `explanation_status` INT DEFAULT 0,
+    `note` TEXT, 
+    `checkin_image_path` TEXT, 
+    `checkout_image_path` TEXT, 
+    `actual_hours` FLOAT DEFAULT 0, 
+    `actual_workday` FLOAT DEFAULT 0,
+    PRIMARY KEY (`id`),
+    KEY `idx_monthly_records_employee_id` (`employee_id`),
+    KEY `idx_monthly_records_date` (`date`),
+    CONSTRAINT `fk_monthly_records_employee` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `shift_assignments` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `employee_id` INT NOT NULL,
+    `shift_code` VARCHAR(255),
+    `shift_date` DATE,
+    PRIMARY KEY (`id`),
+    KEY `ix_shift_assignments_shift_date` (`shift_date`),
+    KEY `ix_shift_assignments_shift_code` (`shift_code`),
+    CONSTRAINT `fk_shift_assignments_employee` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `shift_categories` (
+    `id` INT NOT NULL AUTO_INCREMENT, 
+    `shift_code` VARCHAR(50), 
+    `shift_name` VARCHAR(512), 
+    `start_time` TIME, 
+    `end_time` TIME, 
+    `is_overnight` INT, 
+    `status` VARCHAR(50), 
+    `notes` TEXT, 
+    `checkin_from` TIME DEFAULT NULL, 
+    `checkin_to` TIME DEFAULT NULL, 
+    `checkout_from` TIME DEFAULT NULL, 
+    `checkout_to` TIME DEFAULT NULL, 
+    `work_hours` DOUBLE DEFAULT NULL, 
+    `work_days` DOUBLE DEFAULT NULL, 
+    `day_coefficient` DOUBLE DEFAULT NULL, 
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `ix_shift_categories_shift_code` (`shift_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `wifi` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(512) NOT NULL,
+    `password` VARCHAR(512) NOT NULL,
+    `location` VARCHAR(512),
+    `ip_address` VARCHAR(512),
+    `note` TEXT,
+    `status` VARCHAR(50) NOT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+

@@ -160,6 +160,55 @@ def update_my_profile(
             "has_face": os.path.exists(face_path)
         }
     }
+    
+@router.post("/api/employees/auto-update-departments")
+def auto_update_departments(db: Session = Depends(get_db)):
+    # 1. Query tất cả employee có department_id là null
+    employees_no_dept = db.query(Employee).all()
+    
+    if not employees_no_dept:
+        return {"message": "Không có nhân viên nào cần cập nhật phòng ban.", "updated_count": 0}
+
+    # 2. Group các employee theo công thức username.split(".")[0]
+    # Map sẽ có dạng: {"A": [emp1, emp2], "B": [emp3]}
+    grouped_employees = {}
+    for emp in employees_no_dept:
+        if not emp.username:
+            continue
+            
+        prefix = emp.username.split(".")[0] # Lấy phần tử đầu tiên, VD: A.B -> A
+        
+        if prefix not in grouped_employees:
+            grouped_employees[prefix] = []
+        grouped_employees[prefix].append(emp)
+
+    result = []
+    updated_count = 0
+
+    # 3. Duyệt qua map để query và update
+    for prefix, emp_list in grouped_employees.items():
+        # Query xuống bảng organization_units filter theo unit_code
+        org_unit = db.query(OrganizationUnit).filter(OrganizationUnit.unit_code == prefix).first()
+        
+        # Nếu tìm thấy đơn vị (phòng ban) có mã tương ứng
+        if org_unit:
+            org_unit_id = org_unit.id
+            
+            # Lấy hết value theo key của map và update department_id
+            for emp in emp_list:
+                emp.department_id = org_unit_id
+                result.append(emp.username) # Thêm vào list result (ở đây mình lấy username để trả về cho dễ nhìn)
+                updated_count += 1
+
+    # 4. Update chúng xuống DB (Commit toàn bộ thay đổi cùng 1 lúc)
+    if updated_count > 0:
+        db.commit()
+
+    return {
+        "message": "Cập nhật phòng ban tự động thành công!",
+        "updated_count": updated_count,
+        "updated_usernames": result
+    }
 
 @router.put("/api/employees/{username}")
 def update_employee(username: str, emp: EmployeeCreate, db: Session = Depends(get_db)):
