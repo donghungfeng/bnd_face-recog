@@ -3,7 +3,7 @@ import os
 DB_PATH = "./data/face_db"
 HISTORY_PATH = "./data/history_db"
 TEMPLATE_PATH = "./templates"
-MODEL_NAME = "Facenet512"
+MODEL_NAME = "ArcFace"
 CACHE_FILE = os.path.join(DB_PATH, "embeddings_cache.pkl")
 
 # Tự động tạo thư mục nếu chưa có
