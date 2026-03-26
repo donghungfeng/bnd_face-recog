@@ -268,6 +268,69 @@
         0%   { background-position: 200% 0; }
         100% { background-position: -200% 0; }
     }
+
+    /* --- TOGGLE SWITCH --- */
+    .toggle-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        margin-bottom: 14px;
+    }
+
+    .toggle-label {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e1;
+        transition: .4s;
+        border-radius: 24px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
 </style>
 {% endblock %}
 
@@ -328,6 +391,23 @@
                     <div class="form-group">
                         <label>Ngày sinh</label>
                         <input type="date" id="f_dob">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="toggle-container">
+                        <span class="toggle-label">🔍 Chấm công Cá nhân</span>
+                        <label class="switch">
+                            <input type="checkbox" id="f_ccCaNhan">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-container">
+                        <span class="toggle-label">🏢 Chấm công Tập trung</span>
+                        <label class="switch">
+                            <input type="checkbox" id="f_ccTapTrung">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                 </div>
 
@@ -439,6 +519,8 @@
         // API trả về cả dob lẫn date_of_birth
         document.getElementById('f_dob').value       = emp.date_of_birth || emp.dob || '';
         document.getElementById('f_notes').value     = emp.notes     || '';
+        document.getElementById('f_ccCaNhan').checked = (emp.ccCaNhan === 1);
+        document.getElementById('f_ccTapTrung').checked = (emp.ccTapTrung === 1);
 
         // Phòng ban / đơn vị (readonly)
         document.getElementById('f_don_vi').value    = emp.ten_don_vi   || emp.department_name || '';
@@ -478,7 +560,9 @@
             email     : document.getElementById('f_email').value.trim(),
             dob       : document.getElementById('f_dob').value || null,
             date_of_birth: document.getElementById('f_dob').value || null,
-            notes     : document.getElementById('f_notes').value.trim()
+            notes     : document.getElementById('f_notes').value.trim(),
+            ccCaNhan  : document.getElementById('f_ccCaNhan').checked ? 1 : 0,
+            ccTapTrung: document.getElementById('f_ccTapTrung').checked ? 1 : 0
         };
 
         try {

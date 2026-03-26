@@ -37,6 +37,10 @@ class EmployeeCreate(BaseModel):
     is_locked: Optional[int] = 0
     date_of_birth: Optional[date] = None
 
+    ccCaNhan: Optional[int] = None
+    ccTapTrung: Optional[int] = None
+    checkViTri: Optional[int] = None
+    checkMang: Optional[int] = None
 # Thêm schema này dùng cho API đổi mật khẩu
 class PasswordUpdate(BaseModel):
     new_password: str   
@@ -242,3 +246,29 @@ class UpdateMyProfile(BaseModel):
     dob: Optional[date] = None
     date_of_birth: Optional[date] = None
     notes: Optional[str] = None
+    ccCaNhan: Optional[int] = None
+    ccTapTrung: Optional[int] = None
+    
+class WifiBase(BaseModel):
+    name: str
+    password: str
+    location: Optional[str] = None
+    ip_address: Optional[str] = None
+    note: Optional[str] = None
+    status: str = "active"
+    
+# Bổ sung vào cuối schemas.py
+class WifiCreate(WifiBase):
+    pass
+
+class WifiUpdate(BaseModel):
+    name: Optional[str] = None
+    password: Optional[str] = None
+    location: Optional[str] = None
+    ip_address: Optional[str] = None
+    note: Optional[str] = None
+    status: Optional[str] = None
+
+class WifiResponse(WifiBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)

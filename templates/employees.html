@@ -6,153 +6,408 @@
 {% block extra_css %}
 <style>
     /* CHỐT CHẶN TOÀN TRANG: Chống xô lệch màn hình khi kéo vuốt */
-    html, body { overflow-x: hidden; width: 100%; position: relative; }
-    
-    .grid-container { max-width: 100%; box-sizing: border-box; }
-    .card { max-width: 100%; box-sizing: border-box; }
+    html,
+    body {
+        overflow-x: hidden;
+        width: 100%;
+        position: relative;
+    }
+
+    .grid-container {
+        display: grid;
+        /* SỬA LỖI CUỘN TRANG: Ép cột 2 không được phình to quá màn hình */
+        grid-template-columns: 350px minmax(0, 1fr);
+        gap: 20px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .card {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        min-width: 0;
+        /* Bắt buộc để thẻ card không bị tràn trong Grid/Flex */
+        background: #ffffff;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        padding: 20px;
+    }
 
     /* --- THANH CÔNG CỤ TÌM KIẾM --- */
-    .search-bar { 
-        background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; 
-        display: flex; gap: 15px; flex-wrap: wrap; border: 1px solid var(--border); align-items: center;
-        justify-content: space-between; box-sizing: border-box;
+    .search-bar {
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        border: 1px solid var(--border);
+        align-items: center;
+        justify-content: space-between;
+        box-sizing: border-box;
     }
 
-    .search-inputs { display: flex; flex: 1; gap: 15px; min-width: 0; width: 100%; }
-    .search-inputs input { 
-        flex: 2; min-width: 150px; padding: 10px 15px; border-radius: 6px; border: 1px solid var(--border); outline: none; 
-        font-family: 'Nunito', sans-serif; font-size: 0.95rem; transition: 0.2s; box-sizing: border-box;
+    .search-inputs {
+        display: flex;
+        flex: 1;
+        gap: 15px;
+        min-width: 0;
+        width: 100%;
     }
-    .search-inputs select { 
-        flex: 1; min-width: 150px; padding: 10px 15px; border-radius: 6px; border: 1px solid var(--border); outline: none; 
-        font-family: 'Nunito', sans-serif; font-size: 0.95rem; transition: 0.2s; box-sizing: border-box;
+
+    .search-inputs input {
+        flex: 2;
+        min-width: 150px;
+        padding: 10px 15px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        outline: none;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.95rem;
+        transition: 0.2s;
+        box-sizing: border-box;
     }
-    .search-inputs input:focus, .search-inputs select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
+    .search-inputs select {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 15px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        outline: none;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.95rem;
+        transition: 0.2s;
+        box-sizing: border-box;
+    }
+
+    .search-inputs input:focus,
+    .search-inputs select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
 
     /* Nút thanh công cụ */
     .btn-toolbar {
-        padding: 10px 15px; border-radius: 6px; font-size: 0.85rem; font-weight: 700;
-        cursor: pointer; transition: 0.2s; border: 1px solid var(--border); background: white; color: var(--text-main);
-        display: flex; align-items: center; justify-content: center; gap: 5px;
+        padding: 10px 15px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s;
+        border: 1px solid var(--border);
+        background: white;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
     }
-    .btn-toolbar:hover { background: #f1f5f9; border-color: #cbd5e1; }
-    .btn-toolbar.primary { background: var(--primary); color: white; border-color: var(--primary); }
-    .btn-toolbar.primary:hover { background: #2563eb; }
+
+    .btn-toolbar:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .btn-toolbar.primary {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .btn-toolbar.primary:hover {
+        background: #2563eb;
+    }
 
     /* --- FORM CỐ ĐỊNH BAN ĐẦU --- */
     #formCard {
-        align-self: start; position: sticky; top: 80px; z-index: 10; background: #ffffff;
+        align-self: start;
+        position: sticky;
+        top: 80px;
+        z-index: 10;
+        background: #ffffff;
     }
 
     .card-header {
-        display: flex; justify-content: space-between; align-items: center;
-        cursor: pointer; user-select: none; margin-bottom: 15px;
-        border-bottom: 1px solid var(--border); padding-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+        margin-bottom: 15px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 10px;
     }
-    .card-header h3 { margin: 0; color: var(--theme-dark); }
-    .toggle-icon { font-size: 0.9rem; transition: transform 0.3s; color: var(--text-muted); font-weight: bold;}
-    .card-content { display: block; }
+
+    .card-header h3 {
+        margin: 0;
+        color: var(--theme-dark);
+    }
+
+    .toggle-icon {
+        font-size: 0.9rem;
+        transition: transform 0.3s;
+        color: var(--text-muted);
+        font-weight: bold;
+    }
+
+    .card-content {
+        display: block;
+    }
 
     /* --- KHUNG BẢNG ĐỘC LẬP CHỈ CUỘN NGANG --- */
     .table-responsive {
-        width: 100%; max-width: 100%; display: block; overflow-x: auto; 
-        -webkit-overflow-scrolling: touch; min-height: 300px; box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        min-height: 300px;
+        box-sizing: border-box;
     }
-    table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left; } 
-    table th, table td { white-space: nowrap; padding: 12px 15px; border-bottom: 1px solid var(--border);} 
-    table th { color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; background: #f9fafb; }
-    table tr:hover { background: #f3f4f6; }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1200px;
+        /* Tăng min-width để đảm bảo không bị co ép quá mức */
+        text-align: left;
+    }
+
+    table th,
+    table td {
+        white-space: nowrap;
+        padding: 12px 15px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    table th {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        background: #f9fafb;
+    }
+
+    table tr:hover {
+        background: #f3f4f6;
+    }
 
     /* --- BADGES & BÚT BẤM --- */
-    .form-edit-mode { border-left: 4px solid #f59e0b !important; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-    .badge-admin { background: #e0e7ff; color: #4338ca; }        
-    .badge-manager { background: #fef3c7; color: #b45309; }      
-    .badge-user { background: #f1f5f9; color: #475569; }       
-    .badge-locked { background: #fee2e2; color: #b91c1c; }
-
-    .btn-icon { 
-        width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border);
-        background: transparent; color: var(--text-muted); font-size: 1rem;
-        display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; padding: 0;
+    .form-edit-mode {
+        border-left: 4px solid #f59e0b !important;
     }
-    .btn-icon.face-add:hover { background: #dcfce7; color: #16a34a; border-color: #bbf7d0; }
-    .btn-icon.face-del:hover { background: #fef3c7; color: #d97706; border-color: #fde68a; }
+
+    .badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+
+    .badge-admin {
+        background: #e0e7ff;
+        color: #4338ca;
+    }
+
+    .badge-manager {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .badge-user {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .badge-locked {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: 0.2s;
+        padding: 0;
+    }
+
+    .btn-icon.face-add:hover {
+        background: #dcfce7;
+        color: #16a34a;
+        border-color: #bbf7d0;
+    }
+
+    .btn-icon.face-del:hover {
+        background: #fef3c7;
+        color: #d97706;
+        border-color: #fde68a;
+    }
 
     /* --- DROPDOWN ACTION MENU --- */
-    .dropdown { position: relative; display: inline-block; }
-    .dropdown-btn { 
-        background: transparent; border: 1px solid var(--border); border-radius: 6px; 
-        padding: 6px 12px; cursor: pointer; color: var(--text-main); font-weight: 600; font-size: 0.85rem;
-        transition: 0.2s; display: flex; align-items: center; gap: 5px; background: white;
+    .dropdown {
+        position: relative;
+        display: inline-block;
     }
-    .dropdown-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
-    
-    .dropdown-content {
-        display: none; position: absolute; left: 0; top: 100%; min-width: 200px;
-        background-color: white; box-shadow: 0px 8px 20px rgba(0,0,0,0.15);
-        z-index: 50; border-radius: 8px; overflow: hidden; border: 1px solid var(--border);
-        text-align: left; margin-top: 5px;
-    }
-    .dropdown-content.show { display: block; animation: fadeIn 0.15s ease-out; }
-    .dropdown-content button {
-        color: var(--text-main); padding: 10px 15px; text-decoration: none;
-        display: flex; align-items: center; gap: 10px; border: none; background: none;
-        width: 100%; text-align: left; cursor: pointer; font-size: 0.85rem; transition: 0.2s;
-    }
-    .dropdown-content button:hover { background-color: #f8fafc; color: var(--primary); padding-left: 20px;}
-    .dropdown-content button.text-red { color: #dc2626; }
-    .dropdown-content button.text-red:hover { background-color: #fef2f2; color: #b91c1c; }
 
-    .excel-actions { display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+    .dropdown-btn {
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        color: var(--text-main);
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: white;
+    }
+
+    .dropdown-btn:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        left: 0;
+        top: 100%;
+        min-width: 200px;
+        background-color: white;
+        box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.15);
+        z-index: 50;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        text-align: left;
+        margin-top: 5px;
+    }
+
+    .dropdown-content.show {
+        display: block;
+        animation: fadeIn 0.15s ease-out;
+    }
+
+    .dropdown-content button {
+        color: var(--text-main);
+        padding: 10px 15px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: 0.2s;
+    }
+
+    .dropdown-content button:hover {
+        background-color: #f8fafc;
+        color: var(--primary);
+        padding-left: 20px;
+    }
+
+    .dropdown-content button.text-red {
+        color: #dc2626;
+    }
+
+    .dropdown-content button.text-red:hover {
+        background-color: #fef2f2;
+        color: #b91c1c;
+    }
+
+    .excel-actions {
+        display: flex;
+        gap: 10px;
+        margin-left: auto;
+        flex-wrap: wrap;
+    }
 
 
     /* =========================================================
        1. CHẾ ĐỘ TABLET (Từ 601px đến 1180px)
        ========================================================= */
-    @media (max-width: 1180px) { 
-        .grid-container { 
-            display: flex !important; 
-            flex-direction: column !important; 
+    @media (max-width: 1180px) {
+        .grid-container {
+            display: flex !important;
+            flex-direction: column !important;
             width: 100% !important;
             max-width: 100vw !important;
-            overflow-x: hidden !important; /* Khóa chết vùng ngoài */
+            overflow-x: hidden !important;
+            /* Khóa chết vùng ngoài */
         }
-        
+
         #formCard {
-            position: relative !important; 
-            top: 0 !important; 
+            position: relative !important;
+            top: 0 !important;
             margin-bottom: 20px !important;
             width: 100% !important;
             box-sizing: border-box !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
         }
 
-        .excel-actions { display: none !important; }
-        
+        .excel-actions {
+            display: none !important;
+        }
+
         /* CHỐT CHẶN: Chỉ vùng này được phép cuộn ngang */
-        .table-responsive { 
+        .table-responsive {
             width: 100% !important;
             max-width: 100% !important;
             display: block !important;
-            overflow-x: auto !important; 
+            overflow-x: auto !important;
             padding-bottom: 10px;
         }
-        
-        table { 
-            min-width: 1000px !important; 
+
+        table {
+            min-width: 1000px !important;
             width: 100% !important;
-            display: table !important; 
+            display: table !important;
         }
-        thead { display: table-header-group !important; }
-        tbody { display: table-row-group !important; }
-        tr { display: table-row !important; }
-        th, td { 
-            display: table-cell !important; 
-            white-space: nowrap !important; 
+
+        thead {
+            display: table-header-group !important;
+        }
+
+        tbody {
+            display: table-row-group !important;
+        }
+
+        tr {
+            display: table-row !important;
+        }
+
+        th,
+        td {
+            display: table-cell !important;
+            white-space: nowrap !important;
             text-align: left !important;
         }
-        td::before { display: none !important; content: none !important; }
+
+        td::before {
+            display: none !important;
+            content: none !important;
+        }
     }
 
 
@@ -160,53 +415,197 @@
        2. CHẾ ĐỘ ĐIỆN THOẠI (Dưới 600px)
        ========================================================= */
     @media (max-width: 600px) {
-        .search-inputs { flex-direction: column; width: 100%; min-width: 100%; }
-        .search-inputs input, .search-inputs select { width: 100%; min-width: 100%; }
-        
-        .table-responsive { min-height: auto; overflow-x: hidden !important; display: block !important;} 
-        table { min-width: 100% !important; display: block !important; } 
-        table, thead, tbody, th, td, tr { display: block !important; white-space: normal !important; }
-        thead { display: none !important; }
-        
-        tr { 
-            margin-bottom: 15px !important; border: 1px solid #93c5fd !important; 
-            border-radius: 12px !important; padding: 5px !important; background: #fff !important; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important; 
-        }
-        
-        td { 
-            position: relative !important; border: none !important; border-bottom: 1px dashed #e2e8f0 !important; 
-            padding: 12px 10px 12px 35% !important; text-align: right !important; min-height: 40px !important; display: flex !important;
-            flex-direction: column !important; justify-content: center !important; align-items: flex-end !important;
-        }
-        td:last-child { border-bottom: 0 !important; }
-        
-        td::before { 
-            content: attr(data-label) !important; position: absolute !important; left: 10px !important; top: 14px !important; width: 30% !important; 
-            text-align: left !important; font-weight: 800 !important; color: #64748b !important; font-size: 0.75rem !important; text-transform: uppercase !important; display: block !important;
+        .search-inputs {
+            flex-direction: column;
+            width: 100%;
+            min-width: 100%;
         }
 
-        .dropdown { display: block !important; width: 100% !important; }
-        .dropdown-btn { width: 100% !important; justify-content: center !important; padding: 12px !important; border-color: #cbd5e1 !important; background: #f8fafc !important; color: var(--primary) !important; }
-        .dropdown-content { left: 0 !important; right: 0 !important; min-width: 100% !important; }
+        .search-inputs input,
+        .search-inputs select {
+            width: 100%;
+            min-width: 100%;
+        }
+
+        .table-responsive {
+            min-height: auto;
+            overflow-x: hidden !important;
+            display: block !important;
+        }
+
+        table {
+            min-width: 100% !important;
+            display: block !important;
+        }
+
+        table,
+        thead,
+        tbody,
+        th,
+        td,
+        tr {
+            display: block !important;
+            white-space: normal !important;
+        }
+
+        thead {
+            display: none !important;
+        }
+
+        tr {
+            margin-bottom: 15px !important;
+            border: 1px solid #93c5fd !important;
+            border-radius: 12px !important;
+            padding: 5px !important;
+            background: #fff !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        td {
+            position: relative !important;
+            border: none !important;
+            border-bottom: 1px dashed #e2e8f0 !important;
+            padding: 12px 10px 12px 35% !important;
+            text-align: right !important;
+            min-height: 40px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: flex-end !important;
+        }
+
+        td:last-child {
+            border-bottom: 0 !important;
+        }
+
+        td::before {
+            content: attr(data-label) !important;
+            position: absolute !important;
+            left: 10px !important;
+            top: 14px !important;
+            width: 30% !important;
+            text-align: left !important;
+            font-weight: 800 !important;
+            color: #64748b !important;
+            font-size: 0.75rem !important;
+            text-transform: uppercase !important;
+            display: block !important;
+        }
+
+        .dropdown {
+            display: block !important;
+            width: 100% !important;
+        }
+
+        .dropdown-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 12px !important;
+            border-color: #cbd5e1 !important;
+            background: #f8fafc !important;
+            color: var(--primary) !important;
+        }
+
+        .dropdown-content {
+            left: 0 !important;
+            right: 0 !important;
+            min-width: 100% !important;
+        }
+    }
+
+    /* --- TOGGLE SWITCH --- */
+    .toggle-grid {
+        display: flex;
+        flex-direction: column;
+        /* Ép buộc mỗi item nằm trên 1 dòng */
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .toggle-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+
+    .toggle-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 38px;
+        height: 20px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e1;
+        transition: .4s;
+        border-radius: 20px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked+.slider {
+        background-color: var(--primary);
+    }
+
+    input:checked+.slider:before {
+        transform: translateX(18px);
+    }
+
+    /* --- TABLE TOGGLE (Read Only / Small) --- */
+    .table-switch {
+        pointer-events: none;
+        /* Chỉ hiển thị trạng thái */
+        transform: scale(0.85);
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="grid-container">
-    
+
     <div class="card" id="formCard">
         <div class="card-header" onclick="toggleCard('formContent', 'formIcon')">
             <h3 id="formTitle" style="margin: 0;">+ Thêm Nhân Sự</h3>
             <span class="toggle-icon" id="formIcon">▼</span>
         </div>
-        
+
         <div id="formContent" class="card-content">
             <form id="empForm">
                 <input type="hidden" id="edit_mode" value="false">
                 <input type="hidden" id="original_username" value="">
-                
+
                 <div class="form-group">
                     <label>Mã NV (Username)*</label>
                     <input type="text" id="username" required autocomplete="off" placeholder="VD: NV001">
@@ -250,24 +649,58 @@
                         <option value="inactive">Đã nghỉ việc</option>
                     </select>
                 </div>
-                <input type="hidden" id="is_locked" value="0"> 
-                
+
+                <div class="toggle-grid">
+                    <div class="toggle-item">
+                        <span class="toggle-label">🔍 Cá nhân</span>
+                        <label class="switch">
+                            <input type="checkbox" id="ccCaNhan" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">🏢 Tập trung</span>
+                        <label class="switch">
+                            <input type="checkbox" id="ccTapTrung">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">📍 Vị trí</span>
+                        <label class="switch">
+                            <input type="checkbox" id="checkViTri" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">🌐 Mạng</span>
+                        <label class="switch">
+                            <input type="checkbox" id="checkMang" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <input type="hidden" id="is_locked" value="0">
+
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button type="button" class="btn-toolbar" id="cancelBtn" style="display: none; flex:1;" onclick="resetForm()">HỦY</button>
-                    <button type="submit" class="btn-toolbar primary" id="submitBtn" style="flex: 1;">LƯU THÔNG TIN</button>
+                    <button type="button" class="btn-toolbar" id="cancelBtn" style="display: none; flex:1;"
+                        onclick="resetForm()">HỦY</button>
+                    <button type="submit" class="btn-toolbar primary" id="submitBtn" style="flex: 1;">LƯU THÔNG
+                        TIN</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="card"> 
+    <div class="card">
         <div class="card-header" onclick="toggleCard('tableContent', 'tableIcon')">
             <h3 style="margin: 0;">📋 Danh Sách Cán Bộ Nhân Viên</h3>
             <span class="toggle-icon" id="tableIcon" style="transform: rotate(0deg);">▼</span>
         </div>
 
         <div id="tableContent" class="card-content">
-            
+
             <div class="search-bar">
                 <div class="search-inputs">
                     <input type="text" id="searchInput" placeholder="🔍 Nhập Tên hoặc Mã NV..." oninput="filterTable()">
@@ -275,16 +708,20 @@
                         <option value="">Tất cả phòng ban</option>
                     </select>
                 </div>
-                
+
                 <div class="excel-actions">
-                    <input type="file" id="excelFile" accept=".xlsx, .xls" style="display: none;" onchange="importExcel(this)">
-                    <button class="btn-toolbar" onclick="downloadTemplate()" title="Tải file mẫu Excel">📄 File Mẫu</button>
-                    <button class="btn-toolbar" onclick="document.getElementById('excelFile').click()" title="Nhập từ Excel">📥 Nhập file</button>
+                    <input type="file" id="excelFile" accept=".xlsx, .xls" style="display: none;"
+                        onchange="importExcel(this)">
+                    <button class="btn-toolbar" onclick="downloadTemplate()" title="Tải file mẫu Excel">📄 File
+                        Mẫu</button>
+                    <button class="btn-toolbar" onclick="document.getElementById('excelFile').click()"
+                        title="Nhập từ Excel">📥 Nhập file</button>
                     <button class="btn-toolbar" onclick="exportExcel()" title="Xuất ra Excel">📤 Xuất file</button>
                 </div>
             </div>
 
-            <input type="file" id="faceUploadInput" accept="image/jpeg, image/png" style="display: none;" onchange="handleFaceUpload(event)">
+            <input type="file" id="faceUploadInput" accept="image/jpeg, image/png" style="display: none;"
+                onchange="handleFaceUpload(event)">
             <input type="hidden" id="uploadFaceUserId" value="">
 
             <div class="table-responsive">
@@ -297,11 +734,17 @@
                             <th>NGÀY SINH</th>
                             <th>VAI TRÒ</th>
                             <th>TRẠNG THÁI</th>
+                            <th title="Chấm công Cá nhân">CC CN</th>
+                            <th title="Chấm công Tập trung">CC TT</th>
+                            <th title="Kiểm tra Vị trí">K.TRA VT</th>
+                            <th title="Kiểm tra Mạng">K.TRA MG</th>
                             <th>KHUÔN MẶT AI</th>
                         </tr>
                     </thead>
                     <tbody id="empTableBody">
-                        <tr><td colspan="7" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+                        <tr>
+                            <td colspan="11" style="text-align: center;">Đang tải dữ liệu...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -318,7 +761,8 @@
                         / <span id="totalPageDisplay">1</span>
                     </span>
                     <button class="btn-pagination" id="btnNext" onclick="changePage(1)" title="Trang sau">▶️</button>
-                    <button class="btn-pagination" id="btnLast" onclick="jumpToPage(totalPages)" title="Trang cuối">⏭️</button>
+                    <button class="btn-pagination" id="btnLast" onclick="jumpToPage(totalPages)"
+                        title="Trang cuối">⏭️</button>
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 15px; color: #64748b; flex-wrap: wrap;">
@@ -352,10 +796,12 @@
         align-items: center;
         justify-content: center;
     }
+
     .btn-pagination:hover:not(:disabled) {
         background: #f1f5f9;
         border-color: #94a3b8;
     }
+
     .btn-pagination:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -366,9 +812,9 @@
 {% block extra_js %}
 <script>
     const API_URL = "/api/employees";
-    let currentEmployees = []; 
+    let currentEmployees = [];
     let allDepartments = [];
-    
+
     // Biến phân trang
     let currentPage = 1;
     let pageSize = 15;
@@ -379,10 +825,10 @@
         const icon = document.getElementById(iconId);
         if (content.style.display === "none") {
             content.style.display = "block";
-            icon.style.transform = "rotate(0deg)"; 
+            icon.style.transform = "rotate(0deg)";
         } else {
             content.style.display = "none";
-            icon.style.transform = "rotate(-90deg)"; 
+            icon.style.transform = "rotate(-90deg)";
         }
     }
 
@@ -395,10 +841,10 @@
         try {
             const deptRes = await fetch('/api/departments');
             allDepartments = await deptRes.json();
-            
+
             const deptSelectForm = document.getElementById('department_id');
             const deptSelectFilter = document.getElementById('deptFilter');
-            
+
             allDepartments.forEach(d => {
                 const optStr = `<option value="${d.id}">${d.unit_name}</option>`;
                 deptSelectForm.innerHTML += optStr;
@@ -411,8 +857,8 @@
 
     async function fetchEmployees() {
         const keyword = document.getElementById('searchInput').value.trim();
-        const deptId = document.getElementById('deptFilter').value; 
-        
+        const deptId = document.getElementById('deptFilter').value;
+
         // Pass page, size, search, and department_id
         let url = `${API_URL}?page=${currentPage}&size=${pageSize}`;
         if (keyword) url += `&search=${encodeURIComponent(keyword)}`;
@@ -421,8 +867,8 @@
         try {
             const res = await fetch(url);
             const data = await res.json();
-            
-            currentEmployees = data.items || data; 
+
+            currentEmployees = data.items || data;
             if (data.items) {
                 renderPagination(data.page, data.total_pages, data.total);
             }
@@ -435,7 +881,7 @@
     function renderTable(data) {
         const tbody = document.getElementById('empTableBody');
         tbody.innerHTML = '';
-        if (data.length === 0) return tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Không có dữ liệu.</td></tr>';
+        if (data.length === 0) return tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">Không có dữ liệu.</td></tr>';
 
         data.forEach(emp => {
             let roleBadge = emp.role === 'admin' ? `<span class="badge badge-admin">Admin</span>` : (emp.role === 'manager' ? `<span class="badge badge-manager">Quản lý</span>` : `<span class="badge badge-user">Nhân viên</span>`);
@@ -485,6 +931,30 @@
                     <td data-label="NGÀY SINH">${dobDisplay}</td>
                     <td data-label="VAI TRÒ">${roleBadge}</td>
                     <td data-label="TRẠNG THÁI">${lockStatus}</td>
+                    <td data-label="CC CN">
+                        <label class="switch table-switch">
+                            <input type="checkbox" ${emp.ccCaNhan ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td data-label="CC TT">
+                        <label class="switch table-switch">
+                            <input type="checkbox" ${emp.ccTapTrung ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td data-label="K.TRA VT">
+                        <label class="switch table-switch">
+                            <input type="checkbox" ${emp.checkViTri ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td data-label="K.TRA MG">
+                        <label class="switch table-switch">
+                            <input type="checkbox" ${emp.checkMang ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </td>
                     <td data-label="KHUÔN MẶT AI">${faceHtml}</td>
                 </tr>
             `;
@@ -536,7 +1006,7 @@
 
     function updatePageSize(newSize) {
         pageSize = parseInt(newSize);
-        currentPage = 1; 
+        currentPage = 1;
         fetchEmployees();
     }
 
@@ -547,13 +1017,13 @@
         if (!input.files || input.files.length === 0) return;
         const formData = new FormData();
         formData.append("file", input.files[0]);
-        input.value = ''; 
+        input.value = '';
         try {
             const res = await fetch('/api/employees/import', { method: 'POST', body: formData });
             const data = await res.json();
-            if (res.ok) { alert(data.message); fetchEmployees(); } 
+            if (res.ok) { alert(data.message); fetchEmployees(); }
             else alert("Lỗi: " + data.detail);
-        } catch(e) { alert("Lỗi kết nối máy chủ khi upload!"); }
+        } catch (e) { alert("Lỗi kết nối máy chủ khi upload!"); }
     }
 
     function triggerFaceUpload(username) {
@@ -566,41 +1036,41 @@
         if (!file) return;
         const userId = document.getElementById('uploadFaceUserId').value;
         const reader = new FileReader();
-        reader.onloadend = async function() {
-            const base64String = reader.result; 
+        reader.onloadend = async function () {
+            const base64String = reader.result;
             try {
                 const res = await fetch('/register', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_id: userId, image_base64: base64String, full_image_base64: base64String })
                 });
                 const data = await res.json();
-                if(data.status === 'success') { alert('Đã tải lên khuôn mặt thành công!'); fetchEmployees(); } 
+                if (data.status === 'success') { alert('Đã tải lên khuôn mặt thành công!'); fetchEmployees(); }
                 else { alert('Lỗi nhận diện: ' + data.message); }
-            } catch(e) { alert('Lỗi kết nối đến máy chủ AI'); }
+            } catch (e) { alert('Lỗi kết nối đến máy chủ AI'); }
         };
         reader.readAsDataURL(file);
-        event.target.value = ''; 
+        event.target.value = '';
     }
 
     async function changePassword(username) {
         const newPwd = prompt(`Nhập mật khẩu mới cho [${username}]:`);
-        if(newPwd && newPwd.trim() !== "") {
+        if (newPwd && newPwd.trim() !== "") {
             const res = await fetch(`${API_URL}/${username}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_password: newPwd.trim() }) });
-            if(res.ok) alert(`Đổi mật khẩu thành công!`);
+            if (res.ok) alert(`Đổi mật khẩu thành công!`);
         }
     }
 
     async function toggleLock(username) {
-        if(confirm(`Thay đổi trạng thái khóa của [${username}]?`)) {
+        if (confirm(`Thay đổi trạng thái khóa của [${username}]?`)) {
             const res = await fetch(`${API_URL}/${username}/toggle_lock`, { method: 'PUT' });
-            if(res.ok) fetchEmployees(); 
+            if (res.ok) fetchEmployees();
         }
     }
 
     async function deleteFace(username) {
-        if(confirm(`Xóa ảnh AI của ${username}? Nhân viên sẽ phải chụp lại.`)) {
-            await fetch('/unregister', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: username}) });
+        if (confirm(`Xóa ảnh AI của ${username}? Nhân viên sẽ phải chụp lại.`)) {
+            await fetch('/unregister', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: username }) });
             fetchEmployees();
         }
     }
@@ -609,7 +1079,7 @@
         if (confirm(`⚠️ XÓA VĨNH VIỄN nhân viên [${username}]?`)) {
             const res = await fetch(`${API_URL}/${username}`, { method: 'DELETE' });
             if (res.ok) {
-                await fetch('/unregister', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: username}) });
+                await fetch('/unregister', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: username }) });
                 fetchEmployees();
             }
         }
@@ -620,28 +1090,33 @@
         document.getElementById('formIcon').style.transform = "rotate(0deg)";
 
         const emp = currentEmployees.find(e => e.username === username);
-        if(!emp) return;
+        if (!emp) return;
 
         document.getElementById('edit_mode').value = "true";
         document.getElementById('original_username').value = emp.username;
         document.getElementById('formTitle').innerText = `✏️ Sửa: ${emp.full_name}`;
         document.getElementById('submitBtn').innerText = "CẬP NHẬT";
         document.getElementById('cancelBtn').style.display = "flex";
-        
+
         document.getElementById('statusGroup').style.display = "block";
-        document.getElementById('pwdGroup').style.display = "none"; 
+        document.getElementById('pwdGroup').style.display = "none";
         document.getElementById('formCard').classList.add('form-edit-mode');
-        
+
         document.getElementById('username').value = emp.username;
         document.getElementById('full_name').value = emp.full_name;
-        document.getElementById('date_of_birth').value = emp.date_of_birth || ""; 
+        document.getElementById('date_of_birth').value = emp.date_of_birth || "";
         document.getElementById('department_id').value = emp.department_id || "";
         document.getElementById('phone').value = emp.phone || "";
         document.getElementById('status').value = emp.status || "active";
         document.getElementById('role').value = emp.role || "user";
         document.getElementById('is_locked').value = emp.is_locked;
-        
-        window.scrollTo({top: 0, behavior: 'smooth'});
+
+        document.getElementById('ccCaNhan').checked = (emp.ccCaNhan === 1);
+        document.getElementById('ccTapTrung').checked = (emp.ccTapTrung === 1);
+        document.getElementById('checkViTri').checked = (emp.checkViTri === 1);
+        document.getElementById('checkMang').checked = (emp.checkMang === 1);
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function resetForm() {
@@ -652,14 +1127,19 @@
         document.getElementById('submitBtn').innerText = "LƯU";
         document.getElementById('cancelBtn').style.display = "none";
         document.getElementById('statusGroup').style.display = "none";
-        document.getElementById('pwdGroup').style.display = "block"; 
+        document.getElementById('pwdGroup').style.display = "block";
         document.getElementById('formCard').classList.remove('form-edit-mode');
+
+        document.getElementById('ccCaNhan').checked = true;
+        document.getElementById('ccTapTrung').checked = false;
+        document.getElementById('checkViTri').checked = true;
+        document.getElementById('checkMang').checked = true;
     }
 
     document.getElementById('empForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const isEditMode = document.getElementById('edit_mode').value === "true";
-        
+
         const payload = {
             username: document.getElementById('username').value.trim(),
             full_name: document.getElementById('full_name').value.trim(),
@@ -669,21 +1149,25 @@
             role: document.getElementById('role').value,
             status: isEditMode ? document.getElementById('status').value : "active",
             is_locked: parseInt(document.getElementById('is_locked').value),
-            password: document.getElementById('password') ? document.getElementById('password').value : "123456"
+            password: document.getElementById('password') ? document.getElementById('password').value : "123456",
+            ccCaNhan: document.getElementById('ccCaNhan').checked ? 1 : 0,
+            ccTapTrung: document.getElementById('ccTapTrung').checked ? 1 : 0,
+            checkViTri: document.getElementById('checkViTri').checked ? 1 : 0,
+            checkMang: document.getElementById('checkMang').checked ? 1 : 0
         };
 
         const method = isEditMode ? 'PUT' : 'POST';
         const url = isEditMode ? `${API_URL}/${document.getElementById('original_username').value}` : API_URL;
-        
+
         try {
             const res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (res.ok) { 
-                alert(isEditMode ? "Cập nhật thành công!" : "Lưu thành công!"); 
-                resetForm(); fetchEmployees(); 
-            } else { 
-                const d = await res.json(); alert("Lỗi: " + d.detail); 
+            if (res.ok) {
+                alert(isEditMode ? "Cập nhật thành công!" : "Lưu thành công!");
+                resetForm(); fetchEmployees();
+            } else {
+                const d = await res.json(); alert("Lỗi: " + d.detail);
             }
-        } catch(err) { alert("Lỗi kết nối Server."); }
+        } catch (err) { alert("Lỗi kết nối Server."); }
     });
 
     function toggleDropdown(id, event) {
@@ -695,7 +1179,7 @@
         event.stopPropagation();
     }
 
-    window.onclick = function(event) {
+    window.onclick = function (event) {
         if (!event.target.matches('.dropdown-btn')) {
             var dropdowns = document.getElementsByClassName("dropdown-content");
             for (var i = 0; i < dropdowns.length; i++) {

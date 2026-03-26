@@ -344,6 +344,7 @@
                 style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1); color: var(--success);">📷
                 Mở TB Chấm Công</a>
             <a href="/user_info" id="nav-user_info" style="color: var(--primary);">📂 Thông tin Nhân viên</a>
+            <a href="/wifi" id="nav-wifi" style="color: var(--danger);">⚙️ Cấu hình Wifi</a>
 
             
 
@@ -396,9 +397,9 @@
         // Cấu hình các menu được phép nhìn thấy theo từng chức vụ:
         const allowedMenus = {
             // THÊM "nav-faces" VÀO CUỐI DANH SÁCH ADMIN:
-            "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad","nav-enroll", "nav-explanation", "nav-user_info" ],
-            "manager": [ "nav-dashboard", "nav-employees", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation", "nav-user_info" ],
-            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation", "nav-user_info" ]
+            "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad","nav-enroll", "nav-explanation", "nav-user_info", "nav-wifi" ],
+            "manager": [ "nav-dashboard", "nav-employees", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation", "nav-user_info", "nav-wifi" ],
+            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation", "nav-user_info", "nav-wifi" ]
         };
         if (!isAuthPage) {
             // Bước A: Ẩn TOÀN BỘ menu đi trước
@@ -417,7 +418,7 @@
             const currentPath = window.location.pathname;
             
             // Nhân viên thường không được vào các trang cấu hình và lương
-            if (userRole === "user" && ["/departments", "/employees", "/shifts", "/assignments", "/payroll"].some(p => currentPath.includes(p))) {
+            if (userRole === "user" && ["/departments", "/employees", "/shifts", "/assignments", "/payroll", "/wifi"].some(p => currentPath.includes(p))) {
                 alert("Bạn không có quyền truy cập trang này!");
                 window.location.href = "/dashboard";
             }

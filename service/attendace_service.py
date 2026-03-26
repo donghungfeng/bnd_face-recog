@@ -82,11 +82,10 @@ def calculate_shift_details(shift_cat, summary, next_day_summary=None):
     dt_out = None
     now = datetime.now()
     
-    ref_date_out = summary.target_date + timedelta(days=1) if (shift_cat and shift_cat.shift_code == "T") else summary.target_date
+    ref_date_out = summary.target_date + timedelta(days=1) if (shift_cat and ( shift_cat.shift_code == "T" or shift_cat.is_overnight == 1 )) else summary.target_date
     end_time_limit = shift_cat.checkout_from if shift_cat else time(23, 59)
     ref_checkout_limit = datetime.combine(ref_date_out, end_time_limit)
-
-    if shift_cat and shift_cat.shift_code == "T":
+    if shift_cat and ( shift_cat.shift_code == "T" or shift_cat.is_overnight == 1 ):
         if next_day_summary and next_day_summary.scans:
             last_scan = next_day_summary.scans[-1]
             dt_out = last_scan.check_in_time
@@ -192,10 +191,11 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
         # --- BƯỚC QUAN TRỌNG: KIỂM TRA NGÀY HÔM TRƯỚC ---
         prev_date = summary.target_date - timedelta(days=1)
         prev_shift_code = assign_map.get((summary.employee_id, prev_date))
+        prev_shift_cat = cat_map.get(prev_shift_code)
         
         # Nếu hôm trước làm ca T, thì ngày hôm nay là ngày "ra ca". 
         # Chúng ta bỏ qua không tạo dòng mới cho ngày hôm nay.
-        if prev_shift_code == "T":
+        if prev_shift_cat and (prev_shift_cat.shift_code== "T" or prev_shift_cat.is_overnight == 1):
             continue 
 
         # Lấy mã ca hiện tại
@@ -204,7 +204,7 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
 
         # --- XỬ LÝ CA T (NHÌN VỀ TƯƠNG LAI) ---
         next_day_summary = None
-        if shift_code == "T":
+        if shift_code == "T" or (shift_cat.is_overnight == 1):
             # Thử tìm trong list hoặc query DB như logic trước đó
             if i + 1 < len(summary_list):
                 potential_next = summary_list[i+1]

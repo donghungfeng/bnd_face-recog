@@ -26,6 +26,12 @@ class Employee(Base):
     is_locked = Column(Integer, default=0)      # 0: Đang hoạt động, 1: Bị khóa
 
     date_of_birth = Column(Date, nullable=True)
+    
+    # --- CÁC TRƯỜNG MỚI THÊM (v10) ---
+    ccCaNhan = Column(Integer, default=1)
+    ccTapTrung = Column(Integer, default=0)
+    checkViTri = Column(Integer, default=1)
+    checkMang = Column(Integer, default=1)
 
 class ShiftCategory(Base):
     __tablename__ = "shift_categories"
@@ -139,3 +145,14 @@ class Explanation(Base):
     date = Column(Date, server_default=func.current_date()) 
     reason = Column(Text, nullable=False)
     status = Column(String(50), nullable=False)
+    
+class Wifi(Base):
+    __tablename__ = "wifi"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, index=True)
+    password = Column(String(255), nullable=False)
+    location = Column(String(255), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    note = Column(Text, nullable=True)
+    status = Column(String(50), nullable=False, default="active")

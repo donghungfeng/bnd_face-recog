@@ -96,6 +96,10 @@ def get_employees(
             "role": e.role,
             "is_locked": e.is_locked,
             "date_of_birth": e.date_of_birth,
+            "ccCaNhan": e.ccCaNhan,
+            "ccTapTrung": e.ccTapTrung,
+            "checkViTri": e.checkViTri,
+            "checkMang": e.checkMang,
             "has_face": os.path.exists(face_path)
         })
     
@@ -127,6 +131,8 @@ def update_my_profile(
     db_emp.date_of_birth = req.date_of_birth
 
     db_emp.notes     = req.notes
+    db_emp.ccCaNhan  = req.ccCaNhan
+    db_emp.ccTapTrung = req.ccTapTrung
     db.commit()
     db.refresh(db_emp)
 
@@ -147,6 +153,10 @@ def update_my_profile(
             "status": db_emp.status,
             "department_id": db_emp.department_id,
             "is_locked": db_emp.is_locked,
+            "ccCaNhan": db_emp.ccCaNhan,
+            "ccTapTrung": db_emp.ccTapTrung,
+            "checkViTri": db_emp.checkViTri,
+            "checkMang": db_emp.checkMang,
             "has_face": os.path.exists(face_path)
         }
     }
@@ -171,6 +181,10 @@ def update_employee(username: str, emp: EmployeeCreate, db: Session = Depends(ge
     db_emp.role = emp.role
     db_emp.is_locked = emp.is_locked
     db_emp.notes = emp.notes
+    db_emp.ccCaNhan = emp.ccCaNhan
+    db_emp.ccTapTrung = emp.ccTapTrung
+    db_emp.checkViTri = emp.checkViTri
+    db_emp.checkMang = emp.checkMang
     db_emp.hourly_rate = emp.hourly_rate
     db_emp.allowance = emp.allowance
     db_emp.username = emp.username # CẬP NHẬT THEO USERNAME MỚI (nếu có thay đổi)
@@ -441,6 +455,10 @@ def get_current_employee_info(
             "role": e.role,
             "is_locked": e.is_locked,
             "date_of_birth": e.date_of_birth,
+            "ccCaNhan": e.ccCaNhan,
+            "ccTapTrung": e.ccTapTrung,
+            "checkViTri": e.checkViTri,
+            "checkMang": e.checkMang,
             "has_face": os.path.exists(face_path),
             "email": e.email,
         }
@@ -490,7 +508,8 @@ def get_accessible_employees(
         Employee.id, Employee.username, Employee.full_name, 
         Employee.department_id, Employee.phone, Employee.dob, 
         Employee.status, Employee.role, Employee.is_locked, 
-        Employee.date_of_birth
+        Employee.date_of_birth, Employee.ccCaNhan, Employee.ccTapTrung,
+        Employee.checkViTri, Employee.checkMang
     ]
     
     # Kiểm tra nếu model có email thì lấy luôn
@@ -538,6 +557,10 @@ def get_accessible_employees(
                 "role": r.role,
                 "is_locked": r.is_locked,
                 "date_of_birth": r.date_of_birth,
+                "ccCaNhan": r.ccCaNhan,
+                "ccTapTrung": r.ccTapTrung,
+                "checkViTri": r.checkViTri,
+                "checkMang": r.checkMang,
                 "email": getattr(r, "email", "")
             }
             for r in rows

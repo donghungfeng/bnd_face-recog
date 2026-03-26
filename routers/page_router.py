@@ -74,3 +74,7 @@ async def test_ai_page(request: Request):
 @router.get("/enroll_image")
 async def enroll_image(request: Request):
     return templates.TemplateResponse("enroll_image.html", {"request": request})
+
+@router.get("/wifi")
+async def wifi(request: Request):
+    return templates.TemplateResponse("wifi.html", {"request": request})
