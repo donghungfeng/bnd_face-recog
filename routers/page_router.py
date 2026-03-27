@@ -82,3 +82,7 @@ async def enroll_image(request: Request):
 @router.get("/wifi")
 async def wifi(request: Request):
     return templates.TemplateResponse("wifi.html", {"request": request})
+
+@router.get("/attendance/detail")
+async def attendance_detail(request: Request):
+    return templates.TemplateResponse("attendance_detail.html", {"request": request})

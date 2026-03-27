@@ -398,7 +398,7 @@
         const allowedMenus = {
             // THÊM "nav-faces" VÀO CUỐI DANH SÁCH ADMIN:
             "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad","nav-enroll", "nav-explanation", "nav-user_info", "nav-wifi" ],
-            "manager": [ "nav-dashboard", "nav-employees", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation", "nav-user_info", "nav-wifi" ],
+            "manager": [ "nav-dashboard", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation", "nav-user_info", "nav-wifi" ],
             "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation", "nav-user_info", "nav-wifi" ]
         };
         if (!isAuthPage) {
@@ -424,7 +424,7 @@
             }
             
             // Quản lý không được vào cấu hình gốc và bảng lương tổng
-            if (userRole === "manager" && ["/departments", "/shifts", "/payroll"].some(p => currentPath.includes(p))) {
+            if (userRole === "manager" && ["/departments", "/shifts", "/payroll", "/wifi", "/employees"].some(p => currentPath.includes(p))) {
                 alert("Bạn không có quyền truy cập trang này!");
                 window.location.href = "/dashboard";
             }

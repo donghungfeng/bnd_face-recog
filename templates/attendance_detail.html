@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+
+{% block title %}Chi Tiết Chấm Công{% endblock %}
+{% block page_title %}Chi Tiết Lần Quét Khuôn Mặt{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* === HEADER THÔNG TIN === */
+    .detail-header {
+        display: flex; align-items: center; gap: 20px; background: #fff;
+        border: 1px solid var(--border); border-radius: 14px;
+        padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); flex-wrap: wrap;
+    }
+    .detail-header .back-btn {
+        display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px;
+        background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; font-weight: 700; font-size: 0.85rem;
+        cursor: pointer; text-decoration: none; transition: 0.2s; white-space: nowrap;
+    }
+    .detail-header .back-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+    .detail-header-info { flex: 1; min-width: 250px; }
+    .detail-header-info h2 { margin: 0 0 4px 0; font-size: 1.2rem; color: #0f172a; }
+    .detail-header-info p  { margin: 0; font-size: 0.85rem; color: #64748b; }
+    .detail-header-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .meta-chip {
+        display: inline-flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #e2e8f0;
+        border-radius: 8px; padding: 6px 14px; font-size: 0.82rem; font-weight: 700; color: #475569;
+    }
+
+    /* === FILTER BAR === */
+    .filter-bar {
+        display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+        background: #fff; padding: 16px 20px; border-radius: 12px;
+        margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    }
+    .filter-group { display: flex; flex-direction: column; flex: 1; min-width: 160px; }
+    .filter-group label { margin-bottom: 6px; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); }
+    .filter-group input, .filter-group select {
+        padding: 9px 13px; border-radius: 8px; border: 1px solid var(--border);
+        font-family: 'Nunito', sans-serif; font-size: 0.9rem; width: 100%; box-sizing: border-box; transition: 0.2s;
+    }
+    .filter-group input:focus:not(:disabled), .filter-group select:focus:not(:disabled) { 
+        border-color: var(--primary); outline: none; 
+    }
+    /* Giao diện cho thẻ bị khóa (disabled) */
+    .filter-group input:disabled, .filter-group select:disabled {
+        background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0;
+    }
+
+    /* === STATS === */
+    .stats-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;
+    }
+    .stat-card {
+        background: #fff; border: 1px solid var(--border); border-radius: 12px;
+        padding: 16px 12px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.02); transition: 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.05); }
+    .stat-card h4 { margin: 0 0 8px 0; font-size: 0.73rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; }
+    .stat-card .num { font-size: 2rem; font-weight: 800; margin: 0; line-height: 1; }
+    .num.blue   { color: #3b82f6; } .num.green  { color: #10b981; }
+    .num.orange { color: #f59e0b; } .num.red    { color: #ef4444; }
+    .num.purple { color: #8b5cf6; }
+
+    /* === TABLE & COMPONENTS === */
+    .table-container {
+        background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow-x: auto; 
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02); min-height: 300px; display: flex; flex-direction: column; justify-content: space-between;
+    }
+    table { width: 100%; border-collapse: collapse; text-align: left; min-width: 900px; }
+    th { background: #f8fafc; color: var(--text-muted); font-size: 0.78rem; padding: 14px 18px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+    td { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    tr:hover { background: #f8fafc; }
+
+    .att-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; cursor: pointer; border: 2px solid #e2e8f0; transition: 0.2s; }
+    .att-thumb:hover { transform: scale(1.15); border-color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .time-box { font-family: 'Orbitron', monospace; font-size: 1.05rem; font-weight: bold; color: var(--primary); background: #f0fdf4; padding: 4px 10px; border-radius: 6px; border: 1px solid #bbf7d0; display: inline-block; }
+    .badge { padding: 4px 10px; border-radius: 8px; font-weight: bold; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent; }
+    .badge-present { background: #dcfce7; color: #16a34a; border-color: #bbf7d0; }
+    .badge-fraud   { background: #fee2e2; color: #dc2626; border-color: #fecaca; animation: pulseRed 2s infinite; }
+    .badge-type    { background: #f1f5f9; color: #475569; border-color: #e2e8f0; font-size: 0.72rem; }
+    @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); } 70% { box-shadow: 0 0 0 6px rgba(220,38,38,0); } 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); } }
+    .conf-high { color: #10b981; font-weight: 800; } .conf-med  { color: #f59e0b; font-weight: 800; } .conf-low  { color: #ef4444; font-weight: 800; }
+    .device-info { display: flex; flex-direction: column; gap: 3px; font-size: 0.8rem; color: #475569; }
+    .device-info a { color: var(--primary); text-decoration: none; font-weight: 600; }
+    .device-info a:hover { text-decoration: underline; }
+
+    /* === PAGINATION === */
+    .pagination-container { display: flex; justify-content: space-between; align-items: center; padding: 13px 18px; border-top: 1px solid var(--border); background: #f8fafc; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+    .page-info { font-size: 0.83rem; color: var(--text-muted); font-weight: 600; }
+    .pagination-controls { display: flex; gap: 5px; }
+    .page-btn { padding: 6px 12px; border: 1px solid var(--border); background: white; color: var(--text-main); border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.82rem; }
+    .page-btn:hover:not(:disabled) { background: var(--primary); color: white; border-color: var(--primary); }
+    .page-btn:disabled { background: #f1f5f9; color: #cbd5e1; cursor: not-allowed; }
+    .page-btn.active   { background: var(--primary); color: white; border-color: var(--primary); pointer-events: none; }
+
+    /* === IMAGE MODAL & EMPTY STATE === */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.85); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
+    .img-modal-content { position: relative; max-width: 90%; max-height: 90%; text-align: center; }
+    .img-modal-content img { max-width: 100%; max-height: 80vh; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid white; }
+    .img-modal-close { position: absolute; top: -14px; right: -14px; background: #ef4444; color: white; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: 0.2s; }
+    .img-modal-close:hover { background: #dc2626; transform: scale(1.1); }
+    .empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-style: italic; margin: 0; }
+
+    /* === RESPONSIVE CHUẨN === */
+    @media (max-width: 768px) {
+        .detail-header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 14px 16px; }
+        .filter-group { flex: 1 1 100%; min-width: 100%; } 
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        table { min-width: 100%; }
+        table, thead, tbody, th, td, tr { display: block; width: 100%; box-sizing: border-box; }
+        thead tr { display: none; }
+        tr { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 12px; padding: 12px; overflow: hidden; }
+        td { border: none; padding: 8px 0; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed #f1f5f9; } 
+        td:last-child { border-bottom: none; }
+        td::before { content: attr(data-label); font-weight: bold; color: #64748b; font-size: 0.8rem; text-transform: uppercase; margin-right: 15px; flex-shrink: 0; }
+        td > div, td > span, td > img { text-align: right; }
+        .pagination-container { flex-direction: column; gap: 10px; }
+        .pagination-controls { flex-wrap: wrap; justify-content: center; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid-container" style="grid-template-columns: 1fr;">
+
+    <div class="detail-header">
+        <a class="back-btn" onclick="history.back()">← Quay lại</a>
+        <div class="detail-header-info">
+            <h2 id="headerTitle">Chi tiết chấm công</h2>
+            <p id="headerSub">Tất cả các lần quét khuôn mặt được ghi nhận</p>
+        </div>
+        <div class="detail-header-meta">
+            <div class="meta-chip" id="chipRole">🔐 Đang xác thực...</div>
+            <div class="meta-chip" id="chipDate">📅 --/--/----</div>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-group" style="flex: 0.5;">
+            <label>Hiển thị:</label>
+            <select id="limitSelect" onchange="changeLimit()">
+                <option value="10" selected>10 dòng / trang</option>
+                <option value="20">20 dòng / trang</option>
+                <option value="50">50 dòng / trang</option>
+            </select>
+        </div>
+        <div class="filter-group" style="flex: 0.5;">
+            <label>Trạng thái:</label>
+            <select id="statusFilter" onchange="applyFilters()">
+                <option value="all">Tất cả</option>
+                <option value="valid">✔️ Hợp lệ</option>
+                <option value="fraud">🚨 Gian lận</option>
+            </select>
+        </div>
+        <div class="filter-group" id="searchGroup" style="flex: 2;">
+            <label>🔍 Tìm kiếm nhân viên:</label>
+            <input type="text" id="searchInput" placeholder="Nhập tên hoặc mã NV..." oninput="applyFilters()">
+        </div>
+        <div class="filter-group" style="flex: 1;">
+            <label>📅 Từ ngày:</label>
+            <input type="date" id="startDateFilter" onchange="fetchData()">
+        </div>
+        <div class="filter-group" style="flex: 1;">
+            <label>📅 Đến ngày:</label>
+            <input type="date" id="endDateFilter" onchange="fetchData()">
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><h4>Tổng lần quét</h4><p class="num blue"   id="statTotal">0</p></div>
+        <div class="stat-card"><h4>Hợp lệ</h4>        <p class="num green"  id="statValid">0</p></div>
+        <div class="stat-card"><h4>Gian lận</h4>       <p class="num red"    id="statFraud">0</p></div>
+        <div class="stat-card"><h4>Độ chính xác TB</h4><p class="num purple" id="statConf">--%</p></div>
+    </div>
+
+    <div class="table-container">
+        <div style="overflow-x: auto; flex: 1;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>NGÀY</th>
+                        <th>NHÂN VIÊN</th>
+                        <th>ẢNH CHỤP</th>
+                        <th>GIỜ QUÉT</th>
+                        <th>ĐỘ CHÍNH XÁC</th>
+                        <th>THÔNG TIN THIẾT BỊ</th>
+                        <th>TRẠNG THÁI</th>
+                        <th>GHI CHÚ</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="8" class="empty-state"><div class="icon">⏳</div><p>Đang tải dữ liệu...</p></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination-container">
+            <div class="page-info" id="pageInfo">Đang hiển thị 0 - 0 của 0 bản ghi</div>
+            <div class="pagination-controls" id="paginationControls"></div>
+        </div>
+    </div>
+</div>
+
+<div id="imageModal" class="modal-overlay" onclick="closeImageModal()">
+    <div class="img-modal-content" onclick="event.stopPropagation()">
+        <button class="img-modal-close" onclick="closeImageModal()">✖</button>
+        <img id="previewImage" src="" alt="Ảnh chấm công phóng to">
+        <p id="previewName" style="color:white; font-weight:bold; margin-top:15px; font-size:1.05rem; text-shadow:0 2px 4px rgba(0,0,0,0.5);"></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ═══════════════════════════════════════════════════════
+// BIẾN TOÀN CỤC (Đã đổi tên để tránh đụng độ với base.html)
+// ═══════════════════════════════════════════════════════
+let allData      = [];
+let filteredData = [];
+let currentPage  = 1;
+let rowsPerPage  = 10;
+
+// Đổi tên biến để tránh lỗi "has already been declared"
+const detailRole     = localStorage.getItem("hrm_role")     || "user";
+const detailUsername = localStorage.getItem("hrm_username") || "";
+const detailToken    = localStorage.getItem("hrm_token")    || "";
+
+// Đọc tham số từ URL
+const urlParams   = new URLSearchParams(window.location.search);
+const paramUser   = urlParams.get("username")  || "";
+const paramDate   = urlParams.get("date")      || "";
+const paramName   = urlParams.get("fullname")  || paramUser;
+
+// ═══════════════════════════════════════════════════════
+// KHỞI TẠO TRANG
+// ═══════════════════════════════════════════════════════
+document.addEventListener("DOMContentLoaded", () => {
+    // Kiểm tra quyền truy cập bằng token
+    if (!detailToken) {
+        alert("Phiên đăng nhập không hợp lệ!");
+        window.location.href = "/login";
+        return;
+    }
+
+    // User thường -> ẩn search
+    if (detailRole === "user") {
+        document.getElementById("searchGroup").style.display = "none";
+    }
+
+    // Thiết lập ngày
+    const today = new Date();
+    const yyyy  = today.getFullYear();
+    const mm    = String(today.getMonth() + 1).padStart(2, "0");
+    const dd    = String(today.getDate()).padStart(2, "0");
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    if (paramDate) {
+        document.getElementById("startDateFilter").value = paramDate;
+        document.getElementById("endDateFilter").value   = paramDate;
+    } else {
+        document.getElementById("startDateFilter").value = todayStr;
+        document.getElementById("endDateFilter").value   = todayStr;
+    }
+
+    // 🔥 GÁN DATA VÀ KHÓA Ô TÌM KIẾM
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) {
+        if (paramName || paramUser) {
+            searchInput.value = paramName || paramUser;
+            searchInput.disabled = true; // Khóa thẻ, không cho gõ
+            searchInput.title = "Đang xem chi tiết, không thể thay đổi nhân viên";
+        }
+    }
+
+    // Thiết lập header
+    updateHeader();
+
+    // Gọi API
+    fetchData();
+});
+
+function updateHeader() {
+    const roleLabel = { admin: "👑 Admin", manager: "🏢 Manager", user: "👤 Nhân viên" };
+    document.getElementById("chipRole").textContent = roleLabel[detailRole] || detailRole;
+
+    if (paramDate) {
+        const [y, m, d] = paramDate.split("-");
+        document.getElementById("chipDate").textContent = `📅 ${d}/${m}/${y}`;
+        document.getElementById("headerTitle").textContent  = `Chi tiết chấm công — ${paramName}`;
+        document.getElementById("headerSub").textContent    = `Các lần quét khuôn mặt ngày ${d}/${m}/${y}`;
+    } else {
+        document.getElementById("chipDate").textContent     = `📅 Nhiều ngày`;
+        document.getElementById("headerTitle").textContent  = paramName 
+            ? `Chi tiết chấm công — ${paramName}` 
+            : "Chi tiết chấm công";
+        document.getElementById("headerSub").textContent    = "Tất cả các lần quét khuôn mặt được ghi nhận";
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+// LẤY DỮ LIỆU TỪ API
+// ═══════════════════════════════════════════════════════
+async function fetchData() {
+    const startDate = document.getElementById("startDateFilter").value;
+    const endDate   = document.getElementById("endDateFilter").value;
+
+    // Xác định username cần query theo phân quyền
+    let targetUser = "";
+    if (detailRole === "user") {
+        targetUser = detailUsername; 
+    } else if (paramUser) {
+        targetUser = paramUser; 
+    }
+
+    // Build API URL an toàn bằng URLSearchParams
+    const queryParams = new URLSearchParams();
+    queryParams.append("limit", "1000"); 
+    
+    if (startDate)  queryParams.append("start_date", startDate);
+    if (endDate)    queryParams.append("end_date", endDate);
+    if (targetUser) queryParams.append("username", targetUser);
+
+    const apiUrl = `/api/attendance?${queryParams.toString()}`;
+
+    try {
+        document.getElementById("tableBody").innerHTML =
+            `<tr><td colspan="8"><div class="empty-state"><div class="icon">⏳</div><p>Đang tải dữ liệu...</p></div></td></tr>`;
+
+        const res = await fetch(apiUrl, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${detailToken}`, // Dùng detailToken ở đây
+                "Accept": "application/json"
+            }
+        });
+
+        if (res.status === 401) {
+            alert("Phiên làm việc đã hết hạn, vui lòng đăng nhập lại!");
+            window.location.href = "/login";
+            return;
+        }
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.error("API Error:", res.status, err);
+            document.getElementById("tableBody").innerHTML =
+                `<tr><td colspan="8"><div class="empty-state"><div class="icon">⚠️</div><p>Lỗi ${res.status}: ${err.detail || "Không thể tải dữ liệu"}</p></div></td></tr>`;
+            return;
+        }
+
+        allData = await res.json();
+        allData = allData.map(item => ({
+            ...item,
+            is_fraud:        item.is_fraud        || false,
+            fraud_note:      item.fraud_note      || "",
+            client_ip:       item.client_ip       || "",
+            latitude:        item.latitude        || null,
+            longitude:       item.longitude       || null,
+            attendance_type: item.attendance_type || "Tập trung",
+            note:            item.note            || "",
+            late_minutes:    item.late_minutes    || 0
+        }));
+
+        applyFilters();
+
+    } catch (err) {
+        console.error("fetchData error:", err);
+        document.getElementById("tableBody").innerHTML =
+            `<tr><td colspan="8"><div class="empty-state"><div class="icon">⚠️</div><p>Lỗi kết nối máy chủ!</p></div></td></tr>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+// BỘ LỌC & THỐNG KÊ
+// ═══════════════════════════════════════════════════════
+function applyFilters() {
+    const keyword      = document.getElementById("searchInput").value.toLowerCase();
+    const statusFilter = document.getElementById("statusFilter").value;
+
+    filteredData = allData.filter(item => {
+        const matchKeyword = 
+            (item.full_name  && item.full_name.toLowerCase().includes(keyword))  ||
+            (item.username   && item.username.toLowerCase().includes(keyword))   ||
+            (item.client_ip  && item.client_ip.includes(keyword));
+
+        let matchStatus = true;
+        if      (statusFilter === "fraud") matchStatus = item.is_fraud === true;
+        else if (statusFilter === "valid") matchStatus = item.is_fraud !== true;
+
+        return matchKeyword && matchStatus;
+    });
+
+    currentPage = 1;
+    calculateStats(filteredData);
+    renderTable();
+}
+
+function calculateStats(data) {
+    let valid = 0, fraud = 0, totalConf = 0, confCount = 0;
+    data.forEach(item => {
+        if (item.is_fraud) fraud++; else valid++;
+        if (item.confidence && parseFloat(item.confidence) > 0) {
+            totalConf += parseFloat(item.confidence); confCount++;
+        }
+    });
+    const avg = confCount > 0 ? (totalConf / confCount).toFixed(1) : "--";
+    document.getElementById("statTotal").textContent = data.length;
+    document.getElementById("statValid").textContent = valid;
+    document.getElementById("statFraud").textContent = fraud;
+    document.getElementById("statConf").textContent  = avg !== "--" ? avg + "%" : "--%";
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER BẢNG
+// ═══════════════════════════════════════════════════════
+function changeLimit() { rowsPerPage = parseInt(document.getElementById("limitSelect").value); currentPage = 1; renderTable(); }
+function changePage(p)  { currentPage = p; renderTable(); }
+
+function renderTable() {
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
+
+    if (!filteredData.length) {
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">🔍</div><p>Không tìm thấy dữ liệu phù hợp.</p></div></td></tr>`;
+        renderPagination(0, 0, 0);
+        return;
+    }
+
+    const start      = (currentPage - 1) * rowsPerPage;
+    const end        = start + rowsPerPage;
+    const pageData   = filteredData.slice(start, end);
+
+    pageData.forEach(item => {
+        const dateStr = item.date ? item.date.split("-").reverse().join("/") : "---";
+
+        const imgHtml = item.image_path
+            ? `<img src="${item.image_path}" class="att-thumb" 
+                   onclick="openImageModal('${item.image_path}','${escapeHtml(item.full_name)}')">`
+            : `<span style="color:#cbd5e1; font-size:0.8rem;">Không ảnh</span>`;
+
+        let confHtml = `<span style="color:#94a3b8;">---</span>`;
+        if (item.confidence) {
+            const v   = parseFloat(item.confidence).toFixed(1);
+            const cls = v < 60 ? "conf-low" : v < 80 ? "conf-med" : "conf-high";
+            confHtml  = `<span class="${cls}">🎯 ${v}%</span>`;
+        }
+
+        const gpsHtml = (item.latitude && item.longitude)
+            ? `<a href="http://maps.google.com/maps?q=${item.latitude},${item.longitude}" target="_blank">📍 Bản đồ</a>`
+            : `<span style="color:#94a3b8;">📍 No GPS</span>`;
+
+        const statusBadge = item.is_fraud
+            ? `<span class="badge badge-fraud">🚨 GIAN LẬN</span>`
+            : `<span class="badge badge-present">✔️ Hợp lệ</span>`;
+
+        const noteHtml = item.note
+            ? `<span style="font-size:0.82rem; color:#475569;">${escapeHtml(item.note)}</span>`
+            : `<span style="color:#cbd5e1; font-size:0.8rem;">—</span>`;
+
+        // Thêm data-label để CSS hiển thị nhãn ở giao diện Mobile
+        tbody.innerHTML += `
+            <tr>
+                <td data-label="Ngày"><strong>${dateStr}</strong></td>
+                <td data-label="Nhân viên">
+                    <div>
+                        <strong style="display:block; font-size:0.95rem;">${escapeHtml(item.full_name || "---")}</strong>
+                        <small style="color:#94a3b8; font-family:monospace;">${item.username}</small>
+                    </div>
+                </td>
+                <td data-label="Ảnh chụp">${imgHtml}</td>
+                <td data-label="Giờ quét"><span class="time-box">${item.scan_time}</span></td>
+                <td data-label="Độ chính xác">${confHtml}</td>
+                <td data-label="Thông tin thiết bị">
+                    <div class="device-info">
+                        <span class="badge badge-type">${item.attendance_type}</span>
+                        <span>IP: ${item.client_ip || "N/A"}</span>
+                        ${gpsHtml}
+                    </div>
+                </td>
+                <td data-label="Trạng thái">${statusBadge}</td>
+                <td data-label="Ghi chú">${noteHtml}</td>
+            </tr>
+        `;
+    });
+
+    renderPagination(filteredData.length, start, end);
+}
+
+function renderPagination(total, start, end) {
+    const totalPages = Math.ceil(total / rowsPerPage);
+    const actualEnd  = Math.min(end, total);
+
+    document.getElementById("pageInfo").innerHTML = total === 0
+        ? `Không có bản ghi nào`
+        : `Đang hiển thị <strong style="color:var(--primary)">${start + 1} – ${actualEnd}</strong> trong tổng số <strong>${total}</strong> bản ghi`;
+
+    let html = "";
+    if (totalPages > 1) {
+        html += `<button class="page-btn" ${currentPage === 1 ? "disabled" : ""} onclick="changePage(${currentPage - 1})">❮</button>`;
+        for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+            html += `<button class="page-btn ${i === currentPage ? "active" : ""}" onclick="changePage(${i})">${i}</button>`;
+        }
+        html += `<button class="page-btn" ${currentPage === totalPages ? "disabled" : ""} onclick="changePage(${currentPage + 1})">❯</button>`;
+    }
+    document.getElementById("paginationControls").innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+// IMAGE MODAL
+// ═══════════════════════════════════════════════════════
+function openImageModal(src, title) {
+    document.getElementById("previewImage").src      = src;
+    document.getElementById("previewName").innerText = title;
+    document.getElementById("imageModal").style.display = "flex";
+}
+function closeImageModal() {
+    document.getElementById("imageModal").style.display = "none";
+    document.getElementById("previewImage").src = "";
+}
+
+// ═══════════════════════════════════════════════════════
+// TIỆN ÍCH
+// ═══════════════════════════════════════════════════════
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")  // <- Đã fix chuẩn thực thể HTML
+        .replace(/'/g, "&#039;");
+}
+</script>
+{% endblock %}
