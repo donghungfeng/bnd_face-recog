@@ -323,13 +323,29 @@ async def delete_single_face(request: SingleFaceDeleteRequest):
 
 
 @router.post("/api/check-ip")
-def check_client_ip(req_data: CheckIPRequest):
+def check_client_ip(req_data: CheckIPRequest, db: Session = Depends(get_db)):
     user_id = req_data.user_id.upper()
     client_ip = req_data.client_public_ip  # Lấy IP từ Frontend gửi lên
     
-    allowed_ips_str = services.get_config("ALLOWED_ENROLL_IPS", "*")
+    # --- 1. LẤY CẤU HÌNH NHÂN VIÊN TỪ DATABASE ---
+    from models import Employee
+    emp = db.query(Employee).filter(Employee.username == user_id).first()
     
+    # Mặc định an toàn: Phải check mạng, check GPS, và cho phép CC Cá nhân
+    needs_network = 1
+    needs_gps = 1
+    can_personal = 1
+    
+    if emp:
+        # Nếu cột trong DB là None (null) thì mặc định là 1 (Bật)
+        needs_network = 1 if getattr(emp, 'checkMang', 1) in [1, None] else 0
+        needs_gps = 1 if getattr(emp, 'checkViTri', 1) in [1, None] else 0
+        can_personal = 1 if getattr(emp, 'ccCaNhan', 1) in [1, None] else 0
+
+    # --- 2. KIỂM TRA MẠNG (Chỉ kiểm tra lấy lệ để trả về trạng thái, Backend thực sự chặn ở verify-personal) ---
+    allowed_ips_str = services.get_config("ALLOWED_ENROLL_IPS", "*")
     is_valid = False
+    
     if allowed_ips_str.strip() == "*":
         is_valid = True
     else:
@@ -339,20 +355,39 @@ def check_client_ip(req_data: CheckIPRequest):
     return {
         "valid": is_valid,
         "ip": client_ip,
-        "user_checked": user_id
+        "user_checked": user_id,
+        "checkMang": needs_network,
+        "checkViTri": needs_gps,
+        "ccCaNhan": can_personal
     }
 
 @router.post("/api/verify-personal")
-async def verify_personal(data: PersonalVerifyRequest, background_tasks: BackgroundTasks):
+async def verify_personal(data: PersonalVerifyRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user_id = data.user_id.upper()
     client_ip = data.client_public_ip
     
-    allowed_ips_str = services.get_config("ALLOWED_ENROLL_IPS", "*") 
-    if allowed_ips_str.strip() != "*":
-        allowed_ips = [ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()]
-        if not any(client_ip.startswith(allowed) or client_ip == allowed for allowed in allowed_ips):
-            return {"recognized": False, "message": "Sai địa chỉ IP/Mạng lưới Bệnh viện."}
+    # --- 1. KIỂM TRA QUYỀN & CẤU HÌNH NHÂN VIÊN ---
+    from models import Employee
+    emp = db.query(Employee).filter(Employee.username == user_id).first()
+    
+    if not emp:
+        return {"recognized": False, "message": "Không tìm thấy thông tin tài khoản."}
+        
+    # Kiểm tra quyền Chấm công cá nhân
+    can_personal = 1 if getattr(emp, 'ccCaNhan', 1) in [1, None] else 0
+    if can_personal == 0:
+        return {"recognized": False, "message": "Tài khoản bị cấm chấm công cá nhân!"}
+    
+    # --- 2. KIỂM TRA MẠNG (Nếu bắt buộc) ---
+    needs_network = 1 if getattr(emp, 'checkMang', 1) in [1, None] else 0
+    if needs_network == 1:
+        allowed_ips_str = services.get_config("ALLOWED_ENROLL_IPS", "*") 
+        if allowed_ips_str.strip() != "*":
+            allowed_ips = [ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()]
+            if not any(client_ip.startswith(allowed) or client_ip == allowed for allowed in allowed_ips):
+                return {"recognized": False, "message": "Sai địa chỉ IP/Mạng lưới Bệnh viện."}
 
+    # --- 3. TIẾN HÀNH AI NHẬN DIỆN KHUÔN MẶT ---
     if user_id not in services.known_user_ids:
         return {"recognized": False, "message": "Bạn chưa đăng ký khuôn mặt!"}
         
@@ -361,14 +396,7 @@ async def verify_personal(data: PersonalVerifyRequest, background_tasks: Backgro
         img_full = services.decode_base64(data.full_image_base64) if data.full_image_base64 else None
         is_anti_spoof_enabled = services.get_config("ENABLE_ANTI_SPOOFING", "true").lower() == "true"
 
-        results = await run_in_threadpool(
-            DeepFace.represent, 
-            img_path=img_crop, 
-            model_name=MODEL_NAME, 
-            enforce_detection=False, 
-            anti_spoofing=is_anti_spoof_enabled
-        )
-        
+        results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=False, anti_spoofing=is_anti_spoof_enabled)
         if not results:
             return {"recognized": False, "message": "Không thấy mặt"}
 
@@ -391,24 +419,16 @@ async def verify_personal(data: PersonalVerifyRequest, background_tasks: Backgro
         
         if max_sim >= THRESHOLD:
             background_tasks.add_task(services.background_logging, user_id, img_full, max_sim, client_ip,data.latitude,data.longitude,data.attendance_type,data.note)
-
-            return {
-                "recognized": True, 
-                "message": "Thành công", 
-                "match_probability": f"{round(max_sim * 100, 2)}%"
-            }
+            return {"recognized": True, "message": "Thành công", "match_probability": f"{round(max_sim * 100, 2)}%"}
         else:
             return {"recognized": False, "message": "⚠️ VUI LÒNG GIỮ THẲNG KHUÔN MẶT, VÀ GIỮ Ở GIỮA KHUNG HÌNH", "match_probability": f"{round(max_sim * 100, 2)}%"}
 
     except Exception as e:
         error_msg = str(e).lower()
-        
         if "spoof detected" in error_msg:
             return {"recognized": False, "message": "CẢNH BÁO GIAN LẬN!"}
-            
         elif "face could not be detected" in error_msg:
             return {"recognized": False, "message": "Không tìm thấy khuôn mặt"}
-            
         else:
             return {"recognized": False, "message": f"Lỗi: {str(e)}"}
         

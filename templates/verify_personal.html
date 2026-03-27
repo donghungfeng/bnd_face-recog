@@ -19,7 +19,6 @@
             height: 100dvh; box-sizing: border-box; overflow: hidden;
         }
 
-        /* --- NÚT QUAY LẠI & USER BADGE --- */
         .btn-back { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.1); color: #cbd5e1; text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; z-index: 50; border: 1px solid rgba(255,255,255,0.05); }
         .user-badge { display: inline-flex; background: rgba(0, 242, 255, 0.1); border: 1px solid rgba(0, 242, 255, 0.3); padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; align-items: center; gap: 8px; margin-bottom: 10px; }
         .user-badge strong { color: var(--primary); font-size: 1.05rem; letter-spacing: 1px;}
@@ -27,30 +26,19 @@
         header { width: 100%; max-width: 500px; text-align: center; margin-bottom: 10px; flex-shrink: 0; margin-top: 35px;}
         h2 { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--primary); margin: 0 0 10px 0; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
 
-        /* --- ĐỒNG HỒ [MỚI THÊM] --- */
         .live-clock {
-            font-family: 'Orbitron', monospace;
-            font-size: 2rem;
-            font-weight: 700;
-            color: #fff;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 5px 20px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            display: inline-block;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            letter-spacing: 2px;
+            font-family: 'Orbitron', monospace; font-size: 2rem; font-weight: 700; color: #fff;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 5px 20px; border-radius: 12px; margin-bottom: 15px; display: inline-block;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); letter-spacing: 2px;
         }
 
-        /* --- BANNER MẠNG & GPS --- */
         #networkBanner, #locationBanner { width: 100%; padding: 8px; margin-bottom: 8px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; text-align: center; transition: all 0.3s; box-sizing: border-box; }
         .net-checking { background: #334155; color: #cbd5e1; border: 1px solid #475569; }
         .net-valid { background: rgba(0, 255, 136, 0.15); color: var(--success); border: 1px solid rgba(0, 255, 136, 0.4); }
         .net-invalid { background: rgba(255, 68, 68, 0.15); color: var(--error); border: 1px solid rgba(255, 68, 68, 0.4); animation: pulseRed 2s infinite; }
         @keyframes pulseRed { 0% {box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4);} 70% {box-shadow: 0 0 0 10px rgba(255, 68, 68, 0);} 100% {box-shadow: 0 0 0 0 rgba(255, 68, 68, 0);} }
 
-        /* --- HỘP TRẠNG THÁI --- */
         .info { margin-top: 5px; font-family: 'Orbitron', sans-serif; font-size: 0.9rem; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold; box-sizing: border-box;}
         .status-scanning { color: var(--primary); border-color: var(--primary); }
         .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
@@ -59,7 +47,6 @@
         .loader { width: 16px; height: 16px; border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* --- CAMERA & HIỆU ỨNG --- */
         .main-wrapper { position: relative; width: 100%; max-width: 400px; flex: 1; background: #000; border-radius: 15px; overflow: hidden; border: 2px solid #334155; box-shadow: 0 5px 20px rgba(0,0,0,0.5); margin-top: 5px;}
         #webcam { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         .guide-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; border: 2px dashed rgba(255,255,255,0.3); border-radius: 50% / 45%; width: 220px; height: 300px; transition: all 0.3s; z-index: 5; }
@@ -78,7 +65,9 @@
         <br>
         <div class="user-badge">👤 <strong id="displayUserId">...</strong></div>
         
-        <div id="networkBanner" class="net-checking">🔄 Đang lấy IP hệ thống...</div>
+        <div id="networkBanner" class="net-checking">🔄 Đang kiểm tra Mạng & Phân quyền...</div>
+        <div id="locationBanner" class="net-checking" style="display:none;">📍 Đang lấy tọa độ GPS...</div>
+        
         <div id="resultBox" class="info status-scanning">
             <div class="loader"></div> ĐANG KHỞI TẠO CAMERA...
         </div>
@@ -87,12 +76,13 @@
     <div class="main-wrapper">
         <div class="guide-overlay" id="guideCircle"></div>
         <div class="scan-bar" id="scanBar"></div>
-        <video id="webcam" autoplay playsinline></video>
+        <video id="webcam" autoplay playsinline muted></video>
         <canvas id="cropCanvas" style="display:none;"></canvas>
     </div>
 
     <script>
-        // 1. BIẾN TOÀN CỤC
+        // 1. BIẾN TOÀN CỤC & CẤU HÌNH NGƯỜI DÙNG
+        let userConfig = { checkMang: 1, checkViTri: 1, ccCaNhan: 1 };
         let isNetworkValid = false; 
         let isLocationValid = false;
         let currentPublicIp = "";
@@ -101,21 +91,17 @@
         let isFaceDetectionRunning = false;
         let lastProcessingTime = 0;
 
-        // [MỚI] Đồng hồ thời gian thực
         function updateClock() {
             const now = new Date();
             document.getElementById('liveClock').innerText = now.toLocaleTimeString('vi-VN', { hour12: false });
         }
-        setInterval(updateClock, 1000);
-        updateClock();
+        setInterval(updateClock, 1000); updateClock();
 
         const nowInit = new Date();
         const screenInitTime = nowInit.toLocaleTimeString('vi-VN') + " " + nowInit.toLocaleDateString('vi-VN');
 
-        const TARGET_LAT = 21.131096;
-        const TARGET_LNG = 105.774113;
+        const TARGET_LAT = 21.131096; const TARGET_LNG = 105.774113;
         const MAX_DISTANCE_METERS = 150;
-
         let currentPoint = { lat: 0, lng: 0 };
 
         const currentUserId = localStorage.getItem('hrm_username'); 
@@ -131,14 +117,16 @@
         const scanBar = document.getElementById('scanBar');
         const cropCanvas = document.getElementById('cropCanvas');
 
-        // Cấu hình Mobile
         const FACE_MIN_SIZE = 0.40; const FACE_MAX_SIZE = 0.75;
         const CENTER_X_MIN = 0.30; const CENTER_X_MAX = 0.70;
         const CENTER_Y_MIN = 0.30; const CENTER_Y_MAX = 0.70;
 
-        // 2A. KIỂM TRA MẠNG
+        // 2. FETCH CẤU HÌNH & KIỂM TRA MẠNG
         async function verifyNetwork() {
-            const banner = document.getElementById('networkBanner');
+            const netBanner = document.getElementById('networkBanner');
+            const locBanner = document.getElementById('locationBanner');
+            locBanner.style.display = 'block';
+
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipRes.json();
@@ -150,34 +138,54 @@
                     body: JSON.stringify({ user_id: currentUserId, client_public_ip: currentPublicIp })
                 });
                 const data = await res.json();
-                isNetworkValid = data.valid;
                 
-                if(isNetworkValid) {
-                    banner.className = 'net-valid'; banner.innerHTML = `✅ Mạng hợp lệ (IP: ${data.ip})`;
-                } else {
-                    banner.className = 'net-invalid'; banner.innerHTML = `❌ Ngoài vùng chấm công (IP: ${data.ip})`;
+                // Nạp cấu hình từ Server vào biến
+                userConfig.checkMang = data.checkMang;
+                userConfig.checkViTri = data.checkViTri;
+                userConfig.ccCaNhan = data.ccCaNhan;
+
+                // NẾU BỊ CẤM CHẤM CÔNG CÁ NHÂN
+                if (userConfig.ccCaNhan === 0) {
+                    resultBox.className = "info status-err";
+                    resultBox.innerHTML = "❌ TÀI KHOẢN BỊ CẤM CHẤM CÔNG CÁ NHÂN";
+                    isProcessing = true; // Khóa chết luồng camera
+                    netBanner.style.display = 'none';
+                    locBanner.style.display = 'none';
+                    return;
                 }
+
+                // XỬ LÝ MẠNG
+                if (userConfig.checkMang === 0) {
+                    isNetworkValid = true;
+                    netBanner.className = 'net-valid'; 
+                    netBanner.innerHTML = `🌐 Mạng Wi-Fi hợp lệ`;
+                } else {
+                    isNetworkValid = data.valid;
+                    if(isNetworkValid) {
+                        netBanner.className = 'net-valid'; netBanner.innerHTML = `✅ Mạng hợp lệ (IP: ${data.ip})`;
+                    } else {
+                        netBanner.className = 'net-invalid'; netBanner.innerHTML = `❌ Ngoài vùng chấm công (IP: ${data.ip})`;
+                    }
+                }
+                
+                // Gọi check GPS sau khi có config
+                verifyLocation();
+
             } catch(e) {
-                banner.className = 'net-checking'; banner.innerHTML = `⚠️ Lỗi kiểm tra mạng!`;
+                netBanner.className = 'net-checking'; netBanner.innerHTML = `⚠️ Lỗi kiểm tra mạng!`;
                 isNetworkValid = false;
             }
         }
 
         const HOSPITAL_ZONE = [
-            { lat: 21.132651, lng: 105.774238 }, 
-            { lat: 21.131013, lng: 105.776601 }, 
-            { lat: 21.130023, lng: 105.773278 }, 
-            { lat: 21.130553, lng: 105.772459 }  
+            { lat: 21.132651, lng: 105.774238 }, { lat: 21.131013, lng: 105.776601 }, 
+            { lat: 21.130023, lng: 105.773278 }, { lat: 21.130553, lng: 105.772459 }  
         ];
         
         function isPointInPolygon(point, polygon) {
-            let x = point.lng, y = point.lat;
-            let isInside = false;
-
+            let x = point.lng, y = point.lat; let isInside = false;
             for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                let xi = polygon[i].lng, yi = polygon[i].lat;
-                let xj = polygon[j].lng, yj = polygon[j].lat;
-
+                let xi = polygon[i].lng, yi = polygon[i].lat; let xj = polygon[j].lng, yj = polygon[j].lat;
                 let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
                 if (intersect) isInside = !isInside;
             }
@@ -185,44 +193,38 @@
         }
 
         function verifyLocation() {
-            const banner = document.getElementById('locationBanner');
-            if (!navigator.geolocation) {
-                if(banner) {
-                    banner.className = 'net-invalid';
-                    banner.innerHTML = `❌ Trình duyệt không hỗ trợ GPS!`;
-                }
-                isLocationValid = false;
+            const locBanner = document.getElementById('locationBanner');
+            
+            // Nếu được miễn trừ GPS
+            if (userConfig.checkViTri === 0) {
+                isLocationValid = true;
+                locBanner.className = 'net-valid';
+                locBanner.innerHTML = `📍Vị trí GPS hợp lệ`;
                 return;
+            }
+
+            if (!navigator.geolocation) {
+                locBanner.className = 'net-invalid'; locBanner.innerHTML = `❌ Trình duyệt không hỗ trợ GPS!`;
+                isLocationValid = false; return;
             }
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    currentPoint = { 
-                        lat: position.coords.latitude, 
-                        lng: position.coords.longitude 
-                    };
-                    
+                    currentPoint = { lat: position.coords.latitude, lng: position.coords.longitude };
                     let isInsideArea = isPointInPolygon(currentPoint, HOSPITAL_ZONE);
+                    
                     if (isInsideArea) {
                         isLocationValid = true;
-                        if(banner) {
-                            banner.className = 'net-valid';
-                            banner.innerHTML = `📍 Đã xác nhận trong khuôn viên Viện`;
-                        }
+                        locBanner.className = 'net-valid'; locBanner.innerHTML = `✅ Đã xác nhận trong khuôn viên Viện`;
                     } else {
                         isLocationValid = false;
-                        if(banner) {
-                            banner.className = 'net-invalid';
-                            banner.innerHTML = `❌ Cảnh báo: Bạn đang đứng ngoài khuôn viên!`;
-                        }
+                        locBanner.className = 'net-invalid'; locBanner.innerHTML = `❌ Cảnh báo: Bạn đang đứng ngoài khuôn viên!`;
                     }
                 },
                 (error) => {
                     isLocationValid = false;
-                    if(banner) {
-                        banner.className = 'net-invalid';
-                        banner.innerHTML = error.code === 1 ? `❌ Vui lòng cho phép quyền Vị trí!` : `❌ Không thể định vị!`;
-                    }
+                    locBanner.className = 'net-invalid';
+                    locBanner.innerHTML = error.code === 1 ? `❌ Vui lòng cho phép quyền Vị trí!` : `❌ Không thể định vị!`;
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
@@ -242,6 +244,7 @@
 
                 const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
 
+                // Dùng biến isNetworkValid và isLocationValid (Đã xử lý bỏ qua nếu được miễn trừ)
                 if (!isNetworkValid || !isLocationValid) {
                     guideCircle.classList.remove('guide-active'); scanBar.style.display = 'none';
                     if (!isProcessing) {
@@ -272,13 +275,13 @@
                 }
             } else {
                 lastDetection = null; guideCircle.classList.remove('guide-active');
-                if (!isProcessing && isNetworkValid && isLocationValid) {
+                if (!isProcessing && isNetworkValid && isLocationValid && userConfig.ccCaNhan !== 0) {
                     resultBox.className = "info status-scanning"; resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
                 }
             }
         });
 
-        // 4. LOGIC XÉN ẢNH VÀ CHỤP FULL CAMERA
+        // 4. XÉN ẢNH VÀ GỬI API
         function captureCroppedFace() {
             if (!lastDetection) return null;
             const videoW = video.videoWidth; const videoH = video.videoHeight;
@@ -297,17 +300,11 @@
         
         function captureFullFrame() {
             const tempCanvas = document.createElement('canvas');
-            const maxWidth = 640; 
-            const scale = Math.min(1, maxWidth / video.videoWidth);
-            
-            tempCanvas.width = video.videoWidth * scale;
-            tempCanvas.height = video.videoHeight * scale;
+            const maxWidth = 640; const scale = Math.min(1, maxWidth / video.videoWidth);
+            tempCanvas.width = video.videoWidth * scale; tempCanvas.height = video.videoHeight * scale;
             const ctx = tempCanvas.getContext('2d');
-            
-            ctx.translate(tempCanvas.width, 0);
-            ctx.scale(-1, 1);
+            ctx.translate(tempCanvas.width, 0); ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-            
             return tempCanvas.toDataURL('image/jpeg', 0.7);
         }
 
@@ -353,7 +350,7 @@
             }
         }
 
-        // 5. KHỞI TẠO
+        // 5. KHỞI TẠO CAMERA
         async function processVideoFrame() {
             if (video.readyState >= 2 && !isFaceDetectionRunning) {
                 isFaceDetectionRunning = true; await faceDetection.send({ image: video });
@@ -362,14 +359,25 @@
         }
 
         async function startCamera() {
-            verifyNetwork();
-            verifyLocation(); 
+            // CHỜ GET CONFIG TRƯỚC
+            await verifyNetwork();
+            
+            // NẾU BỊ CẤM CC CÁ NHÂN -> DỪNG KHÔNG BẬT CAM NỮA
+            if (userConfig.ccCaNhan === 0) {
+                guideCircle.style.display = 'none';
+                scanBar.style.display = 'none';
+                return;
+            }
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 } } });
                 video.srcObject = stream;
-                video.onloadedmetadata = () => { processVideoFrame(); }
+                video.onloadedmetadata = () => { 
+                    video.play().catch(e => console.warn(e)); // Ép chạy chống lỗi
+                    processVideoFrame(); 
+                }
             } catch (err) {
-                resultBox.className = "info status-err"; resultBox.innerHTML = "❌ LỖI CAMERA";
+                resultBox.className = "info status-err"; resultBox.innerHTML = "❌ LỖI CAMERA HOẶC TỪ CHỐI QUYỀN";
             }
         }
 
