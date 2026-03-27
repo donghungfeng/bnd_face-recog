@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chấm Công Cá Nhân - BND</title>
+    <script src="https://unpkg.com/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #00f2ff; --success: #00ff88; --warning: #ffb800; --error: #ff4444;
+            --bg: #0f172a; --card: #1e293b;
+        }
+
+        body { 
+            font-family: 'Roboto', sans-serif; background: var(--bg); color: #f8fafc; 
+            margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center;
+            height: 100dvh; box-sizing: border-box; overflow: hidden;
+        }
+
+        .btn-back { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.1); color: #cbd5e1; text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; z-index: 50; border: 1px solid rgba(255,255,255,0.05); }
+        .user-badge { display: inline-flex; background: rgba(0, 242, 255, 0.1); border: 1px solid rgba(0, 242, 255, 0.3); padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .user-badge strong { color: var(--primary); font-size: 1.05rem; letter-spacing: 1px;}
+
+        header { width: 100%; max-width: 500px; text-align: center; margin-bottom: 10px; flex-shrink: 0; margin-top: 35px;}
+        h2 { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--primary); margin: 0 0 10px 0; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
+
+        .live-clock {
+            font-family: 'Orbitron', monospace; font-size: 2rem; font-weight: 700; color: #fff;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 5px 20px; border-radius: 12px; margin-bottom: 15px; display: inline-block;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); letter-spacing: 2px;
+        }
+
+        #networkBanner, #locationBanner { width: 100%; padding: 8px; margin-bottom: 8px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; text-align: center; transition: all 0.3s; box-sizing: border-box; }
+        .net-checking { background: #334155; color: #cbd5e1; border: 1px solid #475569; }
+        .net-valid { background: rgba(0, 255, 136, 0.15); color: var(--success); border: 1px solid rgba(0, 255, 136, 0.4); }
+        .net-invalid { background: rgba(255, 68, 68, 0.15); color: var(--error); border: 1px solid rgba(255, 68, 68, 0.4); animation: pulseRed 2s infinite; }
+        @keyframes pulseRed { 0% {box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4);} 70% {box-shadow: 0 0 0 10px rgba(255, 68, 68, 0);} 100% {box-shadow: 0 0 0 0 rgba(255, 68, 68, 0);} }
+
+        .info { margin-top: 5px; font-family: 'Orbitron', sans-serif; font-size: 0.9rem; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold; box-sizing: border-box; text-transform: uppercase;}
+        .status-scanning { color: var(--primary); border-color: var(--primary); }
+        .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
+        .status-warning { color: var(--warning); border-color: var(--warning); }
+        .status-err { color: var(--error); border-color: var(--error); background: rgba(255, 68, 68, 0.1); }
+        .loader { width: 16px; height: 16px; border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .main-wrapper { position: relative; width: 100%; max-width: 400px; flex: 1; background: #000; border-radius: 15px; overflow: hidden; border: 2px solid #334155; box-shadow: 0 5px 20px rgba(0,0,0,0.5); margin-top: 5px;}
+        
+        /* ẨN THẺ VIDEO GỐC NHƯNG KHÔNG ĐƯỢC DÙNG DISPLAY:NONE */
+        #webcam { position: absolute; width: 1px; height: 1px; opacity: 0.01; z-index: -1; }
+        
+        /* MỚI: CANVAS SẼ ĐẢM NHẬN VIỆC HIỂN THỊ CAMERA */
+        #previewCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); z-index: 1; }
+
+        .guide-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; border: 2px dashed rgba(255,255,255,0.3); border-radius: 50% / 45%; width: 220px; height: 300px; transition: all 0.3s; z-index: 5; }
+        .guide-active { border-color: var(--success); box-shadow: 0 0 25px rgba(0, 255, 136, 0.4); border-style: solid; background: rgba(0, 255, 136, 0.05); }
+        .scan-bar { position: absolute; width: 100%; height: 3px; background: linear-gradient(to bottom, transparent, var(--primary)); box-shadow: 0 0 15px var(--primary); top: 0; z-index: 5; animation: scan 2.5s ease-in-out infinite; opacity: 0.6; }
+        @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
+
+        /* MÀN HÌNH CHẶN IN-APP BROWSER (ZALO/FB) */
+        #inAppWarning {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0f172a; z-index: 99999; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; box-sizing: border-box; text-align: center;
+        }
+        #inAppWarning h1 { color: #ff4757; font-size: 1.5rem; margin-bottom: 10px; }
+        #inAppWarning p { color: #cbd5e1; font-size: 1rem; line-height: 1.5; }
+        .browser-icon { font-size: 4rem; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="inAppWarning">
+        <div class="browser-icon">🌐</div>
+        <h1>VUI LÒNG MỞ BẰNG TRÌNH DUYỆT</h1>
+        <p>Zalo / Messenger chặn quyền truy cập Camera.<br><br>Hãy nhấn vào biểu tượng <strong>"Mở bằng trình duyệt"</strong> (Chrome / Safari) ở góc phải màn hình để tiếp tục.</p>
+    </div>
+
+    <a href="/dashboard" class="btn-back">⬅ Đóng</a>
+
+    <header>
+        <h2>CHẤM CÔNG CÁ NHÂN</h2>
+        <div id="liveClock" class="live-clock">00:00:00</div>
+        <br>
+        <div class="user-badge">👤 <strong id="displayUserId">...</strong></div>
+        
+        <div id="networkBanner" class="net-checking">🔄 Đang kiểm tra Mạng & Phân quyền...</div>
+        <div id="locationBanner" class="net-checking" style="display:none;">📍 Đang lấy tọa độ GPS...</div>
+        
+        <div id="resultBox" class="info status-scanning">
+            <div class="loader"></div> ĐANG KHỞI TẠO CAMERA...
+        </div>
+    </header>
+    
+    <div class="main-wrapper">
+        <div class="guide-overlay" id="guideCircle"></div>
+        <div class="scan-bar" id="scanBar"></div>
+        
+        <video id="webcam" autoplay playsinline webkit-playsinline muted></video>
+        
+        <canvas id="previewCanvas"></canvas>
+
+        <canvas id="cropCanvas" style="display:none;"></canvas>
+    </div>
+
+    <script>
+        // 0. CHẶN IN-APP BROWSER
+        const ua = navigator.userAgent || navigator.vendor || window.opera;
+        const isInAppBrowser = (ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || (ua.indexOf("Zalo") > -1);
+        if (isInAppBrowser) {
+            document.getElementById('inAppWarning').style.display = 'flex';
+            throw new Error("Chặn chạy trên trình duyệt Zalo/Facebook");
+        }
+
+        // 1. BIẾN TOÀN CỤC & CẤU HÌNH NGƯỜI DÙNG
+        let userConfig = { checkMang: 1, checkViTri: 1, ccCaNhan: 1 };
+        let isNetworkValid = false; 
+        let isLocationValid = false;
+        let currentPublicIp = "";
+        let isProcessing = false;
+        let lastDetection = null;
+        let isFaceDetectionRunning = false;
+        let lastProcessingTime = 0;
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('liveClock').innerText = now.toLocaleTimeString('vi-VN', { hour12: false });
+        }
+        setInterval(updateClock, 1000); updateClock();
+
+        const nowInit = new Date();
+        const screenInitTime = nowInit.toLocaleTimeString('vi-VN') + " " + nowInit.toLocaleDateString('vi-VN');
+
+        const TARGET_LAT = 21.131096; const TARGET_LNG = 105.774113;
+        const MAX_DISTANCE_METERS = 150;
+        let currentPoint = { lat: 0, lng: 0 };
+
+        const currentUserId = localStorage.getItem('hrm_username'); 
+        if (!currentUserId) {
+            alert("Vui lòng đăng nhập!"); window.location.href = "/login";
+        } else {
+            document.getElementById('displayUserId').innerText = currentUserId.toUpperCase();
+        }
+
+        const video = document.getElementById('webcam');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
+        const resultBox = document.getElementById('resultBox');
+        const guideCircle = document.getElementById('guideCircle');
+        const scanBar = document.getElementById('scanBar');
+        const cropCanvas = document.getElementById('cropCanvas');
+
+        const FACE_MIN_SIZE = 0.40; const FACE_MAX_SIZE = 0.75;
+        const CENTER_X_MIN = 0.30; const CENTER_X_MAX = 0.70;
+        const CENTER_Y_MIN = 0.30; const CENTER_Y_MAX = 0.70;
+
+        // 2. FETCH CẤU HÌNH & KIỂM TRA MẠNG
+        async function verifyNetwork() {
+            const netBanner = document.getElementById('networkBanner');
+            const locBanner = document.getElementById('locationBanner');
+            locBanner.style.display = 'block';
+
+            try {
+                try {
+                    const ipRes = await fetch('https://api.ipify.org?format=json');
+                    const ipData = await ipRes.json();
+                    currentPublicIp = ipData.ip;
+                } catch(e) {
+                    console.warn("Trình duyệt chặn IP ngoài. Dùng IP nội bộ:", e);
+                    currentPublicIp = "blocked_by_browser";
+                }
+
+                const res = await fetch('/api/check-ip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId, client_public_ip: currentPublicIp })
+                });
+                const data = await res.json();
+                
+                userConfig.checkMang = data.checkMang;
+                userConfig.checkViTri = data.checkViTri;
+                userConfig.ccCaNhan = data.ccCaNhan;
+
+                if (userConfig.ccCaNhan === 0) {
+                    resultBox.className = "info status-err";
+                    resultBox.innerHTML = "❌ TÀI KHOẢN BỊ CẤM CHẤM CÔNG CÁ NHÂN";
+                    isProcessing = true; 
+                    netBanner.style.display = 'none';
+                    locBanner.style.display = 'none';
+                    return;
+                }
+
+                if (userConfig.checkMang === 0) {
+                    isNetworkValid = true;
+                    netBanner.className = 'net-valid'; 
+                    netBanner.innerHTML = `🌐 Đã miễn trừ kiểm tra Mạng Wi-Fi`;
+                } else {
+                    isNetworkValid = data.valid;
+                    if(isNetworkValid) {
+                        netBanner.className = 'net-valid'; netBanner.innerHTML = `✅ Mạng hợp lệ (IP: ${data.ip})`;
+                    } else {
+                        netBanner.className = 'net-invalid'; netBanner.innerHTML = `❌ Ngoài vùng mạng Bệnh viện (IP: ${data.ip})`;
+                    }
+                }
+                
+                verifyLocation();
+
+            } catch(e) {
+                netBanner.className = 'net-checking'; netBanner.innerHTML = `⚠️ Lỗi kiểm tra mạng!`;
+                isNetworkValid = false;
+            }
+        }
+
+        const HOSPITAL_ZONE = [
+            { lat: 21.132651, lng: 105.774238 }, { lat: 21.131013, lng: 105.776601 }, 
+            { lat: 21.130023, lng: 105.773278 }, { lat: 21.130553, lng: 105.772459 }  
+        ];
+        
+        function isPointInPolygon(point, polygon) {
+            let x = point.lng, y = point.lat; let isInside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                let xi = polygon[i].lng, yi = polygon[i].lat; let xj = polygon[j].lng, yj = polygon[j].lat;
+                let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) isInside = !isInside;
+            }
+            return isInside;
+        }
+
+        function verifyLocation() {
+            const locBanner = document.getElementById('locationBanner');
+            
+            if (userConfig.checkViTri === 0) {
+                isLocationValid = true;
+                locBanner.className = 'net-valid';
+                locBanner.innerHTML = `📍 Đã miễn trừ kiểm tra Vị trí GPS`;
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                locBanner.className = 'net-invalid'; locBanner.innerHTML = `❌ Trình duyệt không hỗ trợ GPS!`;
+                isLocationValid = false; return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentPoint = { lat: position.coords.latitude, lng: position.coords.longitude };
+                    let isInsideArea = isPointInPolygon(currentPoint, HOSPITAL_ZONE);
+                    
+                    if (isInsideArea) {
+                        isLocationValid = true;
+                        locBanner.className = 'net-valid'; locBanner.innerHTML = `✅ Đã xác nhận trong khuôn viên Viện`;
+                    } else {
+                        isLocationValid = false;
+                        locBanner.className = 'net-invalid'; locBanner.innerHTML = `❌ Cảnh báo: Bạn đang đứng ngoài khuôn viên!`;
+                    }
+                },
+                (error) => {
+                    isLocationValid = false;
+                    locBanner.className = 'net-invalid';
+                    locBanner.innerHTML = error.code === 1 ? `❌ Vui lòng cho phép quyền Vị trí!` : `❌ Không thể định vị!`;
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        // 3. AI NHẬN DIỆN KHUÔN MẶT
+        const faceDetection = new FaceDetection({ locateFile: (file) => `https://unpkg.com/@mediapipe/face_detection/${file}` });
+        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.7 });
+
+        faceDetection.onResults((results) => {
+            isFaceDetectionRunning = false;
+
+            if (results.detections.length > 0) {
+                lastDetection = results.detections[0].boundingBox;
+                const faceSize = lastDetection.width;
+                const faceX = lastDetection.xCenter; const faceY = lastDetection.yCenter;
+
+                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
+
+                if (!isNetworkValid || !isLocationValid) {
+                    guideCircle.classList.remove('guide-active'); scanBar.style.display = 'none';
+                    if (!isProcessing) {
+                        resultBox.className = "info status-err"; 
+                        resultBox.innerHTML = !isLocationValid ? `⚠️ BẠN KHÔNG Ở BỆNH VIỆN` : `⚠️ SAI MẠNG WIFI BỆNH VIỆN`;
+                    }
+                    return;
+                }
+
+                if (!isCentered) {
+                    guideCircle.classList.remove('guide-active');
+                    if (!isProcessing) { resultBox.className = "info status-warning"; resultBox.innerHTML = `⚠️ ĐƯA MẶT VÀO GIỮA KHUNG`; }
+                } else if (faceSize < FACE_MIN_SIZE) {
+                    guideCircle.classList.remove('guide-active');
+                    if (!isProcessing) { resultBox.className = "info status-warning"; resultBox.innerHTML = `⚠️ LẠI GẦN HƠN`; }
+                } else if (faceSize > FACE_MAX_SIZE) {
+                    guideCircle.classList.remove('guide-active');
+                    if (!isProcessing) { resultBox.className = "info status-warning"; resultBox.innerHTML = `⚠️ ĐỨNG XA RA CHÚT`; }
+                } else {
+                    guideCircle.classList.add('guide-active');
+                    scanBar.style.display = 'block';
+                    const now = Date.now();
+                    
+                    if (!isProcessing && now - lastProcessingTime > 2000) {
+                        sendToAPI();
+                        lastProcessingTime = now;
+                    }
+                }
+            } else {
+                lastDetection = null; guideCircle.classList.remove('guide-active');
+                if (!isProcessing && isNetworkValid && isLocationValid && userConfig.ccCaNhan !== 0) {
+                    resultBox.className = "info status-scanning"; resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
+                }
+            }
+        });
+
+        // 4. XÉN ẢNH VÀ GỬI API
+        function captureCroppedFace() {
+            if (!lastDetection) return null;
+            const videoW = video.videoWidth; const videoH = video.videoHeight;
+            let { xCenter, yCenter, width, height } = lastDetection;
+            const padding = 0.3; 
+            let cropW = width * (1 + padding) * videoW; let cropH = height * (1 + padding) * videoH;
+            let startX = Math.max(0, (xCenter * videoW) - (cropW / 2)); let startY = Math.max(0, (yCenter * videoH) - (cropH / 2));
+            cropW = Math.min(videoW - startX, cropW); cropH = Math.min(videoH - startY, cropH);
+
+            cropCanvas.width = 224; cropCanvas.height = 224;
+            const ctx = cropCanvas.getContext('2d');
+            ctx.translate(224, 0); ctx.scale(-1, 1);
+            ctx.drawImage(video, startX, startY, cropW, cropH, 0, 0, 224, 224);
+            return cropCanvas.toDataURL('image/jpeg', 0.85);
+        }
+        
+        function captureFullFrame() {
+            const tempCanvas = document.createElement('canvas');
+            const maxWidth = 640; const scale = Math.min(1, maxWidth / video.videoWidth);
+            tempCanvas.width = video.videoWidth * scale; tempCanvas.height = video.videoHeight * scale;
+            const ctx = tempCanvas.getContext('2d');
+            ctx.translate(tempCanvas.width, 0); ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+            return tempCanvas.toDataURL('image/jpeg', 0.7);
+        }
+
+        async function sendToAPI() {
+            isProcessing = true;
+            resultBox.className = "info status-scanning";
+            resultBox.innerHTML = `<div class="loader"></div> ĐANG XÁC THỰC 1:1...`;
+            
+            try {
+                const croppedImage = captureCroppedFace();
+                const fullImage = captureFullFrame();
+                if (!croppedImage) { isProcessing = false; return; }
+
+                const response = await fetch(`/api/verify-personal`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: currentUserId, 
+                        image_base64: croppedImage,
+                        client_public_ip: currentPublicIp, 
+                        full_image_base64: fullImage,
+                        latitude: currentPoint.lat,
+                        longitude: currentPoint.lng,
+                        attendance_type: 'Cá nhân',
+                        note: `Thời gian mở màn hình: ${screenInitTime}` 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.recognized) {
+                    resultBox.className = "info status-ok";
+                    resultBox.innerHTML = `✅ CHẤM CÔNG THÀNH CÔNG`;
+                    setTimeout(() => { window.location.href = "/attendance"; }, 2000);
+                } else {
+                    resultBox.className = "info status-err";
+                    resultBox.innerHTML = `${data.message.toUpperCase()}`;
+                    setTimeout(() => { isProcessing = false; }, 2000);
+                }
+            } catch (e) {
+                resultBox.className = "info status-err"; resultBox.innerHTML = `⚠️ LỖI KẾT NỐI SERVER`;
+                setTimeout(() => { isProcessing = false; }, 2000);
+            }
+        }
+
+        // 5. KHỞI TẠO CAMERA & ÉP VẼ CANVAS
+        async function processVideoFrame() {
+            if (video.readyState >= 2) {
+                
+                // MỚI: SAO CHÉP VIDEO SANG CANVAS ĐỂ ÉP HIỂN THỊ
+                if (previewCanvas.width !== video.videoWidth) {
+                    previewCanvas.width = video.videoWidth;
+                    previewCanvas.height = video.videoHeight;
+                }
+                previewCtx.drawImage(video, 0, 0, previewCanvas.width, previewCanvas.height);
+
+                if (!isFaceDetectionRunning) {
+                    isFaceDetectionRunning = true; 
+                    try {
+                        await faceDetection.send({ image: video });
+                    } catch(e) {
+                        isFaceDetectionRunning = false;
+                    }
+                }
+            }
+            requestAnimationFrame(processVideoFrame);
+        }
+
+        async function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                resultBox.className = "info status-err"; 
+                resultBox.innerHTML = "❌ TRÌNH DUYỆT KHÔNG HỖ TRỢ CAMERA (CẦN HTTPS)";
+                return;
+            }
+
+            await verifyNetwork();
+            
+            if (userConfig.ccCaNhan === 0) {
+                guideCircle.style.display = 'none';
+                scanBar.style.display = 'none';
+                return;
+            }
+
+            try {
+                resultBox.innerHTML = `<div class="loader"></div> ĐANG TẢI AI...`;
+                await faceDetection.initialize();
+
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } 
+                });
+                
+                video.srcObject = stream;
+                // ÉP CÁC THUỘC TÍNH BẰNG JAVASCRIPT CHO SAMSUNG/IOS
+                video.setAttribute('autoplay', 'true');
+                video.setAttribute('playsinline', 'true');
+                video.setAttribute('webkit-playsinline', 'true');
+                video.muted = true; 
+
+                video.onloadedmetadata = () => { 
+                    video.width = video.videoWidth;
+                    video.height = video.videoHeight;
+                    
+                    video.play().then(() => {
+                        processVideoFrame(); 
+                    }).catch(e => {
+                        // Nếu vẫn bị chặn, yêu cầu người dùng chạm màn hình
+                        resultBox.innerHTML = "⚠️ CHẠM MÀN HÌNH ĐỂ MỞ CAMERA";
+                        document.body.addEventListener('click', () => { video.play(); }, {once: true});
+                        processVideoFrame();
+                    });
+                }
+            } catch (err) {
+                resultBox.className = "info status-err"; resultBox.innerHTML = "❌ LỖI CAMERA HOẶC TỪ CHỐI QUYỀN";
+            }
+        }
+
+        startCamera();
+    </script>
+</body>
+</html>
