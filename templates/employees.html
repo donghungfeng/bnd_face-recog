@@ -820,6 +820,14 @@
     let pageSize = 15;
     let totalPages = 1;
 
+    // ==========================================
+    // HÀM LẤY TOKEN
+    // ==========================================
+    function getAuthHeaders() {
+        const token = localStorage.getItem("hrm_token");
+        return { 'Authorization': `Bearer ${token}` };
+    }
+
     function toggleCard(contentId, iconId) {
         const content = document.getElementById(contentId);
         const icon = document.getElementById(iconId);
@@ -839,7 +847,10 @@
 
     async function initData() {
         try {
-            const deptRes = await fetch('/api/departments');
+            // Lấy danh sách phòng ban CÓ KÈM TOKEN
+            const deptRes = await fetch('/api/departments', {
+                headers: getAuthHeaders()
+            });
             allDepartments = await deptRes.json();
 
             const deptSelectForm = document.getElementById('department_id');
@@ -855,17 +866,26 @@
         } catch (e) { console.error(e); }
     }
 
+    // ==========================================
+    // HÀM GỌI API NHÂN SỰ
+    // ==========================================
     async function fetchEmployees() {
         const keyword = document.getElementById('searchInput').value.trim();
         const deptId = document.getElementById('deptFilter').value;
 
-        // Pass page, size, search, and department_id
+        // Truyền đúng page, size, search, và department_id
         let url = `${API_URL}?page=${currentPage}&size=${pageSize}`;
         if (keyword) url += `&search=${encodeURIComponent(keyword)}`;
         if (deptId) url += `&department_id=${deptId}`;
 
         try {
-            const res = await fetch(url);
+            // GỌI API KÈM TOKEN
+            const res = await fetch(url, {
+                headers: getAuthHeaders()
+            });
+            
+            if (!res.ok) throw new Error("Lỗi tải dữ liệu hoặc không có quyền truy cập");
+
             const data = await res.json();
 
             currentEmployees = data.items || data;
@@ -875,6 +895,7 @@
             renderTable(currentEmployees);
         } catch (e) {
             console.error("Lỗi fetch:", e);
+            document.getElementById('empTableBody').innerHTML = `<tr><td colspan="11" style="text-align: center; color: red;">❌ Có lỗi xảy ra: ${e.message}</td></tr>`;
         }
     }
 
@@ -883,7 +904,7 @@
         tbody.innerHTML = '';
         if (data.length === 0) return tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">Không có dữ liệu.</td></tr>';
 
-        data.forEach(emp => {
+        data.forEach((emp, i) => {
             let roleBadge = emp.role === 'admin' ? `<span class="badge badge-admin">Admin</span>` : (emp.role === 'manager' ? `<span class="badge badge-manager">Quản lý</span>` : `<span class="badge badge-user">Nhân viên</span>`);
             let lockStatus = emp.is_locked === 1 ? `<span class="badge badge-locked">Đang khóa</span>` : `<span style="color:#10b981; font-size:0.85rem; font-weight:bold;">Hoạt động</span>`;
             let dobDisplay = emp.date_of_birth ? emp.date_of_birth.split("-").reverse().join("/") : "---";
@@ -963,15 +984,13 @@
 
     let searchTimeout = null;
     function filterTable() {
-        // Debounce gọi API để không load liên tục khi đang gõ
         if (searchTimeout) clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
-            currentPage = 1; // reset về trang 1
+            currentPage = 1; 
             fetchEmployees();
         }, 300);
     }
 
-    // --- CÁC HÀM PHÂN TRANG ---
     function renderPagination(page, totalPageCount, totalItems) {
         totalPages = totalPageCount;
         currentPage = page;
@@ -1010,8 +1029,33 @@
         fetchEmployees();
     }
 
-    function downloadTemplate() { window.location.href = '/api/employees/export_template'; }
-    function exportExcel() { window.location.href = '/api/employees/export'; }
+    // ==========================================
+    // EXPORT & IMPORT & TEMPLATE
+    // ==========================================
+    async function downloadTemplate() { 
+        try {
+            const res = await fetch('/api/employees/export_template', { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error();
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.style.display = 'none';
+            a.href = url; a.download = `Mau_Nhap_Nhan_Su.xlsx`;
+            document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url);
+        } catch (e) { alert("Không thể tải file mẫu!"); }
+    }
+
+    async function exportExcel() { 
+        try {
+            // Có thể ghép thêm search / deptId vào URL nếu muốn xuất excel theo điều kiện lọc
+            const res = await fetch('/api/employees/export', { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error();
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.style.display = 'none';
+            a.href = url; a.download = `DanhSachNhanSu.xlsx`;
+            document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url);
+        } catch (e) { alert("Lỗi khi xuất dữ liệu!"); }
+    }
 
     async function importExcel(input) {
         if (!input.files || input.files.length === 0) return;
@@ -1019,13 +1063,20 @@
         formData.append("file", input.files[0]);
         input.value = '';
         try {
-            const res = await fetch('/api/employees/import', { method: 'POST', body: formData });
+            const res = await fetch('/api/employees/import', { 
+                method: 'POST', 
+                headers: getAuthHeaders(), // Không có Content-Type để cho phép FormData tự tạo boundary
+                body: formData 
+            });
             const data = await res.json();
             if (res.ok) { alert(data.message); fetchEmployees(); }
             else alert("Lỗi: " + data.detail);
         } catch (e) { alert("Lỗi kết nối máy chủ khi upload!"); }
     }
 
+    // ==========================================
+    // NHẬN DIỆN KHUÔN MẶT
+    // ==========================================
     function triggerFaceUpload(username) {
         document.getElementById('uploadFaceUserId').value = username;
         document.getElementById('faceUploadInput').click();
@@ -1041,7 +1092,7 @@
             try {
                 const res = await fetch('/register', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                     body: JSON.stringify({ user_id: userId, image_base64: base64String, full_image_base64: base64String })
                 });
                 const data = await res.json();
@@ -1053,38 +1104,62 @@
         event.target.value = '';
     }
 
+    async function deleteFace(username) {
+        if (confirm(`Xóa ảnh AI của ${username}? Nhân viên sẽ phải chụp lại.`)) {
+            await fetch('/unregister', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, 
+                body: JSON.stringify({ user_id: username }) 
+            });
+            fetchEmployees();
+        }
+    }
+
+    // ==========================================
+    // QUẢN LÝ THÔNG TIN NHÂN VIÊN
+    // ==========================================
     async function changePassword(username) {
         const newPwd = prompt(`Nhập mật khẩu mới cho [${username}]:`);
         if (newPwd && newPwd.trim() !== "") {
-            const res = await fetch(`${API_URL}/${username}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_password: newPwd.trim() }) });
+            const res = await fetch(`${API_URL}/${username}/password`, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, 
+                body: JSON.stringify({ new_password: newPwd.trim() }) 
+            });
             if (res.ok) alert(`Đổi mật khẩu thành công!`);
         }
     }
 
     async function toggleLock(username) {
         if (confirm(`Thay đổi trạng thái khóa của [${username}]?`)) {
-            const res = await fetch(`${API_URL}/${username}/toggle_lock`, { method: 'PUT' });
+            const res = await fetch(`${API_URL}/${username}/toggle_lock`, { 
+                method: 'PUT',
+                headers: getAuthHeaders()
+            });
             if (res.ok) fetchEmployees();
-        }
-    }
-
-    async function deleteFace(username) {
-        if (confirm(`Xóa ảnh AI của ${username}? Nhân viên sẽ phải chụp lại.`)) {
-            await fetch('/unregister', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: username }) });
-            fetchEmployees();
         }
     }
 
     async function deleteEmployee(username) {
         if (confirm(`⚠️ XÓA VĨNH VIỄN nhân viên [${username}]?`)) {
-            const res = await fetch(`${API_URL}/${username}`, { method: 'DELETE' });
+            const res = await fetch(`${API_URL}/${username}`, { 
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
             if (res.ok) {
-                await fetch('/unregister', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: username }) });
+                await fetch('/unregister', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, 
+                    body: JSON.stringify({ user_id: username }) 
+                });
                 fetchEmployees();
             }
         }
     }
 
+    // ==========================================
+    // XỬ LÝ FORM THÊM SỬA
+    // ==========================================
     function editEmployee(username) {
         document.getElementById('formContent').style.display = "block";
         document.getElementById('formIcon').style.transform = "rotate(0deg)";
@@ -1124,7 +1199,7 @@
         document.getElementById('edit_mode').value = "false";
         document.getElementById('original_username').value = "";
         document.getElementById('formTitle').innerText = "+ Thêm Nhân Sự";
-        document.getElementById('submitBtn').innerText = "LƯU";
+        document.getElementById('submitBtn').innerText = "LƯU THÔNG TIN";
         document.getElementById('cancelBtn').style.display = "none";
         document.getElementById('statusGroup').style.display = "none";
         document.getElementById('pwdGroup').style.display = "block";
@@ -1160,7 +1235,11 @@
         const url = isEditMode ? `${API_URL}/${document.getElementById('original_username').value}` : API_URL;
 
         try {
-            const res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const res = await fetch(url, { 
+                method: method, 
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, 
+                body: JSON.stringify(payload) 
+            });
             if (res.ok) {
                 alert(isEditMode ? "Cập nhật thành công!" : "Lưu thành công!");
                 resetForm(); fetchEmployees();

@@ -139,6 +139,29 @@
         background: #cbd5e1;
         border-radius: 4px;
     }
+
+    /* CSS LÀM ĐẸP NÚT BẤM VÀ UPLOAD FILE */
+    .action-btn {
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        font-family: 'Inter', sans-serif;
+    }
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .btn-download { background: #10b981; color: white; }
+    .btn-upload { background: #f59e0b; color: #1e293b; }
+    .btn-choose { background: #3b82f6; color: white; margin: 0; }
 </style>
 
 <div class="card">
@@ -159,12 +182,15 @@
             </div>
         </div>
 
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-primary" style="background: var(--success);" onclick="downloadTemplate()">⬇️ TẢI
-                MẪU</button>
-            <input type="file" id="excelFile" accept=".xlsx, .xls" style="max-width: 180px;">
-            <button class="btn-primary" style="background: var(--warning); color:#000" onclick="uploadExcel()">⬆️
-                UPLOAD</button>
+        <div style="display: flex; gap: 10px; align-items: stretch;">
+            <button style="background: var(--success); color: white; display: inline-flex; align-items: center; justify-content: center; padding: 10px 20px; border: none; cursor: pointer; font-weight: bold; border-radius: 6px; font-size: 0.9rem;" onclick="downloadTemplate()">⬇️ TẢI MẪU</button>
+            
+            <label for="excelFile" id="fileLabel" style="background: #3b82f6; color: white; cursor: pointer; margin: 0; display: inline-flex; align-items: center; justify-content: center; padding: 10px 20px; font-weight: bold; border-radius: 6px; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; min-width: 140px; box-sizing: border-box;">
+                📂 CHỌN FILE
+            </label>
+            <input type="file" id="excelFile" accept=".xlsx, .xls" style="display: none;" onchange="updateFileName(this)">
+            
+            <button style="background: var(--warning); color: #000; display: inline-flex; align-items: center; justify-content: center; padding: 10px 20px; border: none; cursor: pointer; font-weight: bold; border-radius: 6px; font-size: 0.9rem;" onclick="uploadExcel()">⬆️ UPLOAD</button>
         </div>
     </div>
 
@@ -273,10 +299,35 @@
     let totalPages = 1;
     let shiftMapCache = {}; // Cache để dùng cho modal gán/sửa ca
 
+    // ==========================================
+    // HÀM LẤY TOKEN (Dùng chung cho toàn file)
+    // ==========================================
+    function getAuthHeaders() {
+        const token = localStorage.getItem("hrm_token");
+        return { 'Authorization': `Bearer ${token}` };
+    }
+
+    // Hàm đổi chữ của nút khi chọn file
+    function updateFileName(input) {
+        const label = document.getElementById('fileLabel');
+        if (input.files && input.files.length > 0) {
+            // Lấy tên file, hiển thị lên chính cái nút
+            label.innerHTML = `📄 ${input.files[0].name}`;
+            label.title = input.files[0].name; // Trỏ chuột vào để xem full tên
+            label.style.background = '#0ea5e9'; // Đổi màu cho khỏi lẫn
+        } else {
+            label.innerHTML = `📂 CHỌN FILE`;
+            label.title = '';
+            label.style.background = '#3b82f6';
+        }
+    }
+
     // 2. TẢI DANH MỤC CA ĐỂ DÙNG TRONG MODAL
     async function loadShiftCategories() {
         try {
-            const res = await fetch('/api/shifts');
+            const res = await fetch('/api/shifts', {
+                headers: getAuthHeaders() 
+            });
             allShiftCategories = await res.json();
         } catch (e) { console.error("Lỗi tải ca:", e); }
     }
@@ -286,7 +337,7 @@
     function debounceFetch() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            currentPage = 1;
+            currentPage = 1; // Reset về trang 1 khi gõ tìm kiếm
             fetchAssignments();
         }, 500);
     }
@@ -295,32 +346,42 @@
     async function fetchAssignments() {
         const start = document.getElementById('startDateFilter').value;
         const end = document.getElementById('endDateFilter').value;
-        const search = document.getElementById('searchFilter').value;
+        const search = document.getElementById('searchFilter').value.trim();
         const tbody = document.getElementById('matrixBody');
 
         if (!start || !end) return;
         tbody.innerHTML = '<tr><td colspan="20" style="padding: 50px; text-align: center;">⏳ Đang tải dữ liệu...</td></tr>';
 
         try {
+            const headers = getAuthHeaders(); 
+            
+            // ĐÃ SỬA: Gọi API mới có phân trang và phân quyền từ Backend
+            const empUrl = `/api/employees?page=${currentPage}&size=${pageSize}&search=${encodeURIComponent(search)}`;
+            const assignUrl = `/api/assignments/details?start_date=${start}&end_date=${end}`;
+
             const [empRes, assignRes] = await Promise.all([
-                fetch(`/api/employees?page=${currentPage}&size=${pageSize}&search=${search}`),
-                fetch(`/api/assignments/details?start_date=${start}&end_date=${end}`)
+                fetch(empUrl, { headers }),
+                fetch(assignUrl, { headers })
             ]);
+            
+            if (!empRes.ok) throw new Error("Lỗi xác thực hoặc không có quyền tải danh sách nhân viên");
+            
             const empData = await empRes.json();
             const assignData = await assignRes.json();
 
-            const employees = empData.items;
-            totalPages = empData.total_pages;
+            // Dữ liệu đã được cắt gọn sẵn từ API
+            const employees = empData.items || [];
+
+            // Cập nhật giao diện phân trang dựa vào dữ liệu API trả về
             renderPagination(empData.page, empData.total_pages, empData.total);
 
-            // Nhóm dữ liệu: employee_id -> date -> record
+            // --- XỬ LÝ DỮ LIỆU CA TRỰC ---
             shiftMapCache = {};
             assignData.forEach(item => {
                 if (!shiftMapCache[item.employee_id]) shiftMapCache[item.employee_id] = {};
                 shiftMapCache[item.employee_id][item.shift_date] = item;
             });
 
-            // Tạo danh sách ngày để render cột
             const dateList = [];
             let curr = new Date(start);
             const endObj = new Date(end);
@@ -330,6 +391,7 @@
             }
 
             renderTable(employees, dateList, shiftMapCache);
+
         } catch (e) {
             tbody.innerHTML = `<tr><td colspan="20" style="color:red; padding:20px;">❌ Lỗi: ${e.message}</td></tr>`;
         }
@@ -341,7 +403,6 @@
         const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
         const todayStr = new Date().toISOString().split('T')[0];
 
-        // --- RENDER TIÊU ĐỀ (HEADER) & COLGROUP ---
         const colgroup = document.getElementById('matrixColGroup');
         let colHtml = `
             <col style="width: 50px;">
@@ -358,7 +419,6 @@
             const d = new Date(dStr);
             const mLabel = `THÁNG ${d.getMonth() + 1}, ${d.getFullYear()}`;
 
-            // Logic gộp tháng chuẩn xác
             if (monthGroups.length > 0 && monthGroups[monthGroups.length - 1].name === mLabel) {
                 monthGroups[monthGroups.length - 1].span++;
             } else {
@@ -384,17 +444,18 @@
             </tr>
             <tr id="matrixHeadRow2">${dayHtml}</tr>`;
 
-        // Cố định hàng Ngày nằm dưới hàng Tháng
         setTimeout(() => {
             const h1 = document.getElementById('matrixHeadRow1').offsetHeight;
             document.querySelectorAll('#matrixHeadRow2 th').forEach(th => th.style.top = (h1 - 0.5) + 'px');
         }, 50);
 
-        // --- RENDER DỮ LIỆU (BODY) ---
         tbody.innerHTML = "";
         employees.forEach((emp, i) => {
+            // Hiển thị STT dựa trên trang hiện hành để số thứ tự nối tiếp nhau
+            const stt = (currentPage - 1) * pageSize + i + 1;
+            
             let row = `<tr>
-                <td class="sticky-col col-stt">${i + 1}</td>
+                <td class="sticky-col col-stt">${stt}</td>
                 <td class="sticky-col col-name"><b>${emp.full_name.toUpperCase()}</b></td>
                 <td class="sticky-col col-dob">${emp.dob || emp.date_of_birth || ''}</td>
                 <td class="sticky-col col-unit">${emp.ten_don_vi || ''}</td>
@@ -417,7 +478,6 @@
         });
     }
 
-    // 4. PHÂN TRANG
     function renderPagination(page, totalPageCount, totalItems) {
         totalPages = totalPageCount;
         currentPage = page;
@@ -433,8 +493,7 @@
     }
 
     function changePage(delta) {
-        const newPage = currentPage + delta;
-        jumpToPage(newPage);
+        jumpToPage(currentPage + delta);
     }
 
     function jumpToPage(page) {
@@ -443,21 +502,16 @@
             document.getElementById('pageInput').value = currentPage;
             return;
         }
-        if (pageNum > totalPages && totalPages > 0) {
-            currentPage = totalPages;
-        } else {
-            currentPage = pageNum;
-        }
+        currentPage = (pageNum > totalPages && totalPages > 0) ? totalPages : pageNum;
         fetchAssignments();
     }
 
     function updatePageSize(newSize) {
         pageSize = parseInt(newSize);
-        currentPage = 1; // Quay về trang 1 khi đổi size
+        currentPage = 1;
         fetchAssignments();
     }
 
-    // 5. MODAL VÀ XỬ LÝ API
     let selectedShiftCode = null;
     let currentModalEmpId = null;
     let currentModalDate = null;
@@ -466,7 +520,6 @@
         currentModalEmpId = id;
         currentModalDate = date;
 
-        // Tìm xem ngày này nhân viên đã có ca chưa
         const currentAssign = shiftMapCache[id]?.[date];
         selectedShiftCode = currentAssign ? currentAssign.shift_code : null;
 
@@ -510,23 +563,21 @@
     async function saveAssignment() {
         const empId = currentModalEmpId;
         const date = currentModalDate;
-
-        // Nếu đã có ca khác, xóa ca cũ trước
         const currentAssign = shiftMapCache[empId]?.[date];
 
         if (!selectedShiftCode) {
-            if (currentAssign) {
-                await deleteAssignSilent(currentAssign.id);
-            }
+            if (currentAssign) await deleteAssignSilent(currentAssign.id);
             closeModal();
             fetchAssignments();
             return;
         }
 
-        // Ghi đè hoặc tạo mới
         const res = await fetch('/api/assignments', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                ...getAuthHeaders() 
+            },
             body: JSON.stringify({ employee_id: empId, shift_code: selectedShiftCode, shift_date: date })
         });
 
@@ -539,16 +590,20 @@
     }
 
     async function deleteAssignSilent(id) {
-        await fetch(`/api/assignments/${id}`, { method: 'DELETE' });
+        await fetch(`/api/assignments/${id}`, { 
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
     }
-
-
 
     function closeModal() { document.getElementById('assignModal').style.display = 'none'; }
 
     async function deleteAssign(id, name, date) {
         if (confirm(`Xóa lịch của ${name} ngày ${date}?`)) {
-            const res = await fetch(`/api/assignments/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/assignments/${id}`, { 
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
             if (res.ok) {
                 closeModal();
                 fetchAssignments();
@@ -569,6 +624,7 @@
         try {
             const resp = await fetch('/api/assignments/import', {
                 method: 'POST',
+                headers: getAuthHeaders(),
                 body: formData
             });
             const result = await resp.json();
@@ -584,11 +640,46 @@
         }
     }
 
-    function downloadTemplate() {
-        const start = document.getElementById('startDateFilter').value;
-        const end = document.getElementById('endDateFilter').value;
-        window.location.href = `/api/assignments/export_template?start_date=${start}&end_date=${end}`;
-    }
+    async function downloadTemplate() {
+            const start = document.getElementById('startDateFilter').value;
+            const end = document.getElementById('endDateFilter').value;
+            
+            // Lấy thêm từ khóa tìm kiếm (nếu user đang tìm gì đó)
+            const searchKeyword = document.getElementById('searchFilter').value.trim();
+            
+            let url = `/api/assignments/export_template?start_date=${start}&end_date=${end}`;
+            
+            // Nếu có tìm kiếm thì nhét vào URL
+            if (searchKeyword) {
+                url += `&search=${encodeURIComponent(searchKeyword)}`;
+            }
+            // Nếu trang này có thêm bộ lọc phòng ban (deptFilter), bạn cũng có thể thêm vào đây:
+            // const deptId = document.getElementById('deptFilter')?.value;
+            // if (deptId) url += `&department_id=${deptId}`;
+            
+            try {
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+
+                if (!res.ok) throw new Error("Lỗi khi tải file");
+
+                const blob = await res.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = `MauPhanCong_${start}_den_${end}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(blobUrl);
+                
+            } catch (err) {
+                console.error(err);
+                alert("Không có quyền hoặc lỗi kết nối khi tải Template!");
+            }
+        }
 
     // Khởi tạo chạy ngay
     loadShiftCategories();
