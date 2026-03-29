@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
@@ -6,6 +6,7 @@ import openpyxl
 import io
 from openpyxl.styles import Font, PatternFill
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import aliased
 
 from fastapi.templating import Jinja2Templates
 templates = Jinja2Templates(directory="templates")
@@ -13,6 +14,7 @@ templates = Jinja2Templates(directory="templates")
 from database import get_db
 from models import ShiftCategory, ShiftAssignment, Employee, OrganizationUnit
 from schemas import ShiftCategoryCreate, ShiftAssignmentCreate
+from routers.auth_router import get_current_user
 
 router = APIRouter()
 
@@ -208,9 +210,18 @@ def get_assignments_details(start_date: str = None, end_date: str = None, month:
 # 3. IMPORT / EXPORT EXCEL PHÂN CÔNG (MATRIX)
 # ==========================================
 @router.get("/api/assignments/export_template")
-def export_assignment_template(start_date: str = None, end_date: str = None, db: Session = Depends(get_db)):
-    from sqlalchemy.orm import aliased
+def export_assignment_template(
+    start_date: str = None, 
+    end_date: str = None, 
+    search: str = Query(None),          # Hứng từ khóa tìm kiếm từ Frontend
+    department_id: int = Query(None),   # Hứng bộ lọc phòng ban từ Frontend
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)  # Bắt buộc: Lấy thông tin user hiện tại
+):
+    current_username = current_user.get("username")
+    current_role = current_user.get("role", "user")
     
+    # 1. XỬ LÝ NGÀY THÁNG
     if not start_date or not end_date:
         today = date.today()
         start = today - timedelta(days=today.weekday())
@@ -230,6 +241,7 @@ def export_assignment_template(start_date: str = None, end_date: str = None, db:
         date_list.append(curr)
         curr += timedelta(days=1)
 
+    # 2. THIẾT LẬP FILE EXCEL
     wb = openpyxl.Workbook()
     header_font = Font(bold=True, color="FFFFFF")
     blue_fill = PatternFill(start_color="4361EE", fill_type="solid")
@@ -248,7 +260,8 @@ def export_assignment_template(start_date: str = None, end_date: str = None, db:
     Dept = aliased(OrganizationUnit)
     ParentUnit = aliased(OrganizationUnit)
     
-    rows = db.query(
+    # 3. TRUY VẤN CƠ BẢN (CHỈ LẤY NHÂN VIÊN ACTIVE)
+    query = db.query(
         Employee,
         Dept.unit_name.label("dept_name"),
         ParentUnit.unit_name.label("parent_name")
@@ -256,16 +269,50 @@ def export_assignment_template(start_date: str = None, end_date: str = None, db:
         Dept, Employee.department_id == Dept.id
     ).outerjoin(
         ParentUnit, Dept.parent_id == ParentUnit.id
-    ).filter(Employee.status == 'active').order_by(Employee.id.desc()).all()
+    ).filter(Employee.status == 'active')
 
+    # ==========================================
+    # 4. LOGIC PHÂN QUYỀN (RBAC)
+    # ==========================================
+    if current_role == "admin":
+        pass # Admin xem tất cả
+    elif current_role == "manager":
+        manager_dept_id = db.query(Employee.department_id).filter(Employee.username == current_username).scalar()
+        if manager_dept_id:
+            query = query.filter(Employee.department_id == manager_dept_id)
+        else:
+            query = query.filter(Employee.username == current_username)
+    else:
+        # User thường chỉ xuất được lịch của chính mình
+        query = query.filter(Employee.username == current_username)
+
+    # ==========================================
+    # 5. LỌC THEO TÌM KIẾM VÀ PHÒNG BAN (TỪ FRONTEND)
+    # ==========================================
+    if search:
+        query = query.filter(
+            or_(
+                Employee.full_name.ilike(f"%{search}%"),
+                Employee.username.ilike(f"%{search}%")
+            )
+        )
+    if department_id:
+        query = query.filter(Employee.department_id == department_id)
+
+    # Chốt danh sách dòng
+    rows = query.order_by(Employee.id.desc()).all()
+
+    # 6. LẤY DỮ LIỆU CA TRỰC ĐÃ GÁN
     current_assigns = db.query(ShiftAssignment).filter(
         ShiftAssignment.shift_date >= start,
         ShiftAssignment.shift_date <= end
     ).all()
+    
     assign_map = {} 
     for a in current_assigns:
         assign_map[(a.employee_id, a.shift_date.strftime("%Y-%m-%d"))] = a.shift_code
 
+    # 7. ĐỔ DỮ LIỆU VÀO EXCEL
     for i, (e, dept_name, parent_name) in enumerate(rows):
         dob = e.dob or e.date_of_birth
         dob_str = dob.strftime("%Y-%m-%d") if dob else ""
@@ -288,6 +335,7 @@ def export_assignment_template(start_date: str = None, end_date: str = None, db:
             
         ws1.append(row_data)
 
+    # Chỉnh formating cột Sheet 1
     ws1.column_dimensions['A'].width = 8   # STT
     ws1.column_dimensions['B'].width = 12  # ID
     ws1.column_dimensions['C'].width = 35  # HỌ VÀ TÊN
@@ -295,18 +343,17 @@ def export_assignment_template(start_date: str = None, end_date: str = None, db:
     ws1.column_dimensions['E'].width = 45  # ĐƠN VỊ
     ws1.column_dimensions['F'].width = 45  # PHÒNG BAN
 
-    # Auto width cho các cột ngày tháng (từ cột G trở đi)
     for i in range(len(date_list)):
         col_letter = openpyxl.utils.get_column_letter(7 + i)
         ws1.column_dimensions[col_letter].width = 15
 
+    # 8. TẠO SHEET 2 (DANH MỤC CA TRỰC)
     ws2 = wb.create_sheet(title="DanhMucCaTruc")
     ws2.append(["MÃ CA TRỰC", "TÊN CA TRỰC", "GIỜ BẮT ĐẦU", "GIỜ KẾT THÚC", "GHI CHÚ"])
     for cell in ws2[1]:
         cell.font = header_font
         cell.fill = PatternFill(start_color="10B981", fill_type="solid")
     
-    # Độ rộng cột Sheet 2
     ws2.column_dimensions['A'].width = 15
     ws2.column_dimensions['B'].width = 30
     ws2.column_dimensions['C'].width = 15
@@ -322,6 +369,7 @@ def export_assignment_template(start_date: str = None, end_date: str = None, db:
             s.notes or ""
         ])
 
+    # 9. TRẢ VỀ FILE EXCEL QUA API
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)

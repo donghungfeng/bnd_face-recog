@@ -33,15 +33,24 @@ def create_employee(emp: EmployeeCreate, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success", "message": "Thêm nhân sự thành công"}
 
+from fastapi import Depends, Query
+from sqlalchemy import or_
+import os
+
+# Giả sử bạn đã import các thư viện và hàm cần thiết như Depends, get_db, get_current_user...
+
 @router.get("/api/employees")
 def get_employees(
     db: Session = Depends(get_db), 
     page: int = 1, 
     size: int = 15,
     search: str = Query(None),
-    department_id: int = Query(None)
+    department_id: int = Query(None),
+    current_user: dict = Depends(get_current_user)  # <-- Bổ sung dependency lấy user hiện tại
 ):
-    
+    current_username = current_user.get("username")
+    current_role = current_user.get("role", "user")
+
     Dept = aliased(OrganizationUnit)
     ParentUnit = aliased(OrganizationUnit)
 
@@ -55,6 +64,31 @@ def get_employees(
         ParentUnit, Dept.parent_id == ParentUnit.id
     )
 
+    # ==========================================
+    # LOGIC PHÂN QUYỀN (RBAC)
+    # ==========================================
+    if current_role == "admin":
+        # Admin được xem tất cả -> Không cần filter thêm
+        pass
+        
+    elif current_role == "manager":
+        # Lấy ID phòng ban của chính manager này
+        manager_dept_id = db.query(Employee.department_id).filter(Employee.username == current_username).scalar()
+        
+        if manager_dept_id:
+            # Manager chỉ được xem nhân viên trong cùng phòng ban
+            query = query.filter(Employee.department_id == manager_dept_id)
+        else:
+            # Fallback an toàn: Nếu manager chưa được xếp phòng, chỉ cho xem chính họ
+            query = query.filter(Employee.username == current_username)
+            
+    else:
+        # Role 'user' hoặc các role không xác định khác: Chỉ xem được chính mình
+        query = query.filter(Employee.username == current_username)
+
+    # ==========================================
+    # LOGIC TÌM KIẾM & LỌC BỔ SUNG
+    # ==========================================
     if search:
         query = query.filter(
             or_(
@@ -62,10 +96,16 @@ def get_employees(
                 Employee.username.ilike(f"%{search}%")
             )
         )
+        
+    # Lọc theo department_id (từ frontend gửi lên)
+    # Lưu ý: Nếu là Manager, điều kiện này sẽ kết hợp (AND) với điều kiện RBAC ở trên. 
+    # Nếu Manager cố tình chọn phòng ban khác, query sẽ tự động trả về rỗng -> Rất bảo mật!
     if department_id:
         query = query.filter(Employee.department_id == department_id)
 
-    # Lấy tổng số nhân viên (đã lọc) để tính phân trang
+    # ==========================================
+    # PHÂN TRANG & MAP KẾT QUẢ
+    # ==========================================
     total = query.count()
     offset = (page - 1) * size
 
@@ -394,9 +434,6 @@ async def import_employees(file: UploadFile = File(...), db: Session = Depends(g
 
 @router.get("/api/employees/export_template")
 def export_template(db: Session = Depends(get_db)):
-    import pandas as pd
-    import io
-    from fastapi.responses import StreamingResponse
     
     # --- SHEET 1: MẪU ĐIỀN NHÂN SỰ ---
     data_emp = [{
