@@ -161,7 +161,8 @@ def get_monthly_report(
             "note": r.note,
             "full_name": emp.full_name if emp else "Unknown",
             "username": emp.username if emp else "Unknown",
-            "shift_display_name": sc.shift_name if sc else (r.shift_code or "Unknown")
+            "shift_display_name": sc.shift_name if sc else (r.shift_code or "Unknown"),
+            
         }
         results.append(record_dict)
         

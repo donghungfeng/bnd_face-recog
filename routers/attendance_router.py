@@ -1,5 +1,7 @@
 # Sửa dòng import này (Thêm Request)
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+import shutil
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Query, UploadFile
 
 # Thêm 2 dòng này để hỗ trợ trả về giao diện HTML (nếu bạn để các hàm render HTML ở file này)
 from fastapi.templating import Jinja2Templates
@@ -7,7 +9,7 @@ templates = Jinja2Templates(directory="templates")
 
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from datetime import datetime, date, time
 from collections import defaultdict
 import openpyxl, io
@@ -28,55 +30,66 @@ from routers.auth_router import get_current_user
 
 @router.get("/api/attendance")
 def get_attendance(
-    limit: int = 50, 
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    username: Optional[str] = Query(None),
+    emp_keyword: Optional[str] = Query(None, description="Tìm theo tên hoặc mã NV"),
+    device_keyword: Optional[str] = Query(None, description="Tìm theo loại thiết bị hoặc IP"),
+    status: Optional[str] = Query("all"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     role = current_user.get("role", "user")
     current_username = current_user.get("username")
 
-    
-    # 1. Khởi tạo điều kiện lọc theo phân quyền
-    filter_conditions = []
+    query = db.query(Attendance, Employee.full_name).outerjoin(Employee, Attendance.username == Employee.username)
 
+    # -- Phân quyền --
     if role == "user":
-        filter_conditions.append(Attendance.username == current_username)
+        query = query.filter(Attendance.username == current_username)
     elif role == "manager":
         manager_emp = db.query(Employee).filter(Employee.username == current_username).first()
         if not manager_emp or manager_emp.department_id is None:
-            return []
+            return {"data": [], "total": 0, "page": page, "limit": limit}
         dept_users = [u[0] for u in db.query(Employee.username).filter(Employee.department_id == manager_emp.department_id).all()]
-        
-        if username:
-            if username in dept_users:
-                filter_conditions.append(Attendance.username == username)
-            else:
-                return []
-        else:
-            filter_conditions.append(Attendance.username.in_(dept_users))
-    elif role == "admin":
-        if username:
-            filter_conditions.append(Attendance.username == username)
+        query = query.filter(Attendance.username.in_(dept_users))
 
-    # 1.1 Lọc thời gian
+    # -- Lọc thời gian --
     if start_date:
-        filter_conditions.append(func.date(Attendance.check_in_time) >= start_date)
+        query = query.filter(func.date(Attendance.check_in_time) >= start_date)
     if end_date:
-        filter_conditions.append(func.date(Attendance.check_in_time) <= end_date)
-        
-    # 2. Query trực tiếp từ bảng Attendance (Không cần nhóm theo ngày nữa để xem được mọi lần quét)
-    # Nếu bạn vẫn muốn chỉ hiện "Vào - Ra" gộp thì dùng logic dưới, 
-    # nhưng thường trang Logs Admin nên hiện từng bản ghi một để kiểm soát.
-    
-    query_logs = db.query(Attendance, Employee.full_name).\
-        join(Employee, Attendance.username == Employee.username, isouter=True).\
-        filter(*filter_conditions).\
-        order_by(Attendance.check_in_time.desc()).\
-        limit(limit).all()
-    
+        query = query.filter(func.date(Attendance.check_in_time) <= end_date)
+
+    # -- Lọc trạng thái --
+    if status == "fraud":
+        query = query.filter(Attendance.is_fraud == True)
+    elif status == "present":
+        query = query.filter(Attendance.is_fraud == False, or_(Attendance.note == None, Attendance.note == ""))
+
+    # -- Lọc Nhân viên độc lập --
+    if emp_keyword:
+        kw = f"%{emp_keyword}%"
+        query = query.filter(
+            or_(
+                Attendance.username.ilike(kw),
+                Employee.full_name.ilike(kw)
+            )
+        )
+
+    # -- Lọc Thiết bị độc lập --
+    if device_keyword:
+        dkw = f"%{device_keyword}%"
+        query = query.filter(
+            or_(
+                Attendance.client_ip.ilike(dkw),
+                Attendance.attendance_type.ilike(dkw)
+            )
+        )
+
+    total_records = query.count()
+    query_logs = query.order_by(Attendance.check_in_time.desc()).offset((page - 1) * limit).limit(limit).all()
+
     result = []
     for log, full_name in query_logs:
         result.append({
@@ -87,7 +100,7 @@ def get_attendance(
             "scan_time": log.check_in_time.strftime("%H:%M:%S"),
             "confidence": log.confidence,
             "image_path": log.image_path,
-            "is_fraud": bool(log.is_fraud), 
+            "is_fraud": bool(log.is_fraud),
             "fraud_note": log.fraud_note or "",
             "client_ip": log.client_ip or "",
             "latitude": log.latitude,
@@ -97,8 +110,14 @@ def get_attendance(
             "explanation_reason": log.explanation_reason,
             "note": log.note or ""
         })
-        
-    return result
+
+    return {
+        "data": result,
+        "total": total_records,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total_records + limit - 1) // limit
+    }
 
 @router.post("/api/attendance/explain")
 def submit_explanation(req: ExplainRequest, db: Session = Depends(get_db)):
@@ -501,3 +520,102 @@ def get_all_attendance_records(
     records = query.order_by(models.Attendance.check_in_time.asc()).offset(skip).limit(limit).all()
 
     return records
+
+@router.delete("/api/attendance/clear-unknown")
+def delete_all_unknown(
+    start_date: str = Query(..., description="Ngày bắt đầu"),
+    end_date: str = Query(..., description="Ngày kết thúc"),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    role = current_user.get("role", "user")
+    if role not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Chỉ Admin/Manager mới được xóa rác!")
+
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Sai định dạng ngày (YYYY-MM-DD)")
+
+    unknowns = db.query(Attendance).filter(
+        Attendance.username == "UNKNOWN",
+        Attendance.check_in_time >= start_dt,
+        Attendance.check_in_time <= end_dt
+    ).all()
+    
+    count = 0
+    for record in unknowns:
+        if record.image_path:
+            physical_img_path = "." + record.image_path
+            if os.path.exists(physical_img_path):
+                try: os.remove(physical_img_path)
+                except: pass
+        db.delete(record)
+        count += 1
+        
+    db.commit()
+    return {"status": "success", "message": f"Đã xóa {count} bản ghi UNKNOWN từ {start_date} đến {end_date}"}
+
+# --- 3. API TẠO NHANH BẢN GHI THỦ CÔNG CÓ ẢNH ---
+@router.post("/api/attendance/manual-create")
+async def create_manual_attendance(
+    username: str = Form(...),
+    scan_date: str = Form(...),  # YYYY-MM-DD
+    scan_time: str = Form(...),  # HH:MM:SS
+    attendance_type: str = Form("Thủ công"),
+    latitude: float = Form(0.0),
+    longitude: float = Form(0.0),
+    note: str = Form(""),
+    file: UploadFile = File(None),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.get("role") not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Không có quyền tạo!")
+
+    # Kiểm tra xem user có tồn tại không
+    emp = db.query(Employee).filter(Employee.username == username.upper()).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy nhân viên: {username}")
+
+    try:
+        check_in_dt = datetime.strptime(f"{scan_date} {scan_time}", "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Định dạng ngày giờ không hợp lệ. Chuẩn: YYYY-MM-DD HH:MM:SS")
+
+    # Xử lý lưu ảnh nếu có
+    image_path = None
+    if file:
+        # Tạo thư mục nếu chưa có
+        upload_dir = "./static/manual_uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        file_ext = file.filename.split(".")[-1]
+        new_filename = f"{username.upper()}_{check_in_dt.strftime('%Y%m%d_%H%M%S')}.{file_ext}"
+        full_path = os.path.join(upload_dir, new_filename)
+        
+        with open(full_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        image_path = f"/static/manual_uploads/{new_filename}"
+
+    # Tạo bản ghi
+    new_record = Attendance(
+        username=username.upper(),
+        full_name=emp.full_name,
+        check_in_time=check_in_dt,
+        confidence=1.0, # Nhập tay thì coi như tin tưởng 100%
+        image_path=image_path,
+        client_ip="Thêm thủ công",
+        latitude=latitude,
+        longitude=longitude,
+        attendance_type=attendance_type,
+        note=note,
+        is_fraud=False
+    )
+    
+    db.add(new_record)
+    db.commit()
+    
+    return {"status": "success", "message": "Đã tạo bản ghi thủ công thành công!"}

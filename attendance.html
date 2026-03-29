@@ -5,11 +5,26 @@
 
 {% block extra_css %}
 <style>
-    .badge { padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; }
+    .badge { padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 5px; }
     .badge-present { background: #dcfce7; color: #16a34a; }
     .badge-late { background: #fef3c7; color: #d97706; }
     .badge-absent { background: #fee2e2; color: #dc2626; }
     
+    /* CSS CHO GIAN LẬN */
+    .badge-fraud { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; animation: pulseRed 2s infinite; }
+    @keyframes pulseRed { 
+        0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); } 
+        70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); } 
+        100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } 
+    }
+    .fraud-note { font-size: 0.8rem; color: #dc2626; font-style: italic; margin-top: 4px; display: block; }
+    
+    /* NÚT THAO TÁC GIAN LẬN */
+    .btn-fraud-alert { background: #fff1f2; color: #dc2626; border: 1px dashed #fca5a5; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; margin-top: 5px;}
+    .btn-fraud-alert:hover { background: #fee2e2; border-style: solid;}
+    .btn-unfraud { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; margin-top: 5px;}
+    .btn-unfraud:hover { background: #22c55e; color: white;}
+
     .conf-high { color: #10b981; font-weight: 800; }
     .conf-med { color: #f59e0b; font-weight: 800; }
     .conf-low { color: #ef4444; font-weight: 800; }
@@ -22,7 +37,7 @@
     .explain-text { font-size: 0.85rem; color: #64748b; font-style: italic; max-width: 200px; line-height: 1.4;}
     .explain-status { font-size: 0.75rem; font-weight: bold; background: #f1f5f9; padding: 3px 6px; border-radius: 4px; color: #475569; display: inline-block; margin-bottom: 4px;}
 
-    /* CSS Cho Thống Kê (MỚI) */
+    /* CSS Cho Thống Kê */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .stat-card { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
     .stat-card h4 { margin: 0 0 5px 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
@@ -33,6 +48,20 @@
     .num.red { color: #ef4444; }
     .num.purple { color: #8b5cf6; }
 
+    /* Bố cục Table */
+    table { width: 100%; border-collapse: collapse; text-align: left; min-width: 800px; }
+    th { background: #f8fafc; color: var(--text-muted); font-size: 0.8rem; padding: 15px 20px; font-weight: 800; text-transform: uppercase; white-space: nowrap; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+
+    /* Phân trang */
+    .pagination-container { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-top: 1px solid var(--border); background: #f8fafc; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; margin-top: 10px; }
+    .page-info { font-size: 0.85rem; color: var(--text-muted); font-weight: 600;}
+    .pagination-controls { display: flex; gap: 5px; }
+    .page-btn { padding: 6px 12px; border: 1px solid var(--border); background: white; color: var(--theme-dark); border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.85rem; }
+    .page-btn:hover:not(:disabled) { background: var(--primary); color: white; border-color: var(--primary);}
+    .page-btn:disabled { background: #f1f5f9; color: #cbd5e1; cursor: not-allowed; }
+    .page-btn.active { background: var(--primary); color: white; border-color: var(--primary); pointer-events: none;}
+
     /* Modal CSS */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 9999; }
     .modal-content { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
@@ -41,32 +70,32 @@
 
 {% block content %}
 <div class="grid-container" style="grid-template-columns: 1fr;">
-    <div class="card" style="overflow-x: auto;">
+    <div class="card" style="overflow-x: auto; padding: 0;">
         
-        <div class="filter-bar">
+        <div class="filter-bar" style="display: flex; flex-wrap: wrap; gap: 15px; padding: 20px; border-bottom: 1px solid var(--border);">
             <div class="filter-group">
-                <label>Hiển thị:</label>
-                <select id="limitSelect" onchange="fetchAttendance()">
-                    <option value="50">50 bản ghi mới nhất</option>
-                    <option value="100" selected>100 bản ghi mới nhất</option>
-                    <option value="500">500 bản ghi mới nhất</option>
-                    <option value="1000">1000 bản ghi mới nhất</option>
+                <label style="display: block; font-size: 0.85rem; font-weight: bold; color: var(--text-muted); margin-bottom: 5px;">Hiển thị:</label>
+                <select id="limitSelect" onchange="fetchAttendance(1)" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <option value="10" selected>10 bản ghi</option>
+                    <option value="20">20 bản ghi</option>
+                    <option value="50">50 bản ghi</option>
+                    <option value="100">100 bản ghi</option>
                 </select>
             </div>
             <div class="filter-group" style="flex: 1; min-width: 250px;">
-                <label>🔍 Lọc theo nhân viên (Nhập tên/Mã):</label>
-                <input type="text" id="searchInput" placeholder="Nhập tên hoặc mã NV để xem thống kê riêng..." oninput="filterTable()">
+                <label style="display: block; font-size: 0.85rem; font-weight: bold; color: var(--text-muted); margin-bottom: 5px;">🔍 Lọc theo nhân viên (Nhập tên/Mã):</label>
+                <input type="text" id="searchInput" placeholder="Nhập từ khóa và nhấn Enter..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box;" onkeydown="if(event.key === 'Enter') fetchAttendance(1)">
             </div>
-            <button class="btn-primary" style="background: var(--success); width: auto; margin-left: auto;" onclick="window.print()">🖨️ Xuất báo cáo</button>
+            <button class="btn-primary" style="background: var(--success); height: 42px; margin-top: auto;" onclick="window.print()">🖨️ Xuất báo cáo</button>
         </div>
 
-        <div class="stats-grid">
+        <div class="stats-grid" style="padding: 0 20px;">
             <div class="stat-card">
                 <h4>Tổng số ca</h4>
                 <p class="num blue" id="statTotal">0</p>
             </div>
             <div class="stat-card">
-                <h4>Đúng giờ</h4>
+                <h4>Hợp lệ / Đúng giờ</h4>
                 <p class="num green" id="statPresent">0</p>
             </div>
             <div class="stat-card">
@@ -74,8 +103,8 @@
                 <p class="num orange" id="statLate">0</p>
             </div>
             <div class="stat-card">
-                <h4>Vắng mặt</h4>
-                <p class="num red" id="statAbsent">0</p>
+                <h4>Gian lận</h4>
+                <p class="num red" id="statFraud">0</p>
             </div>
             <div class="stat-card" style="background: #f3f4f6; border-color: #d1d5db;">
                 <h4>Tỷ lệ xác thực (TB)</h4>
@@ -83,22 +112,28 @@
             </div>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>NGÀY</th>
-                    <th>NHÂN VIÊN</th>
-                    <th>GIỜ VÀO</th>
-                    <th>GIỜ RA</th>
-                    <th>XÁC THỰC</th>
-                    <th>TRẠNG THÁI</th>
-                    <th>GIẢI TRÌNH</th>
-                </tr>
-            </thead>
-            <tbody id="attTableBody">
-                <tr><td colspan="7" style="text-align: center;">Đang tải dữ liệu...</td></tr>
-            </tbody>
-        </table>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>NGÀY</th>
+                        <th>NHÂN VIÊN</th>
+                        <th>GIỜ CÓ MẶT</th>
+                        <th>XÁC THỰC</th>
+                        <th>TRẠNG THÁI</th>
+                        <th>GIẢI TRÌNH & HÀNH ĐỘNG</th>
+                    </tr>
+                </thead>
+                <tbody id="attTableBody">
+                    <tr><td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">Đang tải dữ liệu...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-container">
+            <div class="page-info" id="pageInfo">Đang hiển thị 0 - 0 của 0 bản ghi</div>
+            <div class="pagination-controls" id="paginationControls"></div>
+        </div>
     </div>
 </div>
 
@@ -107,153 +142,163 @@
         <h3 style="margin-top:0; color: var(--theme-dark); border-bottom: 1px solid var(--border); padding-bottom: 10px;">✍️ Gửi Giải Trình Chấm Công</h3>
         <form id="explainForm">
             <input type="hidden" id="explain_id">
-            <div class="form-group">
-                <label>Lý do giải trình (Đi muộn, quên chấm công...)*</label>
-                <textarea id="explain_reason" rows="4" required style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-family: 'Nunito';" placeholder="Nhập chi tiết lý do..."></textarea>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; font-size: 0.85rem; margin-bottom: 5px; color: var(--text-muted);">Lý do giải trình (Đi muộn, quên chấm công...)*</label>
+                <textarea id="explain_reason" rows="4" required style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box;" placeholder="Nhập chi tiết lý do..."></textarea>
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="button" class="btn-primary" style="background: #e2e8f0; color: #475569;" onclick="closeExplainModal()">HỦY</button>
-                <button type="submit" class="btn-primary">GỬI QUẢN LÝ</button>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn-primary" style="flex: 1; background: #e2e8f0; color: #475569; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer;" onclick="closeExplainModal()">HỦY</button>
+                <button type="submit" class="btn-primary" style="flex: 1; background: var(--primary); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer;">GỬI QUẢN LÝ</button>
             </div>
         </form>
     </div>
 </div>
+
+<div id="fraudModal" class="modal-overlay">
+    <div class="modal-content" style="border-top: 5px solid #dc2626;">
+        <h3 style="margin-top:0; color: #dc2626; padding-bottom: 10px; font-size: 1.2rem;">🚨 Báo cáo Nghi ngờ Gian lận</h3>
+        <p style="font-size: 0.9rem; color: #475569; margin-bottom: 15px;">Gắn cờ cảnh báo cho bản ghi này kèm lý do để làm bằng chứng.</p>
+        <form id="fraudForm">
+            <input type="hidden" id="fraud_att_id">
+            <div style="margin-bottom: 15px;">
+                <textarea id="fraud_note" rows="3" required style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; resize: vertical; box-sizing: border-box;" placeholder="VD: Nhờ người quét hộ, dùng ảnh giả..."></textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: #e2e8f0; font-weight: bold; cursor: pointer;" onclick="closeFraudModal()">HỦY BỎ</button>
+                <button type="submit" style="flex: 1; padding: 12px; border: none; border-radius: 8px; background: #dc2626; color: white; font-weight: bold; cursor: pointer;">XÁC NHẬN GIAN LẬN</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    let allAttendance = [];
+    let currentPage = 1;
     const currentUserRole = localStorage.getItem("hrm_role") || "user";
+    const token = localStorage.getItem("hrm_token"); 
 
-    // 1. Lấy dữ liệu từ API
-    async function fetchAttendance() {
+    // 1. Tải dữ liệu từ API Server-side Pagination
+    async function fetchAttendance(page = 1) {
+        currentPage = page;
         const limit = document.getElementById('limitSelect').value;
+        const keyword = document.getElementById('searchInput').value.trim();
+
+        let url = `/api/attendance?page=${page}&limit=${limit}`;
+        if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+
         try {
-            const res = await fetch(`/api/attendance?limit=${limit}`);
-            allAttendance = await res.json();
-            filterTable();
-        } catch (error) { console.error("Lỗi:", error); }
+            document.getElementById('attTableBody').innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">Đang tải dữ liệu...</td></tr>';
+            
+            const res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.status === 401) {
+                alert("Phiên làm việc hết hạn!"); window.location.href = "/login"; return;
+            }
+
+            const responseData = await res.json();
+            
+            calculateStats(responseData.data, responseData.total);
+            renderTable(responseData.data);
+            renderPagination(responseData.total, responseData.page, responseData.limit, responseData.total_pages);
+        } catch (error) { 
+            console.error("Lỗi:", error); 
+            document.getElementById('attTableBody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Lỗi kết nối máy chủ!</td></tr>';
+        }
     }
 
-    // 2. Lọc dữ liệu trên bảng
-    function filterTable() {
-        const keyword = document.getElementById('searchInput').value.toLowerCase();
-        const filtered = allAttendance.filter(item => {
-            return item.full_name.toLowerCase().includes(keyword) || item.username.toLowerCase().includes(keyword);
-        });
-        
-        // Tính toán Thống kê dựa trên dữ liệu đã lọc
-        calculateStats(filtered);
-        
-        // Render bảng
-        renderTable(filtered);
-    }
-
-    // --- HÀM TÍNH TOÁN THỐNG KÊ (MỚI) ---
-    function calculateStats(data) {
-        let total = data.length;
-        let present = 0;
-        let late = 0;
-        let absent = 0;
-        
-        // Biến để tính trung bình tỷ lệ xác thực AI
-        let totalConfidence = 0;
-        let validConfCount = 0;
+    // 2. Tính toán Thống kê 
+    function calculateStats(data, totalFromServer) {
+        let present = 0; let late = 0; let fraud = 0;
+        let totalConfidence = 0; let validConfCount = 0;
 
         data.forEach(item => {
-            // Tính số ca
-            if (item.status === 'Present' || item.status === 'Đúng giờ') present++;
-            else if (item.status === 'Late' || item.status === 'Đi muộn') late++;
-            else if (item.status === 'Absent' || item.status === 'Vắng') absent++;
-            else present++; 
+            if (item.is_fraud) { fraud++; }
+            else if (item.late_minutes > 0) { late++; }
+            else { present++; }
 
-            // Cộng dồn tỷ lệ xác thực (Bỏ qua các ca không quét mặt/vắng mặt)
             if (item.confidence && item.confidence > 0) {
                 totalConfidence += parseFloat(item.confidence);
                 validConfCount++;
             }
         });
 
-        // Tính trung bình
         let avgConf = "--";
-        if (validConfCount > 0) {
-            avgConf = Math.round(totalConfidence / validConfCount);
-        }
+        if (validConfCount > 0) avgConf = Math.round(totalConfidence / validConfCount);
 
-        // Cập nhật lên giao diện
-        document.getElementById('statTotal').innerText = total;
+        document.getElementById('statTotal').innerText = totalFromServer || 0;
         document.getElementById('statPresent').innerText = present;
         document.getElementById('statLate').innerText = late;
-        document.getElementById('statAbsent').innerText = absent;
+        document.getElementById('statFraud').innerText = fraud;
         document.getElementById('statConf').innerText = avgConf !== "--" ? avgConf + '%' : '--%';
         
-        // Đổi màu cảnh báo nếu Tỷ lệ trung bình quá thấp
         const confElement = document.getElementById('statConf');
         if (avgConf !== "--") {
-            if (avgConf >= 80) confElement.style.color = "#10b981"; // Xanh
-            else if (avgConf >= 60) confElement.style.color = "#f59e0b"; // Cam
-            else confElement.style.color = "#ef4444"; // Đỏ
-        } else {
-            confElement.style.color = "#8b5cf6"; // Tím mặc định nếu trống
+            if (avgConf >= 80) confElement.style.color = "#10b981";
+            else if (avgConf >= 60) confElement.style.color = "#f59e0b";
+            else confElement.style.color = "#ef4444";
         }
     }
 
-    // 3. Render bảng HTML
+    // 3. Render Bảng HTML
     function renderTable(data) {
         const tbody = document.getElementById('attTableBody');
         tbody.innerHTML = '';
-        
-        // Đổi lại Header của Bảng (Chỉ còn 6 cột)
-        document.querySelector('thead tr').innerHTML = `
-            <th>NGÀY</th>
-            <th>NHÂN VIÊN</th>
-            <th>GIỜ CÓ MẶT</th>
-            <th>XÁC THỰC</th>
-            <th>TRẠNG THÁI</th>
-            <th>GIẢI TRÌNH</th>
-        `;
 
         if(data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: gray;">Không có dữ liệu.</td></tr>'; 
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 30px;">Không có dữ liệu.</td></tr>'; 
             return;
         }
 
         data.forEach(item => {
-            // 1. Ngày tháng
-            let dateStr = "---";
-            if(item.date) {
-                const [y, m, d] = item.date.split('-');
-                dateStr = `${d}/${m}/${y}`;
-            }
+            let dateStr = item.date ? item.date.split('-').reverse().join('/') : "---";
             
-            // 2. Trạng thái (Đi muộn / Hợp lệ)
+            // Huy hiệu trạng thái
             let statusBadge = `<span class="badge badge-present">✔️ Hợp lệ</span>`;
-            if (item.late_minutes > 0) {
+            if (item.is_fraud) {
+                statusBadge = `
+                    <span class="badge badge-fraud">🚨 GIAN LẬN</span>
+                    ${item.fraud_note ? `<span class="fraud-note">${item.fraud_note}</span>` : ''}
+                `;
+            } else if (item.late_minutes > 0) {
                 statusBadge = `<span class="badge badge-late">⚠️ Đi muộn</span>`;
             }
 
-            // 3. Tỷ lệ xác thực (Confidence)
+            // Tỷ lệ xác thực (Confidence)
             let confHtml = `<span style="color:#94a3b8;">---</span>`;
             if (item.confidence) {
                 let confClass = "conf-high", icon = "🎯";
                 if (item.confidence < 80) { confClass = "conf-med"; icon = "⚠️"; }
                 if (item.confidence < 60) { confClass = "conf-low"; icon = "❗"; }
-                confHtml = `<span class="${confClass}">${icon} ${item.confidence}%</span>`;
+                confHtml = `<span class="${confClass}">${icon} ${parseFloat(item.confidence).toFixed(2)}%</span>`;
             }
 
-            // 4. Cột Giải Trình
-            let explainHtml = '';
+            // Cột Giải Trình & Hành Động
+            let actionHtml = '';
+
+            // Khối 1: Giải trình
             if (item.explanation_status && item.explanation_status !== "") {
                 let statusColor = item.explanation_status === 'Đã duyệt' ? '#10b981' : (item.explanation_status === 'Từ chối' ? '#ef4444' : '#f59e0b');
-                explainHtml = `
+                actionHtml += `
                     <div class="explain-status" style="color: ${statusColor}; background: ${statusColor}20;">${item.explanation_status}</div>
                     <div class="explain-text">${item.explanation_reason || ''}</div>
                 `;
-            } else if (item.late_minutes > 0) {
-                // Chỉ hiện nút giải trình nếu đi muộn
-                explainHtml = `<button class="btn-explain" onclick="openExplainModal(${item.id})">✍️ Giải trình</button>`;
-            } else {
-                explainHtml = `<span style="color:#cbd5e1;">---</span>`;
+            } else if (item.late_minutes > 0 && !item.is_fraud) {
+                actionHtml += `<button class="btn-explain" onclick="openExplainModal(${item.id})">✍️ Giải trình</button>`;
+            } else if (!item.is_fraud) {
+                actionHtml += `<span style="color:#cbd5e1;">---</span>`;
+            }
+
+            // Khối 2: Nút báo cáo gian lận (Chỉ Manager/Admin)
+            if (currentUserRole === "admin" || currentUserRole === "manager") {
+                if (!item.is_fraud) {
+                    actionHtml += `<div style="margin-top: 8px;"><button class="btn-fraud-alert" onclick="openFraudModal(${item.id})">🚨 Cảnh báo Gian lận</button></div>`;
+                } else {
+                    actionHtml += `<div style="margin-top: 8px;"><button class="btn-unfraud" onclick="removeFraud(${item.id})">✅ Gỡ cờ Gian lận</button></div>`;
+                }
             }
 
             // Xuất ra HTML
@@ -261,16 +306,42 @@
                 <tr>
                     <td><strong>${dateStr}</strong></td>
                     <td>${item.full_name} <br><small style="color:var(--text-muted);">Mã: ${item.username}</small></td>
-                    <td class="time-box" style="color:#2563eb; font-size: 1.1rem;">${item.scan_time}</td>
+                    <td class="time-box" style="color:#2563eb;">${item.scan_time}</td>
                     <td>${confHtml}</td>
                     <td>${statusBadge}</td>
-                    <td>${explainHtml}</td>
+                    <td>${actionHtml}</td>
                 </tr>
             `;
         });
     }
 
-    // --- XỬ LÝ MODAL GIẢI TRÌNH ---
+    // 4. Render Phân Trang
+    function renderPagination(total, page, limit, totalPages) {
+        const start = (page - 1) * limit + 1;
+        const end = Math.min(page * limit, total);
+        
+        if(total === 0) document.getElementById('pageInfo').innerText = `Không có bản ghi nào`;
+        else document.getElementById('pageInfo').innerHTML = `Đang hiển thị <strong style="color:var(--primary)">${start} - ${end}</strong> trong tổng số <strong>${total}</strong> bản ghi`;
+
+        let html = '';
+        if (totalPages > 1) {
+            html += `<button class="page-btn" ${page === 1 ? 'disabled' : ''} onclick="fetchAttendance(${page - 1})">❮</button>`;
+            
+            let startPage = Math.max(1, page - 2);
+            let endPage = Math.min(totalPages, page + 2);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="page-btn ${i === page ? 'active' : ''}" onclick="fetchAttendance(${i})">${i}</button>`;
+            }
+            
+            html += `<button class="page-btn" ${page === totalPages ? 'disabled' : ''} onclick="fetchAttendance(${page + 1})">❯</button>`;
+        }
+        document.getElementById('paginationControls').innerHTML = html;
+    }
+
+    // =======================================================
+    // XỬ LÝ MODAL GIẢI TRÌNH
+    // =======================================================
     function openExplainModal(id) {
         document.getElementById('explain_id').value = id;
         document.getElementById('explain_reason').value = '';
@@ -288,21 +359,89 @@
             reason: document.getElementById('explain_reason').value.trim()
         };
 
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.innerText = "ĐANG GỬI..."; submitBtn.disabled = true;
+
         try {
             const res = await fetch('/api/attendance/explain', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if(res.ok) {
                 alert(data.message);
                 closeExplainModal();
-                fetchAttendance(); 
+                fetchAttendance(currentPage); 
             } else {
                 alert("Lỗi: " + data.detail);
             }
-        } catch(err) { alert("Lỗi kết nối máy chủ!"); }
+        } catch(err) { 
+            alert("Lỗi kết nối máy chủ!"); 
+        } finally {
+            submitBtn.innerText = "GỬI QUẢN LÝ"; submitBtn.disabled = false;
+        }
     });
 
-    fetchAttendance();
+    // =======================================================
+    // XỬ LÝ MODAL GIAN LẬN
+    // =======================================================
+    function openFraudModal(id) {
+        document.getElementById('fraud_att_id').value = id;
+        document.getElementById('fraud_note').value = '';
+        document.getElementById('fraudModal').style.display = 'flex';
+    }
+    
+    function closeFraudModal() {
+        document.getElementById('fraudModal').style.display = 'none';
+    }
+
+    document.getElementById('fraudForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const attId = document.getElementById('fraud_att_id').value;
+        const note = document.getElementById('fraud_note').value.trim();
+        
+        if(confirm("Xác nhận gắn cờ gian lận cho bản ghi này?")) {
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.innerText = "ĐANG XỬ LÝ..."; submitBtn.disabled = true;
+            try {
+                const res = await fetch('/api/attendance/mark_fraud', {
+                    method: 'PUT', 
+                    headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+                    body: JSON.stringify({ id: parseInt(attId), is_fraud: true, fraud_note: note, role: currentUserRole })
+                });
+                if(res.ok) { 
+                    closeFraudModal(); 
+                    fetchAttendance(currentPage); 
+                } else { 
+                    alert("Lỗi không thể lưu dữ liệu"); 
+                }
+            } catch (err) { 
+                alert("Lỗi kết nối máy chủ!"); 
+            } finally { 
+                submitBtn.innerText = "XÁC NHẬN GIAN LẬN"; submitBtn.disabled = false; 
+            }
+        }
+    });
+
+    // Gỡ cờ Gian lận
+    async function removeFraud(id) {
+        if(confirm("Xác nhận gỡ bỏ cờ gian lận và khôi phục trạng thái cũ?")) {
+            try {
+                const res = await fetch('/api/attendance/mark_fraud', {
+                    method: 'PUT', 
+                    headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+                    body: JSON.stringify({ id: parseInt(id), is_fraud: false, fraud_note: "", role: currentUserRole })
+                });
+                if(res.ok) fetchAttendance(currentPage); 
+                else alert("Lỗi khi gỡ bỏ cờ gian lận.");
+            } catch (err) { 
+                alert("Lỗi kết nối máy chủ!"); 
+            }
+        }
+    }
+
+    // Gọi lần đầu khi load trang
+    fetchAttendance(1);
 </script>
 {% endblock %}
