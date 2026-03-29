@@ -10,12 +10,12 @@ WORKDIR /app
 
 # Cài đặt các thư viện hệ thống lõi cần thiết cho OpenCV, YOLO và DeepFace
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
+    libxrender1 \
     libxext6 \
-    libxrender-dev \
-    && apt-get clean \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy file requirements.txt vào trước để tận dụng cache của Docker
