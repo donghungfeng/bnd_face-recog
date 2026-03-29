@@ -488,9 +488,13 @@ async def test_real_flow(request: TestFaceRequest):
         return {"status": "error", "message": f"Lỗi hệ thống: {str(e)}"}
 
 
+import cv2
+import os
+
 @router.post("/api/admin/scan-fraud")
 async def scan_fraud_records(req: ScanFraudRequest, db: Session = Depends(get_db)):
     try:
+        print(f"\n🚀 --- BẮT ĐẦU CHIẾN DỊCH QUÉT GIAN LẬN: {req.start_date} ĐẾN {req.end_date} ---")
         start_dt = datetime.strptime(req.start_date, "%Y-%m-%d")
         end_dt = datetime.strptime(req.end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
         
@@ -498,18 +502,22 @@ async def scan_fraud_records(req: ScanFraudRequest, db: Session = Depends(get_db
             Attendance.check_in_time >= start_dt,
             Attendance.check_in_time <= end_dt,
             Attendance.image_path != None,
-            Attendance.image_path != ""
+            Attendance.image_path != "",
+            (Attendance.is_fraud == False) | (Attendance.is_fraud == None)
         ).all()
 
+        total_records = len(records)
+        print(f"📋 Tổng số bản ghi trong Database cần duyệt: {total_records}")
+
         if not records:
-            return {"status": "success", "message": "Không có ảnh hợp lệ nào cần quét trong khoảng thời gian này.", "scanned_count": 0, "scanned_filenames": [], "fraud_list": []}
+            return {"status": "success", "message": "Không có ảnh hợp lệ cần quét.", "scanned_count": 0, "scanned_filenames": [], "fraud_detected": 0, "fraud_list": []}
 
         fraud_count = 0
         total_files_on_disk_scanned = 0
         scanned_filenames = []
         fraud_list = []
 
-        for record in records:
+        for index, record in enumerate(records, 1):
             db_path = record.image_path
             if not db_path: continue
             
@@ -517,10 +525,26 @@ async def scan_fraud_records(req: ScanFraudRequest, db: Session = Depends(get_db
             physical_img_path = os.path.join(BASE_DIR, clean_db_path)
             filename = os.path.basename(physical_img_path)
 
+            # --- 1. LỌC BỎ QUA CÁC FILE CÓ TIỀN TỐ UNKNOWN ---
+            if filename.startswith("UNKNOWN"):
+                print(f"[{index}/{total_records}] ⏭️ Bỏ qua người lạ (UNKNOWN): {filename}")
+                continue
+
+            # --- 2. LỌC BỎ QUA FILE HỎNG/RỖNG ---
             if not os.path.exists(physical_img_path):
-                print(f"⚠️ Rà soát Audit: File bị mất tại {physical_img_path}")
+                print(f"[{index}/{total_records}] ❌ Lỗi: Mất file trên đĩa: {filename}")
                 continue
                 
+            if os.path.getsize(physical_img_path) < 1024:
+                print(f"[{index}/{total_records}] ❌ Lỗi: File rỗng/ảo (<1KB): {filename}")
+                continue
+                
+            test_img = cv2.imread(physical_img_path)
+            if test_img is None:
+                print(f"[{index}/{total_records}] ❌ Lỗi: File hỏng cấu trúc (Corrupted): {filename}")
+                continue
+
+            print(f"[{index}/{total_records}] 🔍 Đang soi AI: {filename}...")
             total_files_on_disk_scanned += 1
             scanned_filenames.append(filename)
             
@@ -528,67 +552,66 @@ async def scan_fraud_records(req: ScanFraudRequest, db: Session = Depends(get_db
             fraud_reason = ""
 
             try:
-                # --- BƯỚC 1: DÙNG YOLO QUÉT CỰC MẠNH (ĐỘ NHẠY CAO) ---
+                # 1. Dùng YOLO quét thiết bị
                 yolo_results = object_model(physical_img_path, verbose=False)
-                
-                # Các mã Class đồ vật nghi ngờ trong YOLO (COCO Dataset):
-                # 67: cell phone (điện thoại)
-                # 62: tv (thường dùng cho các loại màn hình to/viền đen)
-                # 63: laptop
-                suspicious_classes = [62, 63, 67] 
+                suspicious_classes = [62, 63, 67] # TV, Laptop, Cell phone
                 
                 for r in yolo_results:
                     for box in r.boxes:
                         class_id = int(box.cls[0])
                         conf = float(box.conf[0])
-                        
-                        # HẠ NGƯỠNG TỰ TIN XUỐNG 25% VÀ MỞ RỘNG ĐỐI TƯỢNG TÌM KIẾM
                         if class_id in suspicious_classes and conf > 0.25: 
                             is_fraud_detected = True
                             class_name = r.names[class_id].upper()
-                            fraud_reason = f"AI quét thấy thiết bị: {class_name} (Tỉ lệ: {round(conf*100)}%)"
+                            fraud_reason = f"AI YOLO quét thấy: {class_name} ({round(conf*100)}%)"
                             break
                     if is_fraud_detected: break
 
-                # --- BƯỚC 2: NẾU KHÔNG THẤY MÀN HÌNH, MỚI SOI VÀO DA MẶT ---
+                # 2. Dùng DeepFace soi mặt phẳng
                 if not is_fraud_detected:
                     faces = DeepFace.extract_faces(
                         img_path=physical_img_path, 
                         detector_backend="retinaface",
                         enforce_detection=True, 
                         anti_spoofing=True,
-                        expand_percentage=15 # Mở rộng vùng cắt 15%
+                        expand_percentage=15 
                     )
                     
                     if faces and not faces[0].get("is_real", True):
                         is_fraud_detected = True
-                        fraud_reason = "Nghi vấn dùng ảnh in/mặt phẳng 2D (Anti-spoofing AI)"
+                        fraud_reason = "Nghi vấn dùng ảnh in/mặt phẳng 2D (Fasnet AI)"
 
-                # --- GHI NHẬN KẾT QUẢ GIAN LẬN ---
+                # 3. Ghi nhận gian lận
                 if is_fraud_detected:
+                    print(f"   => 🚨 BẮT QUẢ TANG: {fraud_reason}")
                     record.is_fraud = True
                     record.fraud_note = fraud_reason
                     fraud_count += 1
                     
                     emp_name = record.employee.full_name if record.employee else "Unknown"
+                    scan_time_str = str(record.scan_time) if record.scan_time else "N/A"
+                    
                     fraud_list.append({
                         "name": emp_name,
                         "username": record.username,
-                        "time": record.scan_time,
+                        "time": scan_time_str,
                         "filename": filename,
                         "image_path": record.image_path
                     })
+                else:
+                    print(f"   => ✅ Hợp lệ")
                     
             except Exception as e:
-                print(f"Lỗi phân tích file {filename}: {e}")
+                print(f"   => ⚠️ Lỗi AI nội bộ khi xử lý file {filename}: {e}")
                 continue
                 
         if fraud_count > 0:
             db.commit()
 
+        print(f"🏁 --- HOÀN TẤT: Đã soi {total_files_on_disk_scanned} file, tóm được {fraud_count} ca gian lận ---")
         return {
             "status": "success", 
-            "message": f"Đã quét thành công {total_files_on_disk_scanned} ảnh.",
+            "message": f"Đã quét thành công.",
             "scanned_count": total_files_on_disk_scanned,
             "scanned_filenames": scanned_filenames,
             "fraud_detected": fraud_count,
@@ -596,4 +619,5 @@ async def scan_fraud_records(req: ScanFraudRequest, db: Session = Depends(get_db
         }
 
     except Exception as e:
+        print(f"🔥 LỖI CHÍ MẠNG TOÀN HỆ THỐNG: {e}")
         return {"status": "error", "message": f"Lỗi hệ thống khi quét: {str(e)}"}
