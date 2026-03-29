@@ -11,18 +11,16 @@
     .btn-clear-unknown:hover { background: #475569; }
     .btn-create-manual { background: var(--primary, #007bff); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;}
     .btn-create-manual:hover { opacity: 0.9; }
+    .btn-scan-fraud { background: #f59e0b; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px;}
+    .btn-scan-fraud:hover { background: #d97706; }
 
-    /* --- FILTER BAR (SỬ DỤNG CSS GRID HIỆN ĐẠI) --- */
+    /* --- FILTER BAR --- */
     .filter-wrapper {
         background: #ffffff; padding: 20px; border-radius: 12px; margin-bottom: 25px;
         border: 1px solid var(--border, #e2e8f0); box-shadow: 0 2px 10px rgba(0,0,0,0.03);
     }
     .filter-grid {
-        display: grid;
-        /* Chia tỷ lệ chuẩn trên PC: 6 cột, tìm kiếm chiếm rộng hơn */
-        grid-template-columns: 1fr 1fr 2fr 2fr 1fr 1fr;
-        gap: 15px;
-        align-items: end;
+        display: grid; grid-template-columns: 1fr 1fr 2fr 2fr 1fr 1fr; gap: 15px; align-items: end;
     }
     .filter-group { display: flex; flex-direction: column; }
     .filter-group label { 
@@ -48,14 +46,8 @@
     .btn-apply-filter:hover { background: #059669; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
 
     /* --- KHỐI THỐNG KÊ --- */
-    .stats-grid { 
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
-        gap: 15px; margin-bottom: 25px; 
-    }
-    .stat-card { 
-        background: #fff; border: 1px solid var(--border, #e2e8f0); border-radius: 12px; 
-        padding: 20px 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: 0.2s;
-    }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: #fff; border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 20px 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: 0.2s; }
     .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.05); }
     .stat-card h4 { margin: 0 0 10px 0; font-size: 0.8rem; color: var(--text-muted, #64748b); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;}
     .stat-card .num { font-size: 2.2rem; font-weight: 800; margin: 0; line-height: 1; }
@@ -79,11 +71,7 @@
     .badge-type-kiosk { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
     .fraud-note { font-size: 0.8rem; color: #dc2626; font-style: italic; margin-top: 4px; display: block; }
     
-    @keyframes pulseRed {
-        0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-        70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-    }
+    @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
 
     .conf-high { color: #10b981; font-weight: 800; } .conf-med { color: #f59e0b; font-weight: 800; } .conf-low { color: #ef4444; font-weight: 800; }
     .time-box { font-family: 'Orbitron', monospace; font-size: 1.1rem; font-weight: bold; color: var(--primary, #007bff); background: #eff6ff; padding: 4px 8px; border-radius: 6px; border: 1px solid #bfdbfe;}
@@ -95,16 +83,12 @@
     /* --- GIẢI TRÌNH & BUTTONS --- */
     .btn-explain { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 5px;}
     .btn-explain:hover { background: #bae6fd; }
-    
     .btn-fraud-alert { background: #fff1f2; color: #dc2626; border: 1px dashed #fca5a5; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; margin-top: 5px;}
     .btn-fraud-alert:hover { background: #fee2e2; border-style: solid;}
-    
     .btn-unfraud { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; margin-top: 5px;}
     .btn-unfraud:hover { background: #22c55e; color: white;}
-
     .explain-status { font-size: 0.75rem; font-weight: bold; padding: 4px 8px; border-radius: 6px; display: inline-block;}
     .explain-text { font-size: 0.85rem; color: #475569; font-style: italic; max-width: 200px; line-height: 1.4; word-wrap: break-word; background: #f8fafc; padding: 8px; border-radius: 6px; border-left: 3px solid #cbd5e1;}
-    
     .btn-delete-log { background: #f87171; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 5px;}
     .btn-delete-log:hover { background: #dc2626; box-shadow: 0 2px 5px rgba(220,38,38,0.3);}
     .btn-edit-log { background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 5px; margin-right: 5px;}
@@ -118,29 +102,19 @@
     }
     .page-info { font-size: 0.85rem; color: var(--text-muted, #64748b); font-weight: 600;}
     .pagination-controls { display: flex; gap: 5px; }
-    .page-btn {
-        padding: 6px 12px; border: 1px solid var(--border, #e2e8f0); background: white; color: #333;
-        border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.85rem;
-    }
+    .page-btn { padding: 6px 12px; border: 1px solid var(--border, #e2e8f0); background: white; color: #333; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.85rem; }
     .page-btn:hover:not(:disabled) { background: var(--primary, #007bff); color: white; border-color: var(--primary, #007bff);}
     .page-btn:disabled { background: #f1f5f9; color: #cbd5e1; cursor: not-allowed; }
     .page-btn.active { background: var(--primary, #007bff); color: white; border-color: var(--primary, #007bff); pointer-events: none;}
 
     /* --- MODAL --- */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.8); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px);}
-    .modal-content { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
-    .img-modal-content { position: relative; max-width: 90%; max-height: 90%; text-align: center; }
-    .img-modal-content img { max-width: 100%; max-height: 80vh; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid white; }
-    .img-modal-close { position: absolute; top: -15px; right: -15px; background: #ef4444; color: white; border: none; width: 35px; height: 35px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); transition: 0.2s; }
-    .img-modal-close:hover { background: #dc2626; transform: scale(1.1); }
+    .modal-content { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;}
+    .loader-inline { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle;}
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* ==========================================================
-       RESPONSIVE: IPAD & TABLET (< 1200px)
-       ========================================================== */
-    @media (max-width: 1200px) {
-        .filter-grid { grid-template-columns: repeat(3, 1fr); }
-    }
-    
+    /* RESPONSIVE */
+    @media (max-width: 1200px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 768px) {
         .filter-grid { grid-template-columns: repeat(2, 1fr); }
         .stats-grid { grid-template-columns: 1fr 1fr; } 
@@ -166,13 +140,12 @@
         .pagination-container { flex-direction: column; gap: 12px; }
         .pagination-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px;}
     }
-
     @media (max-width: 480px) {
         .filter-grid { grid-template-columns: 1fr; }
         .filter-actions { justify-content: stretch; }
         .btn-apply-filter { width: 100%; }
         .admin-action-bar { flex-direction: column; }
-        .btn-clear-unknown, .btn-create-manual { width: 100%; text-align: center; justify-content: center;}
+        .btn-clear-unknown, .btn-create-manual, .btn-scan-fraud { width: 100%; text-align: center; justify-content: center;}
     }
 </style>
 {% endblock %}
@@ -183,6 +156,7 @@
     <div class="admin-action-bar">
         <button class="btn-clear-unknown" onclick="openClearUnknownModal()">🧹 Xóa nhanh ảnh UNKNOWN</button>
         <button class="btn-create-manual" onclick="openManualCreateModal()">➕ Tạo bản ghi thủ công</button>
+        <button class="btn-scan-fraud" onclick="openScanFraudModal()">🕵️ Rà Soát Gian Lận AI</button>
     </div>
 
     <div class="filter-wrapper">
@@ -258,6 +232,34 @@
             <div class="page-info" id="pageInfo">Đang hiển thị 0 - 0 của 0 bản ghi</div>
             <div class="pagination-controls" id="paginationControls"></div>
         </div>
+    </div>
+</div>
+
+<div id="scanFraudModal" class="modal-overlay">
+    <div class="modal-content" style="border-top: 5px solid #f59e0b; max-width: 550px;">
+        <h3 style="margin-top:0; color: #d97706; padding-bottom: 10px;">🕵️ TRUY VẾT GIAN LẬN AI</h3>
+        
+        <div id="scanFraudSetup">
+            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px; line-height: 1.5;">Hệ thống sẽ chạy thuật toán <strong style="color:#000;">YOLOv8 & Anti-Spoofing</strong> để soi cấu trúc toàn bộ ảnh chấm công nhằm bóc trần những người dùng điện thoại hoặc ảnh in.</p>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 0.85rem; font-weight: bold; display:block; margin-bottom:5px;">Từ ngày:</label>
+                    <input type="date" id="scan_start_date" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; outline: none;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 0.85rem; font-weight: bold; display:block; margin-bottom:5px;">Đến ngày:</label>
+                    <input type="date" id="scan_end_date" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; outline: none;">
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="button" style="flex: 1; padding: 12px; background: #e2e8f0; border-radius: 8px; border: none; font-weight: bold; cursor: pointer;" onclick="document.getElementById('scanFraudModal').style.display='none'">HỦY BỎ</button>
+                <button type="button" id="btnRunScan" style="flex: 2; padding: 12px; background: #f59e0b; color: white; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px;" onclick="executeFraudScan()">🚀 BẮT ĐẦU QUÉT</button>
+            </div>
+        </div>
+
+        <div id="scanFraudResult" style="display: none;"></div>
     </div>
 </div>
 
@@ -395,10 +397,28 @@
 </div>
 
 <div id="imageModal" class="modal-overlay" onclick="document.getElementById('imageModal').style.display='none'">
-    <div class="img-modal-content" onclick="event.stopPropagation()">
-        <button class="img-modal-close" onclick="document.getElementById('imageModal').style.display='none'">✖</button>
-        <img id="previewImage" src="" alt="Ảnh chấm công phóng to">
-        <p id="previewName" style="color: white; font-weight: bold; margin-top: 15px; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"></p>
+    <div class="img-modal-content" onclick="event.stopPropagation()" style="background: transparent; box-shadow: none;">
+        <button class="img-modal-close" onclick="document.getElementById('imageModal').style.display='none'" style="z-index: 100;">✖</button>
+        
+        <div style="position: relative; display: inline-block;">
+            <img id="previewImage" src="" alt="Ảnh bằng chứng" style="display: block; max-width: 100%; max-height: 85vh; border-radius: 12px; border: 4px solid white; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
+            
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5), transparent); color: white; padding: 40px 20px 20px 20px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h3 id="previewEmpName" style="margin: 0 0 5px 0; color: #00f2ff; font-family: 'Orbitron', sans-serif; font-size: 1.3rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">KHÔNG RÕ</h3>
+                        <div style="font-family: monospace; color: #cbd5e1; font-size: 1rem; margin-bottom: 5px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">Mã NV: <span id="previewEmpId" style="font-weight: bold; color: white;">UNKNOWN</span></div>
+                        <div style="font-size: 0.9rem; color: #94a3b8; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 6px; display: inline-block; border: 1px solid rgba(255,255,255,0.2);">
+                            🕒 Thời gian: <span id="previewTime" style="color: white; font-weight: bold;">---</span>
+                        </div>
+                    </div>
+                    
+                    <div id="previewFraudStamp" style="display: none; border: 4px solid #ef4444; color: #ef4444; font-weight: 900; font-size: 1.8rem; padding: 5px 15px; transform: rotate(-15deg); border-radius: 8px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(239, 68, 68, 0.4); box-shadow: inset 0 0 10px rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.1);">
+                        GIAN LẬN
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -415,7 +435,6 @@
     let currentPage = 1;
     let rowsPerPage = 10;
 
-    // Load ngày mặc định
     document.addEventListener("DOMContentLoaded", () => {
         const todayStr = new Date().toISOString().split('T')[0];
         document.getElementById('startDateFilter').value = todayStr;
@@ -424,7 +443,7 @@
     });
     
     // ==========================================================
-    // API CỐT LÕI: TẢI BẢN GHI (CÓ PHÂN TRANG VÀ LỌC TỪ SERVER)
+    // API TẢI BẢN GHI
     // ==========================================================
     async function fetchAttendance(page = 1) {
         currentPage = page;
@@ -466,7 +485,117 @@
     function changeLimit() { rowsPerPage = parseInt(document.getElementById('limitSelect').value); fetchAttendance(1); }
 
     // ==========================================================
-    // TÍNH TOÁN THỐNG KÊ
+    // QUÉT GIAN LẬN AI (HẬU KIỂM)
+    // ==========================================================
+    function openScanFraudModal() {
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('scan_start_date').value = todayStr;
+        document.getElementById('scan_end_date').value = todayStr;
+        
+        document.getElementById('scanFraudSetup').style.display = 'block';
+        document.getElementById('scanFraudResult').style.display = 'none';
+        document.getElementById('scanFraudModal').style.display = 'flex';
+    }
+
+    async function executeFraudScan() {
+        const start = document.getElementById('scan_start_date').value;
+        const end = document.getElementById('scan_end_date').value;
+        const btn = document.getElementById('btnRunScan');
+
+        if (!start || !end) {
+            alert("Vui lòng chọn đủ ngày bắt đầu và kết thúc.");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = `<span class="loader-inline"></span> &nbsp; ĐANG SOI ĐIỂM ẢNH...`;
+
+        try {
+            const res = await fetch('/api/admin/scan-fraud', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ start_date: start, end_date: end })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.status === "success") {
+                let html = `<h4 style="color: #10b981; margin-top:0; font-size: 1.2rem; text-transform: uppercase;">✅ Rà Soát Hoàn Tất</h4>`;
+                
+                html += `<p style="font-size: 0.95rem; color: #475569; margin-bottom: 15px; line-height: 1.5;">
+                    AI đã tổng rà soát <strong>${data.scanned_count || 0}</strong> bức ảnh.<br>
+                    Phát hiện <strong style="color: #dc2626; font-size: 1.1rem;">${data.fraud_detected || 0}</strong> ca gian lận.
+                </p>`;
+                
+                // --- VẼ DANH SÁCH CHI TIẾT CA GIAN LẬN LÊN POPUP ---
+                if (data.fraud_detected > 0) {
+                    if (data.fraud_list && data.fraud_list.length > 0) {
+                        html += `<div style="max-height: 320px; overflow-y: auto; text-align: left; padding-right: 5px; margin-bottom: 15px;">`;
+                        data.fraud_list.forEach(f => {
+                            const imgSrc = f.image_path ? `${f.image_path}?t=${Date.now()}` : '';
+                            html += `
+                            <div style="display: flex; gap: 15px; background: #fff1f2; border: 1px dashed #fca5a5; border-radius: 10px; padding: 12px; margin-bottom: 10px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                <div style="flex-shrink: 0; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 2px solid #ef4444; position: relative; background: #000;">
+                                    <img src="${imgSrc}" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer; opacity: 0.9;" onclick="openImageModal('${imgSrc}', '${escapeHtml(f.name || '')}', '${escapeHtml(f.username || '')}', '${escapeHtml(f.time || '')}', true)" title="Bấm để phóng to ảnh gian lận">
+                                    <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.6rem; text-align: center; font-weight: bold; padding: 2px 0;">FAKE ⚠️</div>
+                                </div>
+                                <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                                    <strong style="color: #dc2626; font-size: 1.05rem; margin-bottom: 3px;">${escapeHtml(f.name || 'Không rõ tên')}</strong>
+                                    <span style="font-size: 0.8rem; color: #64748b; font-family: monospace; margin-bottom: 5px;">Mã NV: ${escapeHtml(f.username || 'N/A')}</span>
+                                    <span style="font-size: 0.75rem; color: #dc2626; font-style: italic; margin-bottom: 5px;">📄 File: ${escapeHtml(f.filename || '---')}</span>
+                                    <div style="font-size: 0.8rem; color: #475569; background: white; padding: 4px 8px; border-radius: 6px; display: inline-block; border: 1px solid #fecaca; width: fit-content;">
+                                        ⏱️ ${escapeHtml(f.time || 'N/A')}
+                                    </div>
+                                </div>
+                            </div>`;
+                        });
+                        html += `</div>`;
+                    } else {
+                        // CẢNH BÁO NẾU BACKEND QUÊN GỬI DỮ LIỆU
+                        html += `<div style="padding: 12px; background: #fff1f2; color: #dc2626; border: 1px dashed #fca5a5; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem;">
+                            ⚠️ Lỗi: AI đã tóm được ca vi phạm, nhưng Backend Python không trả về thông tin danh sách (fraud_list). Vui lòng kiểm tra lại Backend!
+                        </div>`;
+                    }
+                }
+
+                if (data.scanned_filenames && data.scanned_filenames.length > 0) {
+                    html += `
+                    <details style="margin-bottom: 15px; text-align: left; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
+                        <summary style="font-size: 0.85rem; font-weight: bold; color: #64748b; cursor: pointer; outline: none;">
+                            Xem chi tiết ${data.scanned_count} file đã Audit
+                        </summary>
+                        <div style="max-height: 100px; overflow-y: auto; margin-top: 10px; font-family: monospace; font-size: 0.75rem; color: #94a3b8;">
+                            ${data.scanned_filenames.map(name => `<div style="padding: 2px 0;">📄 ${escapeHtml(name)}</div>`).join('')}
+                        </div>
+                    </details>`;
+                }
+
+                html += `<button type="button" style="width: 100%; padding: 14px; background: #0f172a; color: white; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 1rem; transition: 0.2s;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'" onclick="closeAndShowFrauds()">ĐÓNG VÀ XỬ LÝ VI PHẠM</button>`;
+
+                document.getElementById('scanFraudSetup').style.display = 'none';
+                const resultBox = document.getElementById('scanFraudResult');
+                resultBox.innerHTML = html;
+                resultBox.style.display = 'block';
+
+            } else {
+                alert("Lỗi: " + data.message);
+                btn.disabled = false;
+                btn.innerHTML = "🚀 BẮT ĐẦU QUÉT";
+            }
+        } catch(e) {
+            alert("Lỗi kết nối với máy chủ!");
+            btn.disabled = false;
+            btn.innerHTML = "🚀 BẮT ĐẦU QUÉT";
+        }
+    }
+
+    function closeAndShowFrauds() {
+        document.getElementById('scanFraudModal').style.display = 'none';
+        document.getElementById('statusFilter').value = 'fraud';
+        fetchAttendance(1);
+    }
+
+    // ==========================================================
+    // THỐNG KÊ VÀ RENDER BẢNG
     // ==========================================================
     function calculateStats(data, totalFromServer) {
         let present = 0; let late = 0; let fraud = 0;
@@ -499,9 +628,6 @@
         }
     }
 
-    // ==========================================================
-    // HIỂN THỊ DỮ LIỆU
-    // ==========================================================
     function renderTable(data) {
         const tbody = document.getElementById('attTableBody');
         tbody.innerHTML = '';
@@ -530,7 +656,7 @@
             }
 
             let imgHtml = item.image_path ? 
-                `<img src="${item.image_path}" class="att-thumb" onclick="openImageModal('${item.image_path}', '${escapeHtml(item.full_name)}')">` : 
+                `<img src="${item.image_path}?t=${Date.now()}" class="att-thumb" onclick="openImageModal('${item.image_path}?t=${Date.now()}', '${escapeHtml(item.full_name)}', '${item.username}', '${item.scan_time}', ${item.is_fraud})">` : 
                 `<span style="color:#cbd5e1;">Không ảnh</span>`;
 
             let gpsHtml = (item.latitude && item.longitude) 
@@ -546,7 +672,6 @@
             `;
 
             let actionHtml = '';
-
             if (item.explanation_status && item.explanation_status !== "") {
                 let statusColor = item.explanation_status === 'Đã duyệt' ? '#10b981' : (item.explanation_status === 'Từ chối' ? '#ef4444' : '#f59e0b');
                 actionHtml += `
@@ -577,7 +702,7 @@
                     <td data-label="Ảnh chụp">${imgHtml}</td> 
                     <td data-label="Giờ vào"><span class="time-box">${item.scan_time}</span></td>
                     <td data-label="Độ chính xác">${confHtml}</td>
-                    <td data-label="Thông tin thiết bị">${deviceInfoHtml}</td> 
+                    <td data-label="Thông thiết bị">${deviceInfoHtml}</td> 
                     <td data-label="Trạng thái">${statusBadge}</td>
                     <td data-label="Hành động">
                         ${item.note ? `<div class="explain-text" style="margin-bottom:5px;">${escapeHtml(item.note)}</div>` : ''}
@@ -612,10 +737,9 @@
     }
 
     // ==========================================================
-    // CÁC HÀM XỬ LÝ (XÓA NHANH, TẠO MỚI, SỬA, GIAN LẬN, GIẢI TRÌNH)
+    // CÁC CHỨC NĂNG XÓA, TẠO MỚI, SỬA, CẢNH BÁO
     // ==========================================================
 
-    // --- 1. XÓA NHANH UNKNOWN ---
     function openClearUnknownModal() {
         const todayStr = new Date().toISOString().split('T')[0];
         document.getElementById('cu_start_date').value = todayStr;
@@ -648,7 +772,6 @@
         finally { submitBtn.innerText = "XÁC NHẬN XÓA"; submitBtn.disabled = false; }
     });
 
-    // --- 2. TẠO BẢN GHI THỦ CÔNG ---
     function openManualCreateModal() {
         const now = new Date();
         document.getElementById('mc_date').value = now.toISOString().split('T')[0];
@@ -693,7 +816,6 @@
         finally { submitBtn.innerText = "LƯU BẢN GHI"; submitBtn.disabled = false; }
     });
 
-    // --- 3. SỬA BẢN GHI ---
     function openEditModal(id, time, note) {
         document.getElementById('edit_att_id').value = id;
         document.getElementById('edit_scan_time').value = time;
@@ -728,7 +850,6 @@
         finally { submitBtn.innerText = "CẬP NHẬT"; submitBtn.disabled = false; }
     });
 
-    // --- 4. CẢNH BÁO GIAN LẬN ---
     function openFraudModal(id) {
         document.getElementById('fraud_att_id').value = id;
         document.getElementById('fraud_note').value = '';
@@ -771,7 +892,6 @@
         }
     }
 
-    // --- 5. GIẢI TRÌNH ---
     function openExplainModal(id) {
         document.getElementById('explain_id').value = id;
         document.getElementById('explain_reason').value = '';
@@ -804,7 +924,6 @@
         finally { submitBtn.innerText = "GỬI QUẢN LÝ"; submitBtn.disabled = false; }
     });
 
-    // --- 6. XÓA BẢN GHI ---
     async function deleteRecord(id, name) {
         const confirmMsg = `⚠️ CẢNH BÁO NGUY HIỂM ⚠️\n\nBạn có chắc chắn muốn XÓA VĨNH VIỄN bản ghi của [${name}]?\nHành động này không thể hoàn tác!`;
         if(confirm(confirmMsg)) {
@@ -822,17 +941,30 @@
         }
     }
 
-    // --- 7. PHÓNG TO ẢNH ---
-    function openImageModal(src, title) {
-        document.getElementById('previewImage').src = src;
-        document.getElementById('previewName').innerText = title || '';
-        document.getElementById('imageModal').style.display = 'flex';
-    }
-
     function escapeHtml(str) {
         if (!str) return "";
         return String(str).replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, "\"").replace(/'/g, "'");
     }
 
+    // --- HIỂN THỊ POPUP ẢNH LÀM BẰNG CHỨNG AN NINH ---
+    function openImageModal(src, name, username, time, isFraud) {
+        document.getElementById('previewImage').src = src;
+        document.getElementById('previewEmpName').innerText = name || 'KHÔNG RÕ';
+        document.getElementById('previewEmpId').innerText = username || 'UNKNOWN';
+        document.getElementById('previewTime').innerText = time || '---';
+
+        const stamp = document.getElementById('previewFraudStamp');
+        const imgBorder = document.getElementById('previewImage');
+        
+        if (isFraud) {
+            stamp.style.display = 'block';
+            imgBorder.style.borderColor = '#ef4444';
+        } else {
+            stamp.style.display = 'none';
+            imgBorder.style.borderColor = 'white';
+        }
+
+        document.getElementById('imageModal').style.display = 'flex';
+    }
 </script>
 {% endblock %}

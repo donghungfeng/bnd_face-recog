@@ -272,3 +272,7 @@ class WifiUpdate(BaseModel):
 class WifiResponse(WifiBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+class ScanFraudRequest(BaseModel):
+    start_date: str # Định dạng YYYY-MM-DD
+    end_date: str
