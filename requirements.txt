@@ -16,3 +16,5 @@ sqlalchemy
 openpyxl
 PyJWT
 pymysql
+# Thư viện nhận diện đồ vật (Tìm điện thoại)
+ultralytics
