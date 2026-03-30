@@ -75,7 +75,7 @@
     
     <div class="main-wrapper">
         <div class="guide-overlay" id="guideCircle"></div>
-        <div class="scan-bar" id="scanBar"></div>
+        <div class="scan-bar" id="scanBar" style="display: none;"></div>
         <video id="webcam" autoplay playsinline muted></video>
         <canvas id="cropCanvas" style="display:none;"></canvas>
     </div>
@@ -91,6 +91,9 @@
         let isFaceDetectionRunning = false;
         let lastProcessingTime = 0;
 
+        let networkCheckDone = false;
+        let locationCheckDone = false;
+
         function updateClock() {
             const now = new Date();
             document.getElementById('liveClock').innerText = now.toLocaleTimeString('vi-VN', { hour12: false });
@@ -100,8 +103,11 @@
         const nowInit = new Date();
         const screenInitTime = nowInit.toLocaleTimeString('vi-VN') + " " + nowInit.toLocaleDateString('vi-VN');
 
-        const TARGET_LAT = 21.131096; const TARGET_LNG = 105.774113;
-        const MAX_DISTANCE_METERS = 150;
+        // TỌA ĐỘ BỆNH VIỆN
+        const HOSPITAL_ZONE = [
+            { lat: 21.132651, lng: 105.774238 }, { lat: 21.131013, lng: 105.776601 }, 
+            { lat: 21.130023, lng: 105.773278 }, { lat: 21.130553, lng: 105.772459 }  
+        ];
         let currentPoint = { lat: 0, lng: 0 };
 
         const currentUserId = localStorage.getItem('hrm_username'); 
@@ -121,12 +127,49 @@
         const CENTER_X_MIN = 0.30; const CENTER_X_MAX = 0.70;
         const CENTER_Y_MIN = 0.30; const CENTER_Y_MAX = 0.70;
 
-        // 2. FETCH CẤU HÌNH & KIỂM TRA MẠNG
-        async function verifyNetwork() {
+        function isPointInPolygon(point, polygon) {
+            let x = point.lng, y = point.lat; let isInside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                let xi = polygon[i].lng, yi = polygon[i].lat; let xj = polygon[j].lng, yj = polygon[j].lat;
+                let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) isInside = !isInside;
+            }
+            return isInside;
+        }
+
+        // 2. FETCH CẤU HÌNH, KIỂM TRA MẠNG & GPS ĐỒNG BỘ
+        function updateBannersUI() {
             const netBanner = document.getElementById('networkBanner');
             const locBanner = document.getElementById('locationBanner');
-            locBanner.style.display = 'block';
 
+            if (networkCheckDone && !locationCheckDone) {
+                netBanner.innerHTML = `🔄 Đang xử lý dữ liệu hệ thống...`;
+                locBanner.style.display = 'block';
+                locBanner.className = 'net-checking';
+                locBanner.innerHTML = `📍 Đang lấy tọa độ GPS... (Vui lòng chờ)`;
+                return; 
+            }
+
+            if (networkCheckDone && locationCheckDone) {
+                locBanner.style.display = 'block';
+
+                // CHỈ CẦN 1 TRONG 2 PASS LÀ XANH TẤT CẢ
+                if (isNetworkValid || isLocationValid) {
+                    netBanner.className = 'net-valid'; 
+                    netBanner.innerHTML = `✅ Mạng hợp lệ (IP: ${currentPublicIp || 'LAN'})`;
+                    locBanner.className = 'net-valid'; 
+                    locBanner.innerHTML = `✅ Đã xác nhận trong khuôn viên Viện`;
+                } else {
+                    netBanner.className = 'net-invalid'; 
+                    netBanner.innerHTML = `❌ Ngoài vùng chấm công (IP: ${currentPublicIp || 'Unknown'})`;
+                    locBanner.className = 'net-invalid'; 
+                    locBanner.innerHTML = `❌ Bạn đang đứng ngoài khuôn viên!`;
+                }
+            }
+        }
+
+        async function verifyNetworkAndLocation() {
+            // --- BƯỚC 1: CHECK MẠNG ---
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipRes.json();
@@ -139,95 +182,51 @@
                 });
                 const data = await res.json();
                 
-                // Nạp cấu hình từ Server vào biến
                 userConfig.checkMang = data.checkMang;
                 userConfig.checkViTri = data.checkViTri;
                 userConfig.ccCaNhan = data.ccCaNhan;
 
-                // NẾU BỊ CẤM CHẤM CÔNG CÁ NHÂN
                 if (userConfig.ccCaNhan === 0) {
                     resultBox.className = "info status-err";
                     resultBox.innerHTML = "❌ TÀI KHOẢN BỊ CẤM CHẤM CÔNG CÁ NHÂN";
-                    isProcessing = true; // Khóa chết luồng camera
-                    netBanner.style.display = 'none';
-                    locBanner.style.display = 'none';
+                    isProcessing = true; 
+                    document.getElementById('networkBanner').style.display = 'none';
+                    document.getElementById('locationBanner').style.display = 'none';
                     return;
                 }
 
-                // XỬ LÝ MẠNG
-                if (userConfig.checkMang === 0) {
-                    isNetworkValid = true;
-                    netBanner.className = 'net-valid'; 
-                    netBanner.innerHTML = `🌐 Mạng Wi-Fi hợp lệ`;
-                } else {
-                    isNetworkValid = data.valid;
-                    if(isNetworkValid) {
-                        netBanner.className = 'net-valid'; netBanner.innerHTML = `✅ Mạng hợp lệ (IP: ${data.ip})`;
-                    } else {
-                        netBanner.className = 'net-invalid'; netBanner.innerHTML = `❌ Ngoài vùng chấm công (IP: ${data.ip})`;
-                    }
-                }
-                
-                // Gọi check GPS sau khi có config
-                verifyLocation();
-
+                isNetworkValid = (userConfig.checkMang === 0) ? true : data.valid;
             } catch(e) {
-                netBanner.className = 'net-checking'; netBanner.innerHTML = `⚠️ Lỗi kiểm tra mạng!`;
                 isNetworkValid = false;
             }
-        }
-
-        const HOSPITAL_ZONE = [
-            { lat: 21.132651, lng: 105.774238 }, { lat: 21.131013, lng: 105.776601 }, 
-            { lat: 21.130023, lng: 105.773278 }, { lat: 21.130553, lng: 105.772459 }  
-        ];
-        
-        function isPointInPolygon(point, polygon) {
-            let x = point.lng, y = point.lat; let isInside = false;
-            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                let xi = polygon[i].lng, yi = polygon[i].lat; let xj = polygon[j].lng, yj = polygon[j].lat;
-                let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-                if (intersect) isInside = !isInside;
-            }
-            return isInside;
-        }
-
-        function verifyLocation() {
-            const locBanner = document.getElementById('locationBanner');
             
-            // Nếu được miễn trừ GPS
+            networkCheckDone = true;
+            updateBannersUI(); 
+
+            // --- BƯỚC 2: CHECK GPS (CÓ ÉP TIMEOUT CỨNG CHỐNG TREO) ---
             if (userConfig.checkViTri === 0) {
                 isLocationValid = true;
-                locBanner.className = 'net-valid';
-                locBanner.innerHTML = `📍Vị trí GPS hợp lệ`;
-                return;
+            } else if (!navigator.geolocation) {
+                isLocationValid = false;
+            } else {
+                const getGPS = new Promise((resolve) => {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            currentPoint = { lat: position.coords.latitude, lng: position.coords.longitude };
+                            resolve(isPointInPolygon(currentPoint, HOSPITAL_ZONE));
+                        },
+                        (error) => { resolve(false); },
+                        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                    );
+                });
+
+                const timeoutHuy = new Promise((resolve) => setTimeout(() => resolve(false), 9000));
+                
+                isLocationValid = await Promise.race([getGPS, timeoutHuy]);
             }
 
-            if (!navigator.geolocation) {
-                locBanner.className = 'net-invalid'; locBanner.innerHTML = `❌ Trình duyệt không hỗ trợ GPS!`;
-                isLocationValid = false; return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    currentPoint = { lat: position.coords.latitude, lng: position.coords.longitude };
-                    let isInsideArea = isPointInPolygon(currentPoint, HOSPITAL_ZONE);
-                    
-                    if (isInsideArea) {
-                        isLocationValid = true;
-                        locBanner.className = 'net-valid'; locBanner.innerHTML = `✅ Đã xác nhận trong khuôn viên Viện`;
-                    } else {
-                        isLocationValid = false;
-                        locBanner.className = 'net-invalid'; locBanner.innerHTML = `❌ Cảnh báo: Bạn đang đứng ngoài khuôn viên!`;
-                    }
-                },
-                (error) => {
-                    isLocationValid = false;
-                    locBanner.className = 'net-invalid';
-                    locBanner.innerHTML = error.code === 1 ? `❌ Vui lòng cho phép quyền Vị trí!` : `❌ Không thể định vị!`;
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
+            locationCheckDone = true;
+            updateBannersUI();
         }
 
         // 3. AI NHẬN DIỆN KHUÔN MẶT
@@ -244,12 +243,12 @@
 
                 const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
 
-                // Dùng biến isNetworkValid và isLocationValid (Đã xử lý bỏ qua nếu được miễn trừ)
-                if (!isNetworkValid || !isLocationValid) {
+                // Nếu TRƯỢT CẢ 2 thì khóa lại, không cho gửi API
+                if (!isNetworkValid && !isLocationValid) {
                     guideCircle.classList.remove('guide-active'); scanBar.style.display = 'none';
                     if (!isProcessing) {
                         resultBox.className = "info status-err"; 
-                        resultBox.innerHTML = !isLocationValid ? `⚠️ BẠN KHÔNG Ở BỆNH VIỆN` : `⚠️ SAI MẠNG WIFI BỆNH VIỆN`;
+                        resultBox.innerHTML = `⚠️ SAI MẠNG & NGOÀI KHUÔN VIÊN`; 
                     }
                     return;
                 }
@@ -274,8 +273,9 @@
                     }
                 }
             } else {
-                lastDetection = null; guideCircle.classList.remove('guide-active');
-                if (!isProcessing && isNetworkValid && isLocationValid && userConfig.ccCaNhan !== 0) {
+                lastDetection = null; guideCircle.classList.remove('guide-active'); scanBar.style.display = 'none';
+                // Chỉ cần 1 trong 2 pass là sẵn sàng
+                if (!isProcessing && (isNetworkValid || isLocationValid) && userConfig.ccCaNhan !== 0) {
                     resultBox.className = "info status-scanning"; resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
                 }
             }
@@ -359,10 +359,9 @@
         }
 
         async function startCamera() {
-            // CHỜ GET CONFIG TRƯỚC
-            await verifyNetwork();
+            // Ép chờ chốt xong Mạng và GPS mới được chạy tiếp
+            await verifyNetworkAndLocation();
             
-            // NẾU BỊ CẤM CC CÁ NHÂN -> DỪNG KHÔNG BẬT CAM NỮA
             if (userConfig.ccCaNhan === 0) {
                 guideCircle.style.display = 'none';
                 scanBar.style.display = 'none';
@@ -373,7 +372,7 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 } } });
                 video.srcObject = stream;
                 video.onloadedmetadata = () => { 
-                    video.play().catch(e => console.warn(e)); // Ép chạy chống lỗi
+                    video.play().catch(e => console.warn(e)); 
                     processVideoFrame(); 
                 }
             } catch (err) {

@@ -170,6 +170,10 @@ class AttendanceSummary(BaseModel):
         from_attributes=True,
         arbitrary_types_allowed=True
     )
+
+    class Config:
+        arbitrary_types_allowed = True
+        orm_mode = True
     
 class AttendanceSummaryByEmployee(BaseModel):
     # Thông tin cá nhân
@@ -225,11 +229,16 @@ class ExplanationResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    class Config:
+        arbitrary_types_allowed = True
+        orm_mode = True
+
 class PaginatedExplanationResponse(BaseModel):
     total: int
     items: list[ExplanationResponse]
     skip: int
     limit: int
+    
 
 class ExplanationUpdate(BaseModel):
     date: date
@@ -272,6 +281,10 @@ class WifiUpdate(BaseModel):
 class WifiResponse(WifiBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+    class Config:
+        arbitrary_types_allowed = True
+        orm_mode = True
+    
 
 class ScanFraudRequest(BaseModel):
     start_date: str # Định dạng YYYY-MM-DD

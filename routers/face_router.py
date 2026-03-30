@@ -12,6 +12,7 @@ from models import Attendance
 from schemas import CheckIPRequest, FaceRequest, ScanFraudRequest, SingleFaceDeleteRequest, UnregisterRequest, PersonalVerifyRequest, TestFaceRequest, UpdateImageUrlRequest
 from config import DB_PATH, MODEL_NAME, CACHE_FILE
 from database import get_db
+import time
 
 from ultralytics import YOLO
 object_model = YOLO('yolov8n.pt')
@@ -21,6 +22,8 @@ import services
 router = APIRouter()
 
 BASE_DIR = os.getcwd()
+
+consecutive_unrecognized = {}
 
 @router.post("/register")
 async def register(request: FaceRequest):
@@ -73,21 +76,28 @@ async def register(request: FaceRequest):
 
 @router.post("/recognize")
 async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
-
+    global consecutive_unrecognized
     img_crop = services.decode_base64(request.image_base64)
     img_to_save = services.decode_base64(request.full_image_base64) if request.full_image_base64 else img_crop
     max_sim = 0.0
     is_anti_spoof_enabled = services.get_config("ENABLE_ANTI_SPOOFING", "true").lower() == "true"
 
     try:
+        gray = cv2.cvtColor(img_crop, cv2.COLOR_BGR2GRAY)
+        sharpness_score = cv2.Laplacian(gray, cv2.CV_64F).var()
         
+        if sharpness_score < 50:
+            return {"recognized": False, "message": "Ảnh gửi lên hệ thống quá mờ, vui lòng thử lại!"}
+    except Exception as e:
+        pass 
+
+    try:
         results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=True,detector_backend="skip",anti_spoofing=is_anti_spoof_enabled)
         if not results: return {"recognized": False, "message": "Không thấy mặt"}
         
         if is_anti_spoof_enabled and not results[0].get("is_real", True):
              return {"recognized": False, "message": "Phát hiện gian lận hình ảnh!"}
 
-        
         current_embedding = np.array(results[0]["embedding"])
         
         if len(services.known_user_ids) == 0:
@@ -105,7 +115,7 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
         max_sim = similarities[best_index]
         best_match = services.known_user_ids[best_index]
         
-        # Tìm người giống thứ 2 (Top 2 - Bắt buộc phải KHÁC Mã nhân viên với Top 1)
+        # Tìm người giống thứ 2 
         second_best_sim = 0.0
         second_best_match = None
         
@@ -115,42 +125,73 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
                 second_best_match = services.known_user_ids[idx]
                 break 
                 
-        # Tính khoảng cách tự tin (Margin) quy ra phần trăm
         margin_percent = (max_sim - second_best_sim) * 100
-        
         THRESHOLD = float(services.get_config("FACE_THRESHOLD", "0.75"))
-
         MARGIN_THRESHOLD = float(services.get_config("FACE_MARGIN_THRESHOLD", "4.0"))
         ABSOLUTE_SAFE_ZONE = 0.85
 
+        ip = request.client_public_ip or "unknown"
+        now = time.time()
+        
+        # 1. Dọn dẹp thùng rác đếm ngược (quá 15s không quét là reset đếm lại)
+        for k in list(consecutive_unrecognized.keys()):
+            if now - consecutive_unrecognized[k]["last_time"] > 15:
+                del consecutive_unrecognized[k]
+
+        # 2. XỬ LÝ NHẬN DIỆN THÀNH CÔNG
         if max_sim >= THRESHOLD:
+            # Xóa bộ đếm rác nếu đã thành công
+            consecutive_unrecognized.pop(ip, None)
+
             if max_sim < ABSOLUTE_SAFE_ZONE and second_best_match and margin_percent < MARGIN_THRESHOLD:
                 note_str = f"Từ chối do quá giống {second_best_match} (Lệch {round(margin_percent, 2)}% < {MARGIN_THRESHOLD}%)"
                 background_tasks.add_task(services.background_logging, "UNKNOWN", img_to_save, max_sim, request.client_public_ip, 0, 0, request.attendance_type, note_str)
-                
                 return {
                     "recognized": False, 
                     "message": f"⚠️ GÓC CHỤP BỊ NHIỄU, VUI LÒNG THỬ LẠI", 
                     "match_probability": f"{round(max_sim * 100, 2)}%"
                 }
 
-            # Qua mượt cả Threshold lẫn Margin -> Chấm công thành công!
+            # Qua mượt -> Chấm công thành công!
             background_tasks.add_task(services.background_logging, best_match, img_to_save, max_sim, request.client_public_ip, 0, 0, request.attendance_type, '')
             return {"recognized": True, "user_id": best_match, "match_probability": f"{round(max_sim * 100, 2)}%"}
         
-        # Trường hợp không đủ Threshold (như cũ)
+        # 3. XỬ LÝ TÌNH HUỐNG LẠI GẦN ĐÚNG NHƯNG TRƯỢT (Logic Auto-Renew)
+        # Chỉ theo dõi nếu độ giống trên 55% (Loại bỏ trường hợp quét phải cái gối, bức tượng)
+        if max_sim > 0.55:
+            if ip not in consecutive_unrecognized:
+                consecutive_unrecognized[ip] = {"user_id": best_match, "count": 1, "last_time": now}
+            else:
+                tracker = consecutive_unrecognized[ip]
+                if tracker["user_id"] == best_match:
+                    tracker["count"] += 1
+                    tracker["last_time"] = now
+                else:
+                    consecutive_unrecognized[ip] = {"user_id": best_match, "count": 1, "last_time": now}
+            
+            # NẾU TRƯỢT ĐẾN LẦN THỨ 7 MÀ VẪN GIỐNG NGƯỜI NÀY NHẤT -> YÊU CẦU XÁC MINH
+            if consecutive_unrecognized[ip]["count"] >= 7:
+                consecutive_unrecognized.pop(ip, None) # Xóa bộ đếm
+                return {
+                    "recognized": "verify_renew", # Gửi status đặc biệt về Frontend
+                    "user_id": best_match,
+                    "message": f"Hệ thống nghi ngờ bạn là {best_match}. Xác nhận cập nhật khuôn mặt mới?",
+                    "match_probability": f"{round(max_sim * 100, 2)}%"
+                }
+        else:
+            consecutive_unrecognized.pop(ip, None)
+
+        # 4. Trường hợp không đủ Threshold (như cũ)
         note_str = f"Nhận dạng thất bại (Giống {best_match} nhất với {round(max_sim * 100, 2)}%)"
         background_tasks.add_task(services.background_logging, "UNKNOWN", img_to_save, max_sim, request.client_public_ip, 0, 0, request.attendance_type, note_str)
         return {"recognized": False, "message": "Người lạ", "match_probability": f"{round(max_sim * 100, 2)}%"}
+        
     except Exception as e:
         error_msg = str(e).lower()
-        
         if "spoof detected" in error_msg:
             return {"recognized": False, "message": "CẢNH BÁO GIAN LẬN!"}
-            
         elif "face could not be detected" in error_msg:
             return {"recognized": False, "message": "Không tìm thấy khuôn mặt"}
-            
         else:
             return {"recognized": False, "message": f"Lỗi: {str(e)}"}
 
@@ -385,14 +426,50 @@ async def verify_personal(data: PersonalVerifyRequest, background_tasks: Backgro
     if can_personal == 0:
         return {"recognized": False, "message": "Tài khoản bị cấm chấm công cá nhân!"}
     
-    # --- 2. KIỂM TRA MẠNG (Nếu bắt buộc) ---
+    # --- 2. KIỂM TRA MẠNG & VỊ TRÍ (LOGIC: 1 TRONG 2) ---
     needs_network = 1 if getattr(emp, 'checkMang', 1) in [1, None] else 0
-    if needs_network == 1:
+    needs_gps = 1 if getattr(emp, 'checkViTri', 1) in [1, None] else 0
+    
+    is_network_valid = False
+    is_location_valid = False
+
+    # 2.1 Chấm điểm Mạng (IP)
+    if needs_network == 0:
+        is_network_valid = True
+    else:
         allowed_ips_str = services.get_config("ALLOWED_ENROLL_IPS", "*") 
-        if allowed_ips_str.strip() != "*":
+        if allowed_ips_str.strip() == "*":
+            is_network_valid = True
+        else:
             allowed_ips = [ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()]
-            if not any(client_ip.startswith(allowed) or client_ip == allowed for allowed in allowed_ips):
-                return {"recognized": False, "message": "Sai địa chỉ IP/Mạng lưới Bệnh viện."}
+            is_network_valid = any(client_ip.startswith(allowed) or client_ip == allowed for allowed in allowed_ips)
+
+    if needs_gps == 0:
+        is_location_valid = True
+    else:
+        client_lat = data.latitude
+        client_lng = data.longitude
+        
+        if client_lat and client_lng and client_lat != 0 and client_lng != 0:
+            polygon = [
+                (21.132651, 105.774238), (21.131013, 105.776601), 
+                (21.130023, 105.773278), (21.130553, 105.772459)
+            ]
+
+            x, y = float(client_lng), float(client_lat)
+            inside = False
+            j = len(polygon) - 1
+            for i in range(len(polygon)):
+                xi, yi = polygon[i][1], polygon[i][0]
+                xj, yj = polygon[j][1], polygon[j][0]
+                intersect = ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi)
+                if intersect:
+                    inside = not inside
+                j = i
+            is_location_valid = inside
+
+    if not is_network_valid and not is_location_valid:
+        return {"recognized": False, "message": "Sai mạng Wi-Fi và Ngoài vị trí Bệnh viện!"}
 
     # --- 3. TIẾN HÀNH AI NHẬN DIỆN KHUÔN MẶT ---
     if user_id not in services.known_user_ids:
@@ -621,3 +698,54 @@ async def scan_fraud_records(req: ScanFraudRequest, db: Session = Depends(get_db
     except Exception as e:
         print(f"🔥 LỖI CHÍ MẠNG TOÀN HỆ THỐNG: {e}")
         return {"status": "error", "message": f"Lỗi hệ thống khi quét: {str(e)}"}
+
+
+@router.post("/api/confirm-renew")
+async def confirm_renew(request: FaceRequest, background_tasks: BackgroundTasks):
+    user_id = request.user_id.upper()
+    img_crop = services.decode_base64(request.image_base64)
+    img_full = services.decode_base64(request.full_image_base64) if request.full_image_base64 else img_crop
+    
+    # Ép lưu file thứ 4 để không đè lên 3 ảnh gốc của nhân sự
+    new_filename = f"{user_id}_4.jpg"
+    file_key = f"{user_id}_4"
+    file_path = os.path.join(DB_PATH, new_filename)
+    
+    cv2.imwrite(file_path, img_crop)
+    
+    try:
+        results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=False)
+        embedding = np.array(results[0]["embedding"])
+        
+        # 1. Đẩy thẳng vào RAM ngay lập tức
+        if file_key in services.known_file_keys:
+            idx = services.known_file_keys.index(file_key)
+            services.known_embeddings_matrix[idx] = embedding
+        else:
+            services.known_file_keys.append(file_key)
+            services.known_user_ids.append(user_id)
+            if services.known_embeddings_matrix.size == 0:
+                services.known_embeddings_matrix = np.array([embedding])
+            else:
+                services.known_embeddings_matrix = np.vstack([services.known_embeddings_matrix, embedding])
+        
+        if hasattr(services, 'save_cache'):
+            services.save_cache()
+            
+        # 2. Ghi nhận Chấm công với Ghi chú "renew"
+        background_tasks.add_task(
+            services.background_logging, 
+            user_id, 
+            img_full, 
+            1.0, # Độ tin cậy ép lên 100% vì đã được người dùng xác nhận
+            request.client_public_ip, 
+            0, 0, 
+            request.attendance_type, 
+            "renew"
+        )
+        
+        return {"status": "success", "message": f"Đã cập nhật AI và chấm công cho {user_id}"}
+        
+    except Exception as e:
+        if os.path.exists(file_path): os.remove(file_path)
+        return {"status": "error", "message": f"Lỗi cập nhật AI: {e}"}

@@ -66,56 +66,25 @@
             line-height: 1.4;
         }
 
-        .distance-meter {
+        /* THANH GỒNG (HOLD METER) */
+        .hold-meter {
             width: 100%;
-            height: 6px;
-            background: #334155;
-            border-radius: 10px;
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
             margin-top: 15px;
             overflow: hidden;
             position: relative;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
 
-        #distanceFill {
+        #holdFill {
             width: 0%;
             height: 100%;
-            background: var(--primary);
-            transition: width 0.3s ease, background 0.3s ease;
-        }
-
-        .frame-progress {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin-top: 10px;
-            padding: 5px;
-        }
-
-        .frame-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: #334155;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-            display: none; 
-        }
-
-        .frame-dot.active {
-            background: var(--success);
+            background: linear-gradient(90deg, var(--warning), var(--success));
+            transition: width 0.15s linear;
             box-shadow: 0 0 15px var(--success);
-            transform: scale(1.2);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .frame-dot.processing {
-            background: var(--primary);
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.1); }
         }
 
         .main-wrapper {
@@ -140,16 +109,26 @@
             transform: scaleX(-1);
         }
 
-        #overlayCanvas {
+        /* MẶT NẠ CHUYÊN NGHIỆP */
+        .face-mask {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 260px;
+            height: 360px;
+            border-radius: 50% / 45%;
+            border: 3px dashed rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 0 2000px rgba(15, 23, 42, 0.8);
+            z-index: 5;
             pointer-events: none;
-            z-index: 4;
+            transition: all 0.3s ease;
+        }
+
+        .face-mask.active {
+            border: 4px solid var(--success);
+            background: rgba(0, 255, 136, 0.05);
+            box-shadow: 0 0 0 2000px rgba(15, 23, 42, 0.85), 0 0 30px var(--success) inset;
         }
 
         .scan-bar {
@@ -159,7 +138,7 @@
             background: linear-gradient(to bottom, transparent, var(--primary));
             box-shadow: 0 0 15px var(--primary);
             top: 0;
-            z-index: 5;
+            z-index: 6;
             animation: scan 3s ease-in-out infinite;
             opacity: 0.6;
         }
@@ -271,7 +250,7 @@
             100% { opacity: 1; transform: scale(1); }
         }
 
-        /* POPUP XIN CHÀO */
+        /* POPUP XIN CHÀO & POPUP RENEW */
         .popup-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -291,6 +270,9 @@
             position: relative;
             max-width: 80%;
         }
+        
+        /* Popup Renew mang phong cách cảnh báo nhẹ */
+        .popup-renew { border-color: var(--primary); box-shadow: 0 15px 40px rgba(0, 242, 255, 0.3); }
 
         .popup-close {
             position: absolute; top: 10px; right: 15px;
@@ -304,6 +286,16 @@
             color: var(--success); font-size: 1.8rem; font-family: 'Orbitron', sans-serif;
             margin: 0; text-shadow: 0 0 15px rgba(0, 255, 136, 0.5); font-weight: bold;
         }
+
+        /* Nút cho Popup Renew */
+        .btn-action {
+            padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold;
+            font-size: 1rem; cursor: pointer; transition: 0.2s; flex: 1; font-family: 'Roboto', sans-serif;
+        }
+        .btn-confirm { background: var(--primary); color: #000; box-shadow: 0 0 10px rgba(0, 242, 255, 0.4); }
+        .btn-confirm:hover { background: #00d4ff; transform: scale(1.05); }
+        .btn-cancel { background: #334155; color: #fff; }
+        .btn-cancel:hover { background: #475569; }
 
         /* MÀN HÌNH NGỦ ĐÔNG */
         #sleepOverlay {
@@ -336,11 +328,10 @@
         <div id="resultBox" class="info status-scanning">
             <div class="loader"></div> ĐANG KHỞI TẠO CAMERA...
         </div>
-        <div class="distance-meter">
-            <div id="distanceFill"></div>
+        
+        <div class="hold-meter">
+            <div id="holdFill"></div>
         </div>
-        <div class="frame-progress" id="progressContainer">
-            </div>
     </header>
 
     <div class="main-wrapper">
@@ -351,13 +342,20 @@
 
         <div class="scan-bar"></div>
         <video id="webcam" autoplay playsinline></video>
-        <canvas id="overlayCanvas"></canvas>
+        
+        <div id="faceMask" class="face-mask"></div>
+        
         <canvas id="cropCanvas" style="display:none;"></canvas>
     </div>
 
     <div class="history-container">
         <div class="history-title"><span style="color:var(--success)">●</span> Danh sách chấm công thành công</div>
         <ul class="history-list" id="historyList"></ul>
+
+        <div id="debugBox" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); border: 2px solid var(--warning); padding: 10px; border-radius: 10px; z-index: 9999; text-align: center; display: none;">
+            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; color: var(--warning);">👁️ ẢNH CROP GỬI SERVER</p>
+            <img id="debugImg" src="" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid #fff;" />
+        </div>
     </div>
 
     <div class="popup-overlay" id="successPopup" onclick="closePopup()">
@@ -369,15 +367,27 @@
         </div>
     </div>
 
+    <div class="popup-overlay" id="renewPopup">
+        <div class="popup-content popup-renew">
+            <div class="popup-icon">🔄</div>
+            <p class="popup-title" style="color: var(--primary); font-weight: bold;">CẬP NHẬT DIỆN MẠO</p>
+            <p id="renewMessage" style="color: #cbd5e1; margin: 15px 0 25px 0; font-size: 1.1rem; line-height: 1.5;">
+                ...
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center; margin-top: 10px;">
+                <button class="btn-action btn-cancel" onclick="cancelRenew()">KHÔNG PHẢI TÔI</button>
+                <button class="btn-action btn-confirm" onclick="submitRenew()">ĐÚNG LÀ TÔI</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const video = document.getElementById('webcam');
-        const overlayCanvas = document.getElementById('overlayCanvas');
-        const overlayCtx = overlayCanvas.getContext('2d');
+        const faceMask = document.getElementById('faceMask');
         const resultBox = document.getElementById('resultBox');
-        const distanceFill = document.getElementById('distanceFill');
+        const holdFill = document.getElementById('holdFill');
         const cropCanvas = document.getElementById('cropCanvas');
         const historyList = document.getElementById('historyList');
-        const progressContainer = document.getElementById('progressContainer');
 
         let isProcessing = false;
         let lastDetection = null;
@@ -398,19 +408,17 @@
 
         const USER_COOLDOWN_MS = 30 * 1000;
         const userCooldowns = {};
+        
+        // BIẾN LƯU TRỮ TẠM ẢNH ĐỂ CẬP NHẬT (RENEW)
+        let pendingRenewData = null;
 
-        // ---------------- CÁC THÔNG SỐ TỐI ƯU CÂN BẰNG TỐC ĐỘ VÀ CHẤT LƯỢNG ----------------
-        const REQUIRED_GOOD_FRAMES = 3;   // Giảm xuống 3 frame để tốc độ quét mượt hơn
-        const SHARPNESS_THRESHOLD = 35;   // Giảm xuống 35, thân thiện với các webcam và môi trường sáng khác nhau
-        const FACE_MIN_SIZE = 0.15;       // Cho phép khoảng cách xa vừa phải
-        const FACE_MAX_SIZE = 0.65;       
-        // -----------------------------------------------------------------------------
-
-        // Tạo số lượng chấm frame động theo REQUIRED_GOOD_FRAMES
-        progressContainer.innerHTML = '';
-        for(let i = 1; i <= REQUIRED_GOOD_FRAMES; i++) {
-            progressContainer.innerHTML += `<div id="frame${i}" class="frame-dot" style="display:block;"></div>`;
-        }
+        // ---------------- THÔNG SỐ SIẾT CHẶT VÀ ÉP HOLD TIME ----------------
+        const REQUIRED_GOOD_FRAMES = 15;  
+        const SHARPNESS_THRESHOLD = 65;   
+        const CENTER_X_MIN = 0.35; const CENTER_X_MAX = 0.65;
+        const CENTER_Y_MIN = 0.35; const CENTER_Y_MAX = 0.65;
+        const FACE_MIN_SIZE = 0.25; const FACE_MAX_SIZE = 0.55; 
+        // ---------------------------------------------------------------------
 
         function isImageSharp(canvas, threshold = SHARPNESS_THRESHOLD) {
             try {
@@ -446,51 +454,10 @@
 
         faceDetection.setOptions({ model: 'full', minDetectionConfidence: 0.60 });
 
-        function updateFrameProgress(count) {
-            for(let i = 1; i <= REQUIRED_GOOD_FRAMES; i++) {
-                const dot = document.getElementById(`frame${i}`);
-                if (dot) {
-                    if (i <= count) {
-                        dot.classList.add('active');
-                        dot.classList.remove('processing');
-                    } else {
-                        dot.classList.remove('active');
-                        if (isProcessing && i === count + 1) {
-                            dot.classList.add('processing');
-                        } else {
-                            dot.classList.remove('processing');
-                        }
-                    }
-                }
-            }
-        }
-
-        function drawTargetingFrame(ctx, x, y, width, height, color, isSolid = false) {
-            ctx.strokeStyle = color;
-            ctx.lineWidth = isSolid ? 4 : 2;
-            const len = Math.min(width, height) * 0.2;
-
-            ctx.beginPath();
-            ctx.moveTo(x, y + len); ctx.lineTo(x, y); ctx.lineTo(x + len, y);
-            ctx.moveTo(x + width - len, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + len);
-            ctx.moveTo(x + width, y + height - len); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width - len, y + height);
-            ctx.moveTo(x + len, y + height); ctx.lineTo(x, y + height); ctx.lineTo(x, y + height - len);
-            ctx.stroke();
-        }
-
         faceDetection.onResults((results) => {
             isFaceDetectionRunning = false;
-            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-            if (isApiLocked) {
-                return;
-            }
-
-            const w = overlayCanvas.width;
-            const h = overlayCanvas.height;
-            const targetSize = Math.min(w, h) * 0.5;
-            const targetX = (w - targetSize) / 2;
-            const targetY = (h - targetSize) / 2;
+            if (isApiLocked) return;
 
             if (results.detections.length > 0) {
                 resetSleepTimer();
@@ -504,7 +471,7 @@
                 const faceX = lastDetection.xCenter;
                 const faceY = lastDetection.yCenter;
 
-                distanceFill.style.width = (faceSize * 100) + "%";
+                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
 
                 let isStraight = true;
                 let poseWarning = "";
@@ -517,8 +484,7 @@
                     const eyeDistX = Math.abs(eyeL.x - eyeR.x);
                     const eyeDistY = Math.abs(eyeL.y - eyeR.y);
 
-                    // Nới lỏng góc nghiêng đầu từ 0.20 lên 0.35
-                    if (eyeDistY / eyeDistX > 0.35) {
+                    if (eyeDistY / eyeDistX > 0.15) {
                         isStraight = false;
                         poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
                     }
@@ -526,8 +492,7 @@
                         const noseDistL = Math.abs(nose.x - eyeL.x);
                         const noseDistR = Math.abs(nose.x - eyeR.x);
 
-                        // Nới lỏng góc quay mặt từ 0.20 lên 0.35
-                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.35) {
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.15) {
                             isStraight = false;
                             poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
                         }
@@ -537,7 +502,10 @@
                 let isValid = true;
                 let currentWarning = "";
 
-                if (!isStraight) {
+                if (!isCentered) {
+                    isValid = false;
+                    currentWarning = `⚠️ VUI LÒNG ĐƯA MẶT VÀO GIỮA KHUNG HÌNH`;
+                } else if (!isStraight) {
                     isValid = false;
                     currentWarning = poseWarning;
                 } else if (faceSize < FACE_MIN_SIZE) {
@@ -548,41 +516,29 @@
                     currentWarning = `⚠️ VUI LÒNG ĐỨNG XA RA CHÚT`;
                 }
 
-                const originX = (faceX - faceSize / 2) * w;
-                const originY = (faceY - lastDetection.height / 2) * h;
-                const boxW = faceSize * w;
-                const boxH = lastDetection.height * h;
-
-                const guideColor = isValid ? "#00ff88" : "#ffb800";
-                
-                let frameColor = guideColor;
-                if(consecutiveGoodFrames === REQUIRED_GOOD_FRAMES) {
-                    frameColor = Date.now() % 200 < 100 ? "#ffffff" : guideColor; 
-                }
-                
-                drawTargetingFrame(overlayCtx, originX, originY, boxW, boxH, frameColor, isValid && consecutiveGoodFrames === REQUIRED_GOOD_FRAMES);
-
                 if (!isValid) {
                     consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
+                    holdFill.style.width = "0%";
+                    faceMask.classList.remove('active');
+                    
                     if (!isProcessing) {
                         resultBox.className = "info status-warning";
                         resultBox.innerHTML = currentWarning;
                     }
                 } else {
                     if (!isProcessing) {
+                        faceMask.classList.add('active');
                         consecutiveGoodFrames = Math.min(consecutiveGoodFrames + 1, REQUIRED_GOOD_FRAMES);
-                        updateFrameProgress(consecutiveGoodFrames);
+                        const percent = (consecutiveGoodFrames / REQUIRED_GOOD_FRAMES) * 100;
+                        holdFill.style.width = `${percent}%`;
 
                         if (consecutiveGoodFrames < REQUIRED_GOOD_FRAMES) {
                             resultBox.className = "info status-scanning";
-                            resultBox.innerHTML = `📸 ĐANG ĐẾM FRAME... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
+                            resultBox.innerHTML = `📸 HÃY GIỮ YÊN TƯ THẾ NHÌN THẲNG...`;
                         } else {
                             resultBox.className = "info status-scanning";
-                            resultBox.innerHTML = `✅ GIỮ NGUYÊN TƯ THẾ ĐỂ CHỤP...`;
-                            
-                            // Nhanh hơn: Thời gian chờ để camera focus được rút ngắn còn 150ms thay vì 500ms
-                            setTimeout(() => sendToAPI(), 150); 
+                            resultBox.innerHTML = `✅ ĐANG LẤY ẢNH...`;
+                            sendToAPI(); 
                         }
                     }
                 }
@@ -591,16 +547,16 @@
                 emptyFrames++;
                 if (emptyFrames > 15) {
                     consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
+                    holdFill.style.width = "0%";
+                    faceMask.classList.remove('active');
                 }
 
                 lastDetection = null;
-                distanceFill.style.width = "0%";
                 consecutiveGoodFrames = 0;
-                updateFrameProgress(0);
+                holdFill.style.width = "0%";
+                faceMask.classList.remove('active');
 
                 if (!isProcessing && !isSleeping) {
-                    drawTargetingFrame(overlayCtx, targetX, targetY, targetSize, "rgba(255, 255, 255, 0.4)", false);
                     resultBox.className = "info status-scanning";
                     resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
                 }
@@ -623,10 +579,9 @@
             document.getElementById('sleepOverlay').style.display = 'flex';
             document.getElementById('resultBox').className = "info status-sleep";
             document.getElementById('resultBox').innerHTML = "💤 HỆ THỐNG ĐANG TẠM NGHỈ";
-            distanceFill.style.width = "0%";
             consecutiveGoodFrames = 0;
-            updateFrameProgress(0);
-            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            holdFill.style.width = "0%";
+            faceMask.classList.remove('active');
         }
 
         async function wakeUp() {
@@ -645,7 +600,6 @@
             const videoH = video.videoHeight;
             let { xCenter, yCenter, width, height } = lastDetection;
 
-            // ĐỒNG BỘ TUYỆT ĐỐI VỚI BACKEND LÀ 0.25
             const padding = 0.25; 
             
             let cropW = width * (1 + padding) * videoW;
@@ -715,16 +669,74 @@
             document.getElementById('successPopup').style.display = 'none';
         }
 
+        // ==========================================
+        // KHỐI LOGIC XỬ LÝ RENEW (AUTO UPDATE FACE)
+        // ==========================================
+        async function submitRenew() {
+            if (!pendingRenewData) return;
+            
+            document.getElementById('renewPopup').style.display = 'none';
+            resultBox.className = "info status-scanning";
+            resultBox.innerHTML = `<div class="loader"></div> ĐANG CẬP NHẬT DỮ LIỆU...`;
+
+            try {
+                const response = await fetch(`/api/confirm-renew`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pendingRenewData)
+                });
+                const resData = await response.json();
+
+                if (resData.status === "success") {
+                    resultBox.className = "info status-ok";
+                    resultBox.innerHTML = `✅ CẬP NHẬT & CHẤM CÔNG THÀNH CÔNG`;
+                    triggerSuccessPopup(pendingRenewData.user_id);
+                    addHistoryItem(pendingRenewData.user_id, "100% (Mới)");
+                } else {
+                    resultBox.className = "info status-err";
+                    resultBox.innerHTML = `⚠️ LỖI CẬP NHẬT: ${resData.message}`;
+                }
+            } catch (e) {
+                resultBox.className = "info status-err";
+                resultBox.innerHTML = `⚠️ LỖI KẾT NỐI SERVER`;
+            } finally {
+                pendingRenewData = null;
+                // Mở khóa camera sau khi xử lý xong
+                setTimeout(() => {
+                    isApiLocked = false;
+                    isProcessing = false;
+                    isFetchingAPI = false;
+                    consecutiveGoodFrames = 0;
+                    holdFill.style.width = "0%";
+                    faceMask.classList.remove('active');
+                }, 1500);
+            }
+        }
+
+        function cancelRenew() {
+            document.getElementById('renewPopup').style.display = 'none';
+            pendingRenewData = null;
+            
+            resultBox.className = "info status-warning";
+            resultBox.innerHTML = `⚠️ ĐÃ TỪ CHỐI CẬP NHẬT`;
+
+            // Mở khóa camera ngay lập tức
+            setTimeout(() => {
+                isApiLocked = false;
+                isProcessing = false;
+                isFetchingAPI = false;
+                consecutiveGoodFrames = 0;
+                holdFill.style.width = "0%";
+                faceMask.classList.remove('active');
+            }, 800);
+        }
+        // ==========================================
+
         async function sendToAPI() {
             const now = Date.now();
             
-            if (isFetchingAPI || isApiLocked) {
-                return;
-            }
-
-            if (now - lastAttemptTime < 800) { 
-                return;
-            }
+            if (isFetchingAPI || isApiLocked) return;
+            if (now - lastAttemptTime < 800) return;
 
             isFetchingAPI = true;
             isProcessing = true;
@@ -732,32 +744,44 @@
 
             resultBox.className = "info status-scanning";
             resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
-            
-            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+            let isRenewFlow = false; // Cờ theo dõi xem có dính vào luồng renew không
+
             try {
-                const croppedImage = captureCroppedFace();
-                const fullImage = captureFullFrame();
+                const tempCanvas = document.createElement('canvas');
+                const maxWidth = 640;
+                const scale = Math.min(1, maxWidth / video.videoWidth);
+                tempCanvas.width = video.videoWidth * scale;
+                tempCanvas.height = video.videoHeight * scale;
+                const ctx = tempCanvas.getContext('2d');
+                ctx.translate(tempCanvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
 
-                if (!croppedImage || !fullImage) {
-                    throw new Error("Không capture được ảnh");
-                }
-
-                if (!isImageSharp(cropCanvas)) {
+                if (!isImageSharp(tempCanvas, SHARPNESS_THRESHOLD)) {
                     resultBox.className = "info status-warning";
-                    resultBox.innerHTML = `⚠️ ẢNH CHƯA RÕ NÉT, VUI LÒNG ĐỨNG YÊN`;
+                    resultBox.innerHTML = `⚠️ ẢNH BỊ RUNG MỜ, VUI LÒNG ĐỨNG YÊN TƯ THẾ`;
                     
                     consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
+                    holdFill.style.width = "0%";
+                    faceMask.classList.remove('active');
                     
                     setTimeout(() => { isApiLocked = false; isProcessing = false; isFetchingAPI = false; }, 800); 
                     clearTimeout(timeoutId);
-                    return;
+                    return; 
                 }
 
+                const croppedImage = captureCroppedFace();
+                const fullImage = captureFullFrame(); 
+
+                if (!croppedImage || !fullImage) throw new Error("Không capture được ảnh");
+
+                document.getElementById('debugBox').style.display = 'block';
+                document.getElementById('debugImg').src = croppedImage;
+            
                 const response = await fetch(`/recognize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -773,7 +797,7 @@
                 clearTimeout(timeoutId);
                 const data = await response.json();
 
-                if (data.recognized) {
+                if (data.recognized === true) {
                     const checkTime = Date.now();
                     if (userCooldowns[data.user_id] && checkTime - userCooldowns[data.user_id] < USER_COOLDOWN_MS) {
                         resultBox.className = "info status-ok";
@@ -785,7 +809,25 @@
                         addHistoryItem(data.user_id, data.match_probability);
                         triggerSuccessPopup(data.user_id.toUpperCase());
                     }
-                } else {
+                } 
+                // XỬ LÝ TÍN HIỆU RENEW TỪ BACKEND
+                else if (data.recognized === "verify_renew") {
+                    isRenewFlow = true; 
+                    isApiLocked = true; // Khóa chặt camera lại
+                    
+                    // Gói ghém dữ liệu chờ gửi đi
+                    pendingRenewData = {
+                        user_id: data.user_id,
+                        image_base64: croppedImage,
+                        full_image_base64: fullImage,
+                        client_public_ip: currentPublicIp,
+                        attendance_type: 'Tập trung v3'
+                    };
+
+                    document.getElementById('renewMessage').innerHTML = `Hệ thống nhận diện bạn là:<br><b style="font-size: 1.4rem; color: #fff;">${data.user_id.toUpperCase()}</b><br><br>Nhưng diện mạo của bạn có vẻ đã thay đổi.<br>Bạn có muốn lưu khuôn mặt này làm mặc định không?`;
+                    document.getElementById('renewPopup').style.display = 'flex';
+                }
+                else {
                     resultBox.className = "info status-warning";
                     resultBox.innerHTML = `⚠️ KHÔNG NHẬN DIỆN ĐƯỢC - ĐANG THỬ LẠI...`;
                 }
@@ -800,13 +842,18 @@
                     resultBox.innerHTML = `⚠️ LỖI KẾT NỐI - ĐANG THỬ LẠI...`;
                 }
             } finally {
-                setTimeout(() => {
-                    isApiLocked = false;
-                    isProcessing = false;
-                    isFetchingAPI = false;
-                    consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
-                }, 1000); 
+                // Nếu đang dính vào luồng Renew (hiện popup) thì TUYỆT ĐỐI KHÔNG mở khóa camera ở đây.
+                // Việc mở khóa sẽ do 2 nút bấm Submit/Cancel quyết định.
+                if (!isRenewFlow) {
+                    setTimeout(() => {
+                        isApiLocked = false;
+                        isProcessing = false;
+                        isFetchingAPI = false;
+                        consecutiveGoodFrames = 0;
+                        holdFill.style.width = "0%";
+                        faceMask.classList.remove('active');
+                    }, 1000); 
+                }
             }
         }
 
@@ -834,8 +881,6 @@
                 });
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
-                    overlayCanvas.width = video.videoWidth;
-                    overlayCanvas.height = video.videoHeight;
                     if (!isLoopRunning) {
                         isLoopRunning = true;
                         processVideoFrame();
@@ -852,9 +897,7 @@
                 const ipRes = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipRes.json();
                 currentPublicIp = ipData.ip;
-            } catch (e) {
-                console.warn("Không lấy được IP mạng: ", e);
-            }
+            } catch (e) {}
         }
 
         function schedulePeriodicReload() {
@@ -890,13 +933,7 @@
             }
 
             const msUntilReload = targetTime.getTime() - now.getTime();
-
-            console.log(`Bảo trì RAM: Tự động Reload tiếp theo vào lúc ${targetTime.toLocaleTimeString('vi-VN')}`);
-
-            setTimeout(() => {
-                console.log("Đang tiến hành tải lại trang...");
-                window.location.reload(true);
-            }, msUntilReload);
+            setTimeout(() => window.location.reload(true), msUntilReload);
         }
 
         startCamera();
