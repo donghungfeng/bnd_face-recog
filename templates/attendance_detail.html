@@ -298,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const searchInput = document.getElementById("searchInput");
     if (searchInput && (paramName || paramUser)) {
-        searchInput.value = paramName || paramUser;
+        searchInput.value = paramUser || paramName;  // ← Đổi thành paramUser trước
         searchInput.disabled = true; 
         searchInput.title = "Đang xem chi tiết, không thể thay đổi nhân viên";
     }
@@ -349,8 +349,7 @@ async function fetchData(page = 1) {
     
     if (startDate)  queryParams.append("start_date", startDate);
     if (endDate)    queryParams.append("end_date", endDate);
-    if (targetUser && !keyword) queryParams.append("username", targetUser);
-    if (keyword)    queryParams.append("keyword", keyword);
+    if (targetUser) queryParams.append("emp_keyword", targetUser);
 
     const apiUrl = `/api/attendance?${queryParams.toString()}`;
 

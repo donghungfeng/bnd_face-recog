@@ -7,7 +7,7 @@ import io
 from openpyxl.styles import Font, PatternFill
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import aliased
-
+from sqlalchemy import or_
 from fastapi.templating import Jinja2Templates
 templates = Jinja2Templates(directory="templates")
 
@@ -127,15 +127,15 @@ def get_assignments(month: int, year: int, db: Session = Depends(get_db)):
 @router.post("/api/assignments")
 def create_assignment(req: ShiftAssignmentCreate, db: Session = Depends(get_db)):
     existing = db.query(ShiftAssignment).filter(
-        ShiftAssignment.employee_id == req.employee_id, 
+        ShiftAssignment.employee_id == req.employee_id,
         ShiftAssignment.shift_date == req.shift_date
     ).first()
-    
+
     if existing:
-        existing.shift_code = req.shift_code 
-        if req.assigner: existing.assigner = req.assigner
+        existing.shift_code = req.shift_code  # Ghi đè chuỗi mới (vd: "X, T")
     else:
         db.add(ShiftAssignment(**req.dict()))
+
     db.commit()
     return {"status": "success"}
 
@@ -402,8 +402,7 @@ async def import_assignments(file: UploadFile = File(...), db: Session = Depends
             raise HTTPException(status_code=400, detail="Mẫu Excel không hợp lệ (Không tìm thấy cột 'ID').")
         
         date_cols = []
-        for i in range(6, len(header)):
-            val = header[i]
+        for i, val in enumerate(header):
             if val:
                 try:
                     if isinstance(val, datetime):
@@ -415,6 +414,7 @@ async def import_assignments(file: UploadFile = File(...), db: Session = Depends
                     continue
 
         valid_shift_codes = {s.shift_code for s in db.query(ShiftCategory).all()}
+        print(">>> valid_shift_codes:", valid_shift_codes)
 
         count = 0
         for row in rows[1:]:
@@ -426,11 +426,19 @@ async def import_assignments(file: UploadFile = File(...), db: Session = Depends
             
             for col_idx, s_date in date_cols:
                 val = row[col_idx]
-                shift_code = str(val).strip() if val else None
-                
-                if shift_code and shift_code not in valid_shift_codes:
-                    shift_code = None
-                
+                raw = str(val).strip() if val else None
+                print(f">>> raw='{raw}', col_idx={col_idx}, s_date={s_date}")
+
+                shift_code = None
+                if raw and raw != 'None':
+                    codes = [c.strip() for c in raw.split(',') if c.strip()]
+                    valid_codes = [c for c in codes if c in valid_shift_codes]
+                    print(f">>> codes={codes}, valid_codes={valid_codes}")
+                    if valid_codes:
+                        shift_code = ','.join(valid_codes)
+
+                print(f">>> final shift_code='{shift_code}'")
+
                 existing = db.query(ShiftAssignment).filter(
                     ShiftAssignment.employee_id == employee.id,
                     ShiftAssignment.shift_date == s_date

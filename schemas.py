@@ -1,8 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from datetime import date, time
-
-import models
+from datetime import date, time, datetime
 
 class FaceRequest(BaseModel):
     user_id: str = None
@@ -158,13 +156,36 @@ class MonthlyRecordOut(MonthlyRecordBase):
     shift_display_name: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
+
+class AttendanceSchema(BaseModel):
+    id: int
+    username: str
+    full_name: str
+    check_in_time: datetime
+    image_path: Optional[str] = None
+    late_minutes: int = 0
+    early_minutes: int = 0
+    explanation_status: str = ""
+    explanation_reason: Optional[str] = None
+
+    confidence: Optional[float] = None
+    is_fraud: bool = False
+    fraud_note: Optional[str] = None
+
+    client_ip: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    attendance_type: str = "Tập trung"
+    note: Optional[str] = None
+    class Config:
+        orm_mode = True
     
 class AttendanceSummary(BaseModel):
     employee_id: int
     username: str
     target_date: date
     # Danh sách các lần quét thực tế (đối tượng Model Attendance)
-    scans: list[models.Attendance]
+    scans: list[AttendanceSchema]
 
     model_config = ConfigDict(
         from_attributes=True,

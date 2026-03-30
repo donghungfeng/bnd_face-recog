@@ -57,9 +57,9 @@ def get_attendance(
 
     # -- Lọc thời gian --
     if start_date:
-        query = query.filter(func.date(Attendance.check_in_time) >= start_date)
+        query = query.filter(Attendance.check_in_time >= f"{start_date} 00:00:00")
     if end_date:
-        query = query.filter(func.date(Attendance.check_in_time) <= end_date)
+        query = query.filter(Attendance.check_in_time <= f"{end_date} 23:59:59")
 
     # -- Lọc trạng thái --
     if status == "fraud":

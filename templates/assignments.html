@@ -45,7 +45,6 @@
         border-collapse: separate;
         border-spacing: 0;
         width: max-content;
-        /* Quan trọng: Ép bảng rộng theo số ngày, không bị co */
         min-width: 100%;
         font-size: 0.85rem;
         table-layout: fixed;
@@ -78,90 +77,42 @@
         z-index: 5;
     }
 
-    /* Độ rộng cố định từng cột để không bị vỡ */
-    .col-stt {
-        width: 50px;
-        left: 0;
-    }
+    .col-stt { width: 50px; left: 0; }
+    .col-name { width: 200px; left: 50px; text-align: left !important; }
+    .col-dob { width: 100px; left: 250px; }
+    .col-unit { width: 150px; left: 350px; }
+    .col-dept { width: 180px; left: 500px; border-right: 2px solid #cbd5e1 !important; }
 
-    .col-name {
-        width: 200px;
-        left: 50px;
-        text-align: left !important;
-    }
-
-    .col-dob {
-        width: 100px;
-        left: 250px;
-    }
-
-    .col-unit {
-        width: 150px;
-        left: 350px;
-    }
-
-    .col-dept {
-        width: 180px;
-        left: 500px;
-        border-right: 2px solid #cbd5e1 !important;
-    }
-
-    /* 4. Giao điểm của Header và Cột Sticky (Z-index cao nhất) */
+    /* 4. Giao điểm của Header và Cột Sticky */
     thead .sticky-col {
         z-index: 20 !important;
         background: #f1f5f9 !important;
     }
 
     /* Màu sắc bổ trợ */
-    .weekend-cell {
-        background: #fef2f2 !important;
-        color: #dc2626;
-    }
+    .weekend-cell { background: #fef2f2 !important; color: #dc2626; }
+    .today-cell { background: #fffbeb !important; outline: 2px solid #fbbf24 inset; }
+    .cell-empty:hover { background: #eff6ff !important; cursor: pointer; border: 1px dashed #3b82f6; }
 
-    .today-cell {
-        background: #fffbeb !important;
-        outline: 2px solid #fbbf24 inset;
-    }
+    /* Tùy chỉnh thanh cuộn */
+    .matrix-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+    .matrix-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-    .cell-empty:hover {
-        background: #eff6ff !important;
-        cursor: pointer;
-        border: 1px dashed #3b82f6;
-    }
-
-    /* Tùy chỉnh thanh cuộn cho đẹp */
-    .matrix-wrapper::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-
-    .matrix-wrapper::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
+    /* CSS LÀM ĐẸP NÚT BẤM VÀ PHÂN TRANG */
+    .btn-pagination {
+        background: #fff;
+        border: 1px solid #cbd5e1;
         border-radius: 4px;
-    }
-
-    /* CSS LÀM ĐẸP NÚT BẤM VÀ UPLOAD FILE */
-    .action-btn {
-        padding: 8px 14px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        border: none;
+        padding: 2px 8px;
         cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
         transition: all 0.2s;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        font-family: 'Inter', sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
-    .action-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .btn-download { background: #10b981; color: white; }
-    .btn-upload { background: #f59e0b; color: #1e293b; }
-    .btn-choose { background: #3b82f6; color: white; margin: 0; }
+    .btn-pagination:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; }
+    .btn-pagination:disabled { opacity: 0.5; cursor: not-allowed; }
+
 </style>
 
 <div class="card">
@@ -206,7 +157,6 @@
         </table>
     </div>
 
-    <!-- Pagination Controls -->
     <div id="paginationControls"
         style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #fff; border: 1px solid #e2e8f0; border-top: 2px solid #cbd5e1; border-radius: 0 0 8px 8px; font-size: 0.85rem; box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.1);">
         <div style="display: flex; align-items: center; gap: 5px;">
@@ -237,40 +187,21 @@
     </div>
 </div>
 
-<style>
-    .btn-pagination {
-        background: #fff;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        padding: 2px 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .btn-pagination:hover:not(:disabled) {
-        background: #f1f5f9;
-        border-color: #94a3b8;
-    }
-
-    .btn-pagination:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-</style>
-
 <div id="assignModal"
     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
     <div
         style="background:#fff; border-radius:12px; padding:25px; width:90%; max-width:450px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
         <h3 style="margin-top:0;">📋 Gán Ca Trực</h3>
-        <p id="modalInfo" style="color:#64748b; font-size:0.9rem; margin-bottom: 20px;"></p>
+        <p id="modalInfo" style="color:#64748b; font-size:0.9rem; margin-bottom: 15px;"></p>
+        
+        <div id="selectedShiftsDisplay" style="margin-bottom: 15px; padding: 10px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; font-size: 0.9rem; color: #334155;">
+            Đang chọn: <span style="color: #94a3b8;">Chưa có</span>
+        </div>
+
         <div id="shiftCardList"
             style="display:grid; grid-template-columns:1fr 1fr; gap:10px; max-height:300px; overflow-y:auto;"></div>
         <div style="text-align:right; margin-top: 20px;">
-            <button class="btn-primary" style="background:#64748b;" onclick="closeModal()">Đóng</button>
+            <button style="background:#64748b; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;" onclick="closeModal()">Đóng</button>
         </div>
     </div>
 </div>
@@ -297,11 +228,13 @@
     let currentPage = 1;
     let pageSize = 15;
     let totalPages = 1;
-    let shiftMapCache = {}; // Cache để dùng cho modal gán/sửa ca
+    let shiftMapCache = {}; 
 
-    // ==========================================
-    // HÀM LẤY TOKEN (Dùng chung cho toàn file)
-    // ==========================================
+    // BIẾN LƯU NHIỀU CA TRỰC ĐƯỢC CHỌN
+    let selectedShiftCodes = []; 
+    let currentModalEmpId = null;
+    let currentModalDate = null;
+
     function getAuthHeaders() {
         const token = localStorage.getItem("hrm_token");
         return { 'Authorization': `Bearer ${token}` };
@@ -311,10 +244,9 @@
     function updateFileName(input) {
         const label = document.getElementById('fileLabel');
         if (input.files && input.files.length > 0) {
-            // Lấy tên file, hiển thị lên chính cái nút
             label.innerHTML = `📄 ${input.files[0].name}`;
-            label.title = input.files[0].name; // Trỏ chuột vào để xem full tên
-            label.style.background = '#0ea5e9'; // Đổi màu cho khỏi lẫn
+            label.title = input.files[0].name; 
+            label.style.background = '#0ea5e9'; 
         } else {
             label.innerHTML = `📂 CHỌN FILE`;
             label.title = '';
@@ -322,27 +254,25 @@
         }
     }
 
-    // 2. TẢI DANH MỤC CA ĐỂ DÙNG TRONG MODAL
+    // TẢI DANH MỤC CA
     async function loadShiftCategories() {
         try {
-            const res = await fetch('/api/shifts', {
-                headers: getAuthHeaders() 
-            });
+            const res = await fetch('/api/shifts', { headers: getAuthHeaders() });
             allShiftCategories = await res.json();
         } catch (e) { console.error("Lỗi tải ca:", e); }
     }
 
-    // Debounce cho tìm kiếm
+    // DEBOUNCE TÌM KIẾM
     let debounceTimer;
     function debounceFetch() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            currentPage = 1; // Reset về trang 1 khi gõ tìm kiếm
+            currentPage = 1; 
             fetchAssignments();
         }, 500);
     }
 
-    // 3. HÀM CHÍNH: LẤY DỮ LIỆU VÀ VẼ BẢNG
+    // LẤY DỮ LIỆU & VẼ BẢNG
     async function fetchAssignments() {
         const start = document.getElementById('startDateFilter').value;
         const end = document.getElementById('endDateFilter').value;
@@ -354,8 +284,6 @@
 
         try {
             const headers = getAuthHeaders(); 
-            
-            // ĐÃ SỬA: Gọi API mới có phân trang và phân quyền từ Backend
             const empUrl = `/api/employees?page=${currentPage}&size=${pageSize}&search=${encodeURIComponent(search)}`;
             const assignUrl = `/api/assignments/details?start_date=${start}&end_date=${end}`;
 
@@ -369,13 +297,9 @@
             const empData = await empRes.json();
             const assignData = await assignRes.json();
 
-            // Dữ liệu đã được cắt gọn sẵn từ API
             const employees = empData.items || [];
-
-            // Cập nhật giao diện phân trang dựa vào dữ liệu API trả về
             renderPagination(empData.page, empData.total_pages, empData.total);
 
-            // --- XỬ LÝ DỮ LIỆU CA TRỰC ---
             shiftMapCache = {};
             assignData.forEach(item => {
                 if (!shiftMapCache[item.employee_id]) shiftMapCache[item.employee_id] = {};
@@ -451,7 +375,6 @@
 
         tbody.innerHTML = "";
         employees.forEach((emp, i) => {
-            // Hiển thị STT dựa trên trang hiện hành để số thứ tự nối tiếp nhau
             const stt = (currentPage - 1) * pageSize + i + 1;
             
             let row = `<tr>
@@ -466,7 +389,8 @@
                 const isWE = (dObj.getDay() === 0 || dObj.getDay() === 6);
                 const assign = shiftMap[emp.id]?.[dStr];
 
-                if (assign) {
+                if (assign && assign.shift_code) {
+                    // Nếu có nhiều ca thì tên nó sẽ hiện đầy đủ (vd: HC, CA1)
                     row += `<td class="${isWE ? 'weekend-cell' : ''}" style="background:#e0f2fe; color:#0369a1; cursor:pointer; font-weight:bold" 
                             onclick="openAssignModal(${emp.id}, '${emp.full_name}', '${dStr}')">${assign.shift_code}</td>`;
                 } else {
@@ -492,10 +416,7 @@
         document.getElementById('btnLast').disabled = (page >= totalPageCount);
     }
 
-    function changePage(delta) {
-        jumpToPage(currentPage + delta);
-    }
-
+    function changePage(delta) { jumpToPage(currentPage + delta); }
     function jumpToPage(page) {
         const pageNum = parseInt(page);
         if (isNaN(pageNum) || pageNum < 1) {
@@ -505,23 +426,27 @@
         currentPage = (pageNum > totalPages && totalPages > 0) ? totalPages : pageNum;
         fetchAssignments();
     }
-
     function updatePageSize(newSize) {
         pageSize = parseInt(newSize);
         currentPage = 1;
         fetchAssignments();
     }
 
-    let selectedShiftCode = null;
-    let currentModalEmpId = null;
-    let currentModalDate = null;
-
+    // =====================================
+    // LOGIC MODAL GÁN CA TRỰC (MULTI-SELECT)
+    // =====================================
     function openAssignModal(id, name, date) {
         currentModalEmpId = id;
         currentModalDate = date;
 
         const currentAssign = shiftMapCache[id]?.[date];
-        selectedShiftCode = currentAssign ? currentAssign.shift_code : null;
+        
+        // Tách chuỗi ca trực ra thành mảng (nếu có)
+        if (currentAssign && currentAssign.shift_code) {
+            selectedShiftCodes = currentAssign.shift_code.split(',').map(s => s.trim()).filter(s => s);
+        } else {
+            selectedShiftCodes = [];
+        }
 
         document.getElementById('modalInfo').innerHTML = `Nhân viên: <b>${name}</b> | Ngày: <b>${date}</b>`;
         renderShiftCards();
@@ -530,18 +455,28 @@
 
     function renderShiftCards() {
         const list = document.getElementById('shiftCardList');
+        const displayDiv = document.getElementById('selectedShiftsDisplay'); 
+
+        // Cập nhật text hiển thị ca đang chọn
+        if (displayDiv) {
+            displayDiv.innerHTML = selectedShiftCodes.length > 0 
+                ? `Đang chọn: <b style="color: #2563eb; font-size: 1.05rem;">${selectedShiftCodes.join(', ')}</b>` 
+                : `Đang chọn: <span style="color: #94a3b8;">Chưa chọn ca nào</span>`;
+        }
+
         if (allShiftCategories.length === 0) {
             list.innerHTML = '<div style="grid-column: 1/3; text-align:center; padding:10px;">Chưa có danh mục ca.</div>';
             return;
         }
 
         list.innerHTML = allShiftCategories.map(s => {
-            const isSelected = (s.shift_code === selectedShiftCode);
+            const isSelected = selectedShiftCodes.includes(s.shift_code);
             return `
-            <div onclick="selectShift('${s.shift_code}')" 
-                 style="border:2px solid ${isSelected ? '#3b82f6' : '#e2e8f0'}; background:${isSelected ? '#eff6ff' : '#fff'}; padding:12px; border-radius:8px; cursor:pointer; text-align:center; transition: 0.2s;"
+            <div onclick="toggleShift('${s.shift_code}')" 
+                 style="border:2px solid ${isSelected ? '#3b82f6' : '#e2e8f0'}; background:${isSelected ? '#eff6ff' : '#fff'}; padding:12px; border-radius:8px; cursor:pointer; text-align:center; transition: 0.2s; position: relative;"
                  onmouseover="this.style.background='#eff6ff'; this.style.borderColor='#3b82f6'"
                  onmouseout="this.style.background='${isSelected ? '#eff6ff' : '#fff'}'; this.style.borderColor='${isSelected ? '#3b82f6' : '#e2e8f0'}'">
+                ${isSelected ? '<span style="position:absolute; top:5px; right:8px; color:#3b82f6;">✔️</span>' : ''}
                 <b style="color:#1e40af;">${s.shift_code}</b><br><small>${s.shift_name}</small>
             </div>`;
         }).join('') + `
@@ -549,14 +484,24 @@
              style="grid-column: 1 / span 2; background: #3b82f6; color:white; padding:12px; border-radius:8px; cursor:pointer; text-align:center; font-weight:bold; margin-top:20px;">
              💾 LƯU THAY ĐỔI
         </div>
-        <div onclick="selectShift(null)" 
+        <div onclick="clearShifts()" 
              style="grid-column: 1 / span 2; border:1px solid #94a3b8; color:#64748b; padding:10px; border-radius:8px; cursor:pointer; text-align:center; margin-top:10px;">
-             🚫 BỎ CHỌN CA (XÓA)
+             🚫 BỎ CHỌN TẤT CẢ (XÓA TRỐNG)
         </div>`;
     }
 
-    function selectShift(code) {
-        selectedShiftCode = code;
+    function toggleShift(code) {
+        const index = selectedShiftCodes.indexOf(code);
+        if (index > -1) {
+            selectedShiftCodes.splice(index, 1);
+        } else {
+            selectedShiftCodes.push(code);
+        }
+        renderShiftCards();
+    }
+
+    function clearShifts() {
+        selectedShiftCodes = [];
         renderShiftCards();
     }
 
@@ -565,12 +510,15 @@
         const date = currentModalDate;
         const currentAssign = shiftMapCache[empId]?.[date];
 
-        if (!selectedShiftCode) {
+        if (selectedShiftCodes.length === 0) {
             if (currentAssign) await deleteAssignSilent(currentAssign.id);
             closeModal();
             fetchAssignments();
             return;
         }
+
+        // Nối mảng ca trực thành chuỗi phân cách bởi dấu phẩy
+        const finalShiftCodeString = selectedShiftCodes.join(', ');
 
         const res = await fetch('/api/assignments', {
             method: 'POST',
@@ -578,7 +526,11 @@
                 'Content-Type': 'application/json',
                 ...getAuthHeaders() 
             },
-            body: JSON.stringify({ employee_id: empId, shift_code: selectedShiftCode, shift_date: date })
+            body: JSON.stringify({ 
+                employee_id: empId, 
+                shift_code: finalShiftCodeString, 
+                shift_date: date 
+            })
         });
 
         if (res.ok) {
@@ -598,19 +550,7 @@
 
     function closeModal() { document.getElementById('assignModal').style.display = 'none'; }
 
-    async function deleteAssign(id, name, date) {
-        if (confirm(`Xóa lịch của ${name} ngày ${date}?`)) {
-            const res = await fetch(`/api/assignments/${id}`, { 
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
-            if (res.ok) {
-                closeModal();
-                fetchAssignments();
-            }
-        }
-    }
-
+    // UPLOAD EXCEL
     async function uploadExcel() {
         const fileInput = document.getElementById('excelFile');
         if (fileInput.files.length === 0) {
@@ -630,6 +570,13 @@
             const result = await resp.json();
             if (result.status === 'success') {
                 alert(result.message);
+                
+                // Trả UI nút File về trạng thái ban đầu
+                document.getElementById('fileLabel').innerHTML = '📂 CHỌN FILE';
+                document.getElementById('fileLabel').title = '';
+                document.getElementById('fileLabel').style.background = '#3b82f6';
+                fileInput.value = ''; // Reset input
+
                 fetchAssignments();
             } else {
                 alert("Lỗi: " + (result.detail || "Không xác định"));
@@ -640,46 +587,40 @@
         }
     }
 
+    // DOWNLOAD TEMPLATE
     async function downloadTemplate() {
-            const start = document.getElementById('startDateFilter').value;
-            const end = document.getElementById('endDateFilter').value;
-            
-            // Lấy thêm từ khóa tìm kiếm (nếu user đang tìm gì đó)
-            const searchKeyword = document.getElementById('searchFilter').value.trim();
-            
-            let url = `/api/assignments/export_template?start_date=${start}&end_date=${end}`;
-            
-            // Nếu có tìm kiếm thì nhét vào URL
-            if (searchKeyword) {
-                url += `&search=${encodeURIComponent(searchKeyword)}`;
-            }
-            // Nếu trang này có thêm bộ lọc phòng ban (deptFilter), bạn cũng có thể thêm vào đây:
-            // const deptId = document.getElementById('deptFilter')?.value;
-            // if (deptId) url += `&department_id=${deptId}`;
-            
-            try {
-                const res = await fetch(url, {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
-
-                if (!res.ok) throw new Error("Lỗi khi tải file");
-
-                const blob = await res.blob();
-                const blobUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = blobUrl;
-                a.download = `MauPhanCong_${start}_den_${end}.xlsx`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(blobUrl);
-                
-            } catch (err) {
-                console.error(err);
-                alert("Không có quyền hoặc lỗi kết nối khi tải Template!");
-            }
+        const start = document.getElementById('startDateFilter').value;
+        const end = document.getElementById('endDateFilter').value;
+        const searchKeyword = document.getElementById('searchFilter').value.trim();
+        
+        let url = `/api/assignments/export_template?start_date=${start}&end_date=${end}`;
+        if (searchKeyword) {
+            url += `&search=${encodeURIComponent(searchKeyword)}`;
         }
+        
+        try {
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+
+            if (!res.ok) throw new Error("Lỗi khi tải file");
+
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = blobUrl;
+            a.download = `MauPhanCong_${start}_den_${end}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(blobUrl);
+            
+        } catch (err) {
+            console.error(err);
+            alert("Không có quyền hoặc lỗi kết nối khi tải Template!");
+        }
+    }
 
     // Khởi tạo chạy ngay
     loadShiftCategories();

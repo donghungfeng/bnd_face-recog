@@ -20,34 +20,12 @@
         overflow-x: auto;
     }
 
-    .filter-bar::-webkit-scrollbar {
-        height: 6px;
-    }
+    .filter-bar::-webkit-scrollbar { height: 6px; }
+    .filter-bar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-    .filter-bar::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-    }
-
-    .filter-group {
-        display: flex;
-        flex-wrap: nowrap;
-        gap: 20px;
-        align-items: center;
-    }
-
-    .filter-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        white-space: nowrap;
-    }
-
-    .filter-bar label {
-        margin: 0;
-        font-weight: 600;
-        color: var(--text-main);
-    }
+    .filter-group { display: flex; flex-wrap: nowrap; gap: 20px; align-items: center; }
+    .filter-item { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .filter-bar label { margin: 0; font-weight: 600; color: var(--text-main); }
 
     .filter-bar select,
     .filter-bar input {
@@ -61,9 +39,7 @@
     }
 
     .filter-bar select:focus,
-    .filter-bar input:focus {
-        border-color: var(--primary);
-    }
+    .filter-bar input:focus { border-color: var(--primary); }
 
     .btn-action {
         background: var(--primary);
@@ -133,11 +109,7 @@
         box-shadow: 0 2px 8px rgba(67, 97, 238, 0.08);
     }
 
-    .cal-day.empty {
-        background: transparent;
-        border: none;
-        box-shadow: none;
-    }
+    .cal-day.empty { background: transparent; border: none; box-shadow: none; }
 
     .cal-day.today {
         border: 2px solid var(--primary);
@@ -149,18 +121,9 @@
         border-color: #86efac;
     }
 
-    .cal-day.weekend .day-number {
-        color: #16a34a;
-    }
-
-    .cal-day.today.weekend {
-        background: #f0f4ff;
-        border-color: var(--primary);
-    }
-
-    .cal-day.today.weekend .day-number {
-        color: white;
-    }
+    .cal-day.weekend .day-number { color: #16a34a; }
+    .cal-day.today.weekend { background: #f0f4ff; border-color: var(--primary); }
+    .cal-day.today.weekend .day-number { color: white; }
 
     .day-number {
         font-weight: 700;
@@ -182,6 +145,42 @@
         font-size: 0.8rem;
     }
 
+    /* ══ KHỐI CA ══ */
+    .shift-block {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 4px 5px;
+        margin-bottom: 3px;
+        background: #f8fafc;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .shifts-row .shift-block {
+        margin-bottom: 0;
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Màu border trái theo trạng thái */
+    .shift-block.s-present  { border-left: 3px solid #16a34a; background: #f0fdf4; }
+    .shift-block.s-late     { border-left: 3px solid #d97706; background: #fffbeb; }
+    .shift-block.s-absent   { border-left: 3px solid #dc2626; background: #fef2f2; }
+    .shift-block.s-leave    { border-left: 3px solid #0284c7; background: #f0f9ff; }
+    .shift-block.s-unpaid   { border-left: 3px solid #64748b; background: #f8fafc; }
+    .shift-block.s-progress { border-left: 3px solid #2563eb; background: #eff6ff; }
+    .shift-block.s-nodata   { border-left: 3px solid #cbd5e1; background: #f8fafc; }
+
+    .shift-label {
+        font-size: 0.62rem;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-bottom: 2px;
+    }
+
     /* BADGE THÔNG TIN */
     .badge {
         font-size: 0.68rem;
@@ -195,28 +194,10 @@
         display: block;
     }
 
-    .badge-in {
-        background: #e0f2fe;
-        color: #0284c7;
-    }
-
-    .badge-out {
-        background: #fce7f3;
-        color: #c026d3;
-    }
-
-    .badge-miss {
-        background: #f1f5f9;
-        color: #94a3b8;
-        font-weight: 600;
-        font-style: italic;
-    }
-
-    .badge-work {
-        background: #dcfce7;
-        color: #16a34a;
-    }
-
+    .badge-in    { background: #e0f2fe; color: #0284c7; }
+    .badge-out   { background: #fce7f3; color: #c026d3; }
+    .badge-miss  { background: #f1f5f9; color: #94a3b8; font-weight: 600; font-style: italic; }
+    .badge-work  { background: #dcfce7; color: #16a34a; }
     .badge-leave {
         background: #fff3cd;
         color: #d35400;
@@ -227,50 +208,49 @@
     }
 
     /* Badge trạng thái */
-    .badge-status-present {
-        background: #dcfce7;
-        color: #16a34a;
-        border: 1px solid #bbf7d0;
-    }
+    .badge-status-present  { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+    .badge-status-late     { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+    .badge-status-absent   { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+    .badge-status-leave    { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+    .badge-status-unpaid   { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .badge-status-inprogress { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+    .badge-weekend-rest    { background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-style: italic; }
 
-    .badge-status-late {
-        background: #fef3c7;
-        color: #d97706;
-        border: 1px solid #fde68a;
-    }
-
-    .badge-status-absent {
-        background: #fee2e2;
-        color: #dc2626;
-        border: 1px solid #fecaca;
-    }
-
-    .badge-status-leave {
-        background: #e0f2fe;
-        color: #0284c7;
-        border: 1px solid #bae6fd;
-    }
-
-    .badge-status-unpaid {
+    /* Nhãn đa ca */
+    .multi-shift-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
         background: #f1f5f9;
-        color: #475569;
-        border: 1px solid #cbd5e1;
+        color: #64748b;
+        font-size: 0.6rem;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 10px;
+        margin-bottom: 3px;
+        border: 1px solid #e2e8f0;
     }
 
-    .badge-status-inprogress {
-        background: #eff6ff;
-        color: #2563eb;
-        border: 1px solid #bfdbfe;
+    /* ── LAYOUT ĐA CA: chia cột ngang ── */
+    .shifts-row {
+        display: flex;
+        gap: 4px;
+        align-items: stretch;  /* các ca cùng chiều cao */
+        width: 100%;
     }
 
-    .badge-weekend-rest {
-        background: #dcfce7;
-        color: #15803d;
-        border: 1px solid #86efac;
-        font-style: italic;
+    .shifts-row .shift-block {
+        flex: 1;
+        min-width: 0;
+        margin-bottom: 0;
     }
 
-    /* KHU VỰC NÚT HÀNH ĐỘNG */
+    /* Khi chỉ có 1 ca: full width bình thường */
+    .shift-block-solo {
+        width: 100%;
+    }
+
+    /* KHU VỰC NÚT HÀNH ĐỘNG CHUNG — luôn đáy ô */
     .day-actions {
         display: flex;
         gap: 3px;
@@ -319,18 +299,13 @@
         border-color: #fed7aa;
     }
 
-    .btn-day-leave:hover {
-        background: #ea580c;
-        color: white;
-    }
+    .btn-day-leave:hover { background: #ea580c; color: white; }
 
     /* MODAL */
     .modal-overlay {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
         background: rgba(0, 0, 0, 0.5);
         display: flex;
         justify-content: center;
@@ -342,10 +317,7 @@
         backdrop-filter: blur(3px);
     }
 
-    .modal-overlay.active {
-        opacity: 1;
-        pointer-events: auto;
-    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
 
     .modal-content {
         background: white;
@@ -358,19 +330,10 @@
         max-width: 95vw;
     }
 
-    .modal-overlay.active .modal-content {
-        transform: translateY(0);
-    }
+    .modal-overlay.active .modal-content { transform: translateY(0); }
+    .modal-content h3 { margin-top: 0; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
 
-    .modal-content h3 {
-        margin-top: 0;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    .form-group {
-        margin-bottom: 14px;
-    }
+    .form-group { margin-bottom: 14px; }
 
     .form-group label {
         display: block;
@@ -395,9 +358,7 @@
     }
 
     .form-group input:focus,
-    .form-group textarea:focus {
-        border-color: var(--primary);
-    }
+    .form-group textarea:focus { border-color: var(--primary); }
 
     .info-box {
         background: #f8fafc;
@@ -410,105 +371,42 @@
     }
 
     .btn-form-cancel {
-        flex: 1;
-        padding: 10px;
-        border: none;
-        border-radius: 8px;
-        background: #e2e8f0;
-        color: #475569;
-        font-weight: bold;
-        cursor: pointer;
+        flex: 1; padding: 10px; border: none;
+        border-radius: 8px; background: #e2e8f0;
+        color: #475569; font-weight: bold; cursor: pointer;
     }
 
     .btn-form-submit {
-        flex: 1;
-        padding: 10px;
-        border: none;
-        border-radius: 8px;
-        background: var(--primary);
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-        transition: 0.2s;
+        flex: 1; padding: 10px; border: none;
+        border-radius: 8px; background: var(--primary);
+        color: white; font-weight: bold; cursor: pointer; transition: 0.2s;
     }
 
-    .btn-form-submit:hover {
-        background: #3751c9;
-    }
+    .btn-form-submit:hover { background: #3751c9; }
 
     /* ── TABLET ── */
     @media (max-width: 900px) {
-        .filter-bar {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 10px;
-            padding: 12px;
-        }
-
-        .filter-group {
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .btn-action {
-            justify-content: center;
-            width: 100%;
-        }
-
-        .filter-bar select,
-        .filter-bar input {
-            max-width: 100%;
-            width: 100%;
-        }
+        .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+        .filter-group { flex-wrap: wrap; gap: 10px; }
+        .btn-action { justify-content: center; width: 100%; }
+        .filter-bar select, .filter-bar input { max-width: 100%; width: 100%; }
     }
 
     /* ── MOBILE ≤ 480px ── */
     @media (max-width: 480px) {
-        .filter-bar {
-            padding: 10px;
-            border-radius: 10px;
-            gap: 8px;
-        }
+        .filter-bar { padding: 10px; border-radius: 10px; gap: 8px; }
 
-        .filter-item {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4px;
-            width: 100%;
-        }
-
-        .filter-item label {
-            font-size: 0.78rem;
-        }
+        .filter-item { flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; }
+        .filter-item label { font-size: 0.78rem; }
 
         .filter-bar select,
-        .filter-bar input {
-            width: 100%;
-            max-width: 100%;
-            font-size: 0.85rem;
-            padding: 8px 10px;
-        }
+        .filter-bar input { width: 100%; max-width: 100%; font-size: 0.85rem; padding: 8px 10px; }
 
-        .btn-action {
-            width: 100%;
-            justify-content: center;
-            padding: 10px;
-            font-size: 0.85rem;
-        }
+        .btn-action { width: 100%; justify-content: center; padding: 10px; font-size: 0.85rem; }
 
-        .calendar-wrapper {
-            padding: 8px;
-            border-radius: 10px;
-        }
-
-        .calendar-header {
-            font-size: 0.62rem;
-            margin-bottom: 6px;
-        }
-
-        .calendar-grid {
-            gap: 3px;
-        }
+        .calendar-wrapper { padding: 8px; border-radius: 10px; }
+        .calendar-header { font-size: 0.62rem; margin-bottom: 6px; }
+        .calendar-grid { gap: 3px; }
 
         .cal-day {
             min-height: 52px;
@@ -519,9 +417,7 @@
             align-items: center;
         }
 
-        .cal-day:active {
-            transform: scale(0.93);
-        }
+        .cal-day:active { transform: scale(0.93); }
 
         .day-number {
             font-size: 0.8rem;
@@ -531,17 +427,29 @@
             margin-bottom: 0;
         }
 
-        .cal-day.today .day-number {
-            width: 22px;
-            height: 22px;
-            font-size: 0.72rem;
-            margin: 0 auto;
+        .cal-day.today .day-number { width: 22px; height: 22px; font-size: 0.72rem; margin: 0 auto; }
+
+        .badge, .shift-block, .multi-shift-badge, .day-actions, .day-leave-action { display: none; }
+
+        /* Chấm trạng thái nhỏ cho mobile */
+        .mobile-dots {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 3px;
         }
 
-        .badge,
-        .day-actions {
-            display: none;
+        .mobile-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
+    }
+
+    @media (min-width: 481px) {
+        .mobile-dots { display: none !important; }
     }
 
     /* ══ BOTTOM SHEET ══ */
@@ -555,9 +463,7 @@
         backdrop-filter: blur(3px);
     }
 
-    .bottom-sheet-overlay.active {
-        display: flex;
-    }
+    .bottom-sheet-overlay.active { display: flex; }
 
     .bottom-sheet {
         background: white;
@@ -566,29 +472,16 @@
         padding-bottom: env(safe-area-inset-bottom, 20px);
         box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
         animation: slideUpSheet 0.26s cubic-bezier(0.34, 1.4, 0.64, 1);
-        max-height: 80vh;
+        max-height: 85vh;
         overflow-y: auto;
     }
 
     @keyframes slideUpSheet {
-        from {
-            transform: translateY(100%);
-            opacity: 0;
-        }
-
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
+        from { transform: translateY(100%); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
     }
 
-    .sheet-handle {
-        width: 36px;
-        height: 4px;
-        background: #cbd5e1;
-        border-radius: 2px;
-        margin: 12px auto 0;
-    }
+    .sheet-handle { width: 36px; height: 4px; background: #cbd5e1; border-radius: 2px; margin: 12px auto 0; }
 
     .sheet-header {
         display: flex;
@@ -598,88 +491,37 @@
         border-bottom: 1px solid #f1f5f9;
     }
 
-    .sheet-header h4 {
-        margin: 0;
-        font-size: 1rem;
-        color: var(--text-main);
-        font-weight: 800;
-    }
+    .sheet-header h4 { margin: 0; font-size: 1rem; color: var(--text-main); font-weight: 800; }
 
     .sheet-close {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        border: none;
-        background: #f1f5f9;
-        color: #64748b;
-        font-size: 1rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
+        width: 28px; height: 28px; border-radius: 50%; border: none;
+        background: #f1f5f9; color: #64748b; font-size: 1rem;
+        cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
 
-    .sheet-body {
-        padding: 14px 20px 20px;
-    }
+    .sheet-body { padding: 14px 20px 20px; }
 
-    .sheet-status {
-        margin-bottom: 16px;
-    }
+    /* Các ca trong bottom sheet */
+    .sheet-shifts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
 
-    .sheet-status .badge {
-        display: inline-flex !important;
-        font-size: 0.85rem;
-        padding: 5px 12px;
-    }
-
-    .sheet-actions {
-        display: flex;
-        gap: 10px;
-    }
-
-    .sheet-btn {
-        flex: 1;
-        padding: 13px 8px;
+    .sheet-shift-card {
         border-radius: 10px;
-        border: 1px solid;
-        font-weight: 700;
-        font-size: 0.88rem;
-        cursor: pointer;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+
+    .sheet-shift-header {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 6px;
-        transition: 0.15s;
-        font-family: 'Nunito', sans-serif;
-    }
-
-    .sheet-btn-explain {
-        background: #eff6ff;
-        color: #2563eb;
-        border-color: #bfdbfe;
-    }
-
-    .sheet-btn-explain:disabled {
+        justify-content: space-between;
+        padding: 7px 12px;
         background: #f8fafc;
-        color: #cbd5e1;
-        border-color: #e2e8f0;
-        cursor: not-allowed;
+        border-bottom: 1px solid #e2e8f0;
     }
 
-    .sheet-btn-leave {
-        background: #fff7ed;
-        color: #ea580c;
-        border-color: #fed7aa;
-    }
+    .sheet-shift-title { font-size: 0.8rem; font-weight: 800; color: #475569; }
 
-    .sheet-rows {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-bottom: 4px;
-    }
+    .sheet-shift-body { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
 
     .sheet-row {
         display: flex;
@@ -691,32 +533,51 @@
         border: 1px solid #e2e8f0;
     }
 
-    .sheet-label {
-        font-size: 0.82rem;
-        color: #64748b;
-        font-weight: 600;
+    .sheet-label { font-size: 0.82rem; color: #64748b; font-weight: 600; }
+    .sheet-val   { font-size: 0.92rem; font-weight: 800; font-family: monospace; }
+    .sheet-val-in   { color: #0284c7; }
+    .sheet-val-out  { color: #c026d3; }
+    .sheet-val-work { color: #16a34a; }
+    .sheet-val-miss { color: #cbd5e1; }
+
+    .sheet-actions { display: flex; gap: 10px; }
+
+    .sheet-btn {
+        flex: 1; padding: 13px 8px; border-radius: 10px; border: 1px solid;
+        font-weight: 700; font-size: 0.88rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        transition: 0.15s; font-family: 'Nunito', sans-serif;
     }
 
-    .sheet-val {
-        font-size: 0.92rem;
-        font-weight: 800;
-        font-family: monospace;
+    .sheet-btn-explain { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+
+    .sheet-btn-explain:disabled {
+        background: #f8fafc; color: #cbd5e1; border-color: #e2e8f0; cursor: not-allowed;
     }
 
-    .sheet-val-in {
-        color: #0284c7;
+    .sheet-btn-leave { background: #fff7ed; color: #ea580c; border-color: #fed7aa; }
+
+    /* Giải trình trong sheet multi-shift */
+    .sheet-explain-per-shift {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #2563eb;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+        transition: 0.15s;
+        margin-top: 2px;
+        display: inline-block;
     }
 
-    .sheet-val-out {
-        color: #c026d3;
-    }
-
-    .sheet-val-work {
-        color: #16a34a;
-    }
-
-    .sheet-val-miss {
+    .sheet-explain-per-shift:disabled,
+    .sheet-explain-per-shift[disabled] {
         color: #cbd5e1;
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        cursor: not-allowed;
     }
 </style>
 {% endblock %}
@@ -758,6 +619,7 @@
     </div>
 </div>
 
+<!-- MODAL NGHỈ PHÉP -->
 <div class="modal-overlay" id="leaveModal">
     <div class="modal-content">
         <h3 style="color:var(--primary);">✈️ Đăng Ký Nghỉ Phép / Công Tác</h3>
@@ -780,6 +642,7 @@
     </div>
 </div>
 
+<!-- MODAL GIẢI TRÌNH -->
 <div class="modal-overlay" id="giaiTrinhModal">
     <div class="modal-content" style="border-top: 5px solid var(--primary);">
         <h3 style="color:var(--primary);">✍️ Viết Giải Trình</h3>
@@ -787,6 +650,7 @@
         <form id="giaiTrinhForm">
             <input type="hidden" id="gt_username">
             <input type="hidden" id="gt_date">
+            <input type="hidden" id="gt_att_id">
             <div class="form-group">
                 <label>Lý do giải trình <span style="color:red">*</span></label>
                 <textarea id="gt_reason" rows="4" required placeholder="Nhập lý do chi tiết..."></textarea>
@@ -799,6 +663,7 @@
     </div>
 </div>
 
+<!-- BOTTOM SHEET (MOBILE) -->
 <div class="bottom-sheet-overlay" id="bottomSheet" onclick="closeBottomSheet(event)">
     <div class="bottom-sheet" onclick="event.stopPropagation()">
         <div class="sheet-handle"></div>
@@ -807,7 +672,7 @@
             <button class="sheet-close" onclick="closeBottomSheet()">✕</button>
         </div>
         <div class="sheet-body">
-            <div class="sheet-status" id="sheet-status-badge"></div>
+            <div id="sheet-shifts-container" class="sheet-shifts"></div>
             <div class="sheet-actions">
                 <button class="sheet-btn sheet-btn-explain" id="sheet-explain-btn">✍️ Viết giải trình</button>
                 <button class="sheet-btn sheet-btn-leave" id="sheet-leave-btn">✈️ Đăng ký nghỉ</button>
@@ -830,9 +695,6 @@
         `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
     // ─────────────────────────────────────────
-    // TẢI DANH SÁCH NHÂN VIÊN (ĐÃ TỐI ƯU DOM)
-    // ─────────────────────────────────────────
-    // ─────────────────────────────────────────
     // TẢI DANH SÁCH NHÂN VIÊN & TỰ ĐỘNG CHỌN USER
     // ─────────────────────────────────────────
     async function loadEmployees() {
@@ -845,46 +707,125 @@
             const data = json.items || json;
             const select = document.getElementById('empSelect');
 
-            // Khởi tạo bộ đệm chuỗi HTML
             let optionsHtml = '<option value="">-- Chọn nhân viên --</option>';
-
             if (Array.isArray(data)) {
                 data.forEach(emp => {
                     optionsHtml += `<option value="${emp.username}" data-emp-id="${emp.id}">${emp.full_name} (${emp.username})</option>`;
                 });
             }
-
-            // Gán DOM 1 lần duy nhất
             select.innerHTML = optionsHtml;
 
-            // --- BỔ SUNG LOGIC TỰ ĐỘNG HIỂN THỊ DỮ LIỆU ---
-            // 1. Kiểm tra xem user đang đăng nhập có nằm trong danh sách select không
             const isUserExist = Array.from(select.options).some(opt => opt.value === currentUsername);
-
-            // 2. Nếu có, tự động chọn và gọi hàm renderCalendar để load lịch
             if (isUserExist && currentUsername) {
                 select.value = currentUsername;
                 renderCalendar();
             }
-
         } catch (e) {
             console.error("Lỗi khi load nhân viên", e);
         }
     }
 
     // ─────────────────────────────────────────
-    // RENDER LỊCH (ĐÃ TỐI ƯU DOM & LOGIC TÍNH TOÁN)
+    // HELPERS
     // ─────────────────────────────────────────
     function fmtTime(t) {
         if (!t || t === '---') return '';
         return t.split('.')[0].substring(0, 5);
     }
 
+    /** Trả về class CSS cho shift-block theo status */
+    function shiftClass(status) {
+        if (status === 1)                    return 's-present';
+        if (status === 2 || status === 3 || status === 6) return 's-late';
+        if (status === 0)                    return 's-absent';
+        if (status === 4)                    return 's-leave';
+        if (status === 5)                    return 's-unpaid';
+        if (status === 7)                    return 's-progress';
+        return 's-nodata';
+    }
+
+    /** Nhãn trạng thái ngắn */
+    function statusLabel(status, isWeekend) {
+        if (status === 1) return '✔️ Đúng giờ';
+        if (status === 2) return '⚠️ Đi muộn';
+        if (status === 3) return '⚠️ Về sớm';
+        if (status === 6) return '⚠️ Muộn & Sớm';
+        if (status === 0) return '❌ Vắng mặt';
+        if (status === 4) return '📅 Nghỉ phép';
+        if (status === 5) return '📅 Nghỉ KL';
+        if (status === 7) return '⚡ Đang có mặt';
+        if (isWeekend)    return '🌿 Nghỉ cuối tuần';
+        return '— Chưa có dữ liệu';
+    }
+
+    /** Màu chấm trạng thái cho mobile */
+    function dotColor(status, isWeekend) {
+        if (status === 1) return '#16a34a';
+        if (status === 2 || status === 3 || status === 6) return '#d97706';
+        if (status === 0) return '#dc2626';
+        if (status === 4) return '#0284c7';
+        if (status === 5) return '#64748b';
+        if (status === 7) return '#2563eb';
+        if (isWeekend)    return '#16a34a';
+        return '#e2e8f0';
+    }
+
+    /** Render HTML cho 1 khối ca — CHỈ phần thông tin, KHÔNG có nút */
+    function buildShiftBlockHtml(rec, shiftIdx, totalShifts, isWeekend) {
+        const timeIn  = fmtTime(rec.checkin_time);
+        const timeOut = fmtTime(rec.checkout_time);
+        const workH   = rec.actual_hours ?? '';
+        const workDay = rec.actual_workday ?? '';
+        const status  = rec.status ?? null;
+
+        const sc = shiftClass(status);
+
+        const inHtml  = timeIn  ? `<div class="badge badge-in">🔵 ${timeIn}</div>`  : `<div class="badge badge-miss">Vào: --:--</div>`;
+        const outHtml = timeOut ? `<div class="badge badge-out">🔴 ${timeOut}</div>` : `<div class="badge badge-miss">Ra: --:--</div>`;
+        const workHtml = workH  ? `<div class="badge badge-work">⏱ ${workH}h · ${workDay} công</div>` : '';
+
+        const shiftLabelHtml = totalShifts > 1
+            ? `<div class="shift-label">CA ${shiftIdx + 1}</div>`
+            : '';
+
+        return `
+            <div class="shift-block ${sc}">
+                ${shiftLabelHtml}
+                <div class="badge ${getBadgeStatusClass(status, isWeekend)}">${statusLabel(status, isWeekend)}</div>
+                ${!isWeekend ? inHtml : ''}
+                ${!isWeekend ? outHtml : ''}
+                ${!isWeekend && workHtml ? workHtml : ''}
+            </div>`;
+    }
+
+    /** Tính disabled cho nút giải trình của 1 record */
+    function calcExplainDisabled(rec, firstOfMonth, yesterday) {
+        const status  = rec.status ?? null;
+        const thisDate = new Date(rec.date + 'T00:00:00');
+        const statusOk = status === 1 || status === 7;
+        const dateInRange = thisDate >= firstOfMonth && thisDate <= yesterday;
+        return statusOk || !dateInRange || status === 4 || status === 5;
+    }
+
+    function getBadgeStatusClass(status, isWeekend) {
+        if (status === 1) return 'badge-status-present';
+        if (status === 2 || status === 3 || status === 6) return 'badge-status-late';
+        if (status === 0) return 'badge-status-absent';
+        if (status === 4) return 'badge-status-leave';
+        if (status === 5) return 'badge-status-unpaid';
+        if (status === 7) return 'badge-status-inprogress';
+        if (isWeekend)    return 'badge-weekend-rest';
+        return 'badge-miss';
+    }
+
+    // ─────────────────────────────────────────
+    // RENDER LỊCH — HỖ TRỢ NHIỀU CA / NGÀY
+    // ─────────────────────────────────────────
     async function renderCalendar() {
         const empSelect = document.getElementById('empSelect');
-        const username = empSelect.value;
-        const monthVal = document.getElementById('monthSelect').value;
-        const grid = document.getElementById('calendarGrid');
+        const username  = empSelect.value;
+        const monthVal  = document.getElementById('monthSelect').value;
+        const grid      = document.getElementById('calendarGrid');
 
         if (!username) {
             grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:#94a3b8;font-style:italic;">👆 Vui lòng chọn nhân viên ở phía trên để xem lịch trình cá nhân...</div>`;
@@ -893,138 +834,159 @@
         if (!monthVal) return;
 
         const [year, month] = monthVal.split('-');
-        const mm = String(month).padStart(2, '0');
+        const mm      = String(month).padStart(2, '0');
         const lastDay = new Date(year, month, 0).getDate();
         const startDate = `${year}-${mm}-01`;
-        const endDate = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
+        const endDate   = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
 
         grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:#94a3b8;">Đang tải...</div>`;
 
         try {
             const token = localStorage.getItem('hrm_token');
-            const role = localStorage.getItem('hrm_role') || 'user';
+            const role  = localStorage.getItem('hrm_role') || 'user';
             const selectedEmpName = empSelect.options[empSelect.selectedIndex]?.text || username;
 
             let employeeIdParam = '';
             const selOpt = empSelect.options[empSelect.selectedIndex];
-            if (selOpt && selOpt.dataset && selOpt.dataset.empId) {
-                employeeIdParam = `&employee_id=${selOpt.dataset.empId}`;
-            }
+            if (selOpt?.dataset?.empId) employeeIdParam = `&employee_id=${selOpt.dataset.empId}`;
 
             const res = await fetch(`/api/monthly-records?startDate=${startDate}&endDate=${endDate}${employeeIdParam}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-
             if (!res.ok) throw new Error(res.status);
             const records = await res.json();
 
-            // Mapping Data
-            const dayMap = {};
+            // ── GROUP theo ngày (hỗ trợ nhiều ca) ──
+            const dayMap = {}; // { 'YYYY-MM-DD': [rec1, rec2, ...] }
             records.forEach(r => {
-                if (r.date && (role === 'user' || r.username === username)) {
-                    dayMap[r.date] = r;
-                }
+                if (!r.date) return;
+                if (role !== 'user' && r.username !== username) return;
+                if (!dayMap[r.date]) dayMap[r.date] = [];
+                dayMap[r.date].push(r);
+            });
+
+            // Sắp xếp các ca trong ngày theo giờ vào
+            Object.values(dayMap).forEach(arr => {
+                arr.sort((a, b) => {
+                    const ta = a.checkin_time || '99:99';
+                    const tb = b.checkin_time || '99:99';
+                    return ta.localeCompare(tb);
+                });
             });
 
             const firstDay = new Date(year, month - 1, 1).getDay();
             const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+
             const firstOfMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
             firstOfMonth.setHours(0, 0, 0, 0);
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
 
-            // BỘ ĐỆM HTML - CHÌA KHÓA TỐI ƯU TỐC ĐỘ RENDER
+            const safeEmpName = selectedEmpName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
             let htmlBuffer = '';
 
-            // Render khoảng trống đầu tháng
+            // Ô trống đầu tháng
             for (let i = 0; i < startOffset; i++) {
                 htmlBuffer += `<div class="cal-day empty"></div>`;
             }
 
-            // Render lưới ngày
+            // Render từng ngày
             for (let day = 1; day <= lastDay; day++) {
-                const dateStr = `${year}-${mm}-${String(day).padStart(2, '0')}`;
-                const rec = dayMap[dateStr] || null;
-
+                const dateStr  = `${year}-${mm}-${String(day).padStart(2, '0')}`;
+                const recs     = dayMap[dateStr] || [];
                 const thisDate = new Date(parseInt(year), parseInt(month) - 1, day);
                 thisDate.setHours(0, 0, 0, 0);
+
                 const dayOfWeek = thisDate.getDay();
                 const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                const isToday = day === today.getDate() && parseInt(month) === today.getMonth() + 1 && parseInt(year) === today.getFullYear();
+                const isToday   = day === today.getDate()
+                    && parseInt(month) === today.getMonth() + 1
+                    && parseInt(year)  === today.getFullYear();
 
                 let dayClass = 'cal-day';
-                if (isToday) dayClass += ' today';
+                if (isToday)   dayClass += ' today';
                 if (isWeekend) dayClass += ' weekend';
 
-                const timeIn = rec ? fmtTime(rec.checkin_time) : '';
-                const timeOut = rec ? fmtTime(rec.checkout_time) : '';
-                const workH = rec ? (rec.actual_hours ?? '') : '';
-                const workDay = rec ? (rec.actual_workday ?? '') : '';
-                const status = rec ? (rec.status ?? null) : null;
-                const attId = rec ? (rec.id ?? '') : '';
+                // --- Nội dung bên trong ô ---
+                let innerHtml = '';
+                let actionsHtml = '';
 
-                // Tính toán HTML Status
-                let statusHtml = '';
-                if (status === 1) statusHtml = `<div class="badge badge-status-present">✔️ Đúng giờ</div>`;
-                else if (status === 2) statusHtml = `<div class="badge badge-status-late">⚠️ Đi muộn</div>`;
-                else if (status === 3) statusHtml = `<div class="badge badge-status-late">⚠️ Về sớm</div>`;
-                else if (status === 6) statusHtml = `<div class="badge badge-status-late">⚠️ Muộn & Sớm</div>`;
-                else if (status === 0) statusHtml = `<div class="badge badge-status-absent">❌ Vắng mặt</div>`;
-                else if (status === 4) statusHtml = `<div class="badge badge-status-leave">📅 Nghỉ phép</div>`;
-                else if (status === 5) statusHtml = `<div class="badge badge-status-unpaid">📅 Nghỉ KL</div>`;
-                else if (status === 7) statusHtml = `<div class="badge badge-status-inprogress">⚡ Đang có mặt</div>`;
-                else if (isWeekend) statusHtml = `<div class="badge badge-weekend-rest">🌿 Nghỉ cuối tuần</div>`;
-                else statusHtml = `<div class="badge badge-miss">— Chưa có dữ liệu</div>`;
+                if (isWeekend && recs.length === 0) {
+                    innerHtml += `<div class="badge badge-weekend-rest">🌿 Nghỉ cuối tuần</div>`;
+                } else if (recs.length === 0) {
+                    innerHtml += `<div class="badge badge-miss">— Chưa có dữ liệu</div>`;
+                    innerHtml += `<div class="badge badge-miss">Vào: --:--</div>`;
+                    innerHtml += `<div class="badge badge-miss">Ra: --:--</div>`;
+                } else if (recs.length === 1) {
+                    // 1 ca: full width, không label CA
+                    innerHtml += buildShiftBlockHtml(recs[0], 0, 1, isWeekend);
+                } else {
+                    // Nhiều ca: chia cột NGANG
+                    innerHtml += `<div class="multi-shift-badge">🔄 ${recs.length} ca</div>`;
+                    innerHtml += `<div class="shifts-row">`;
+                    recs.forEach((rec, idx) => {
+                        innerHtml += buildShiftBlockHtml(rec, idx, recs.length, isWeekend);
+                    });
+                    innerHtml += `</div>`;
+                }
 
-                const inHtml = (timeIn && !isWeekend) ? `<div class="badge badge-in">🔵 ${timeIn}</div>` : (!isWeekend ? `<div class="badge badge-miss">Vào: --:--</div>` : '');
-                const outHtml = (timeOut && !isWeekend) ? `<div class="badge badge-out">🔴 ${timeOut}</div>` : (!isWeekend ? `<div class="badge badge-miss">Ra: --:--</div>` : '');
-                const workHtml = (workH && !isWeekend) ? `<div class="badge badge-work">⏱ ${workH}h · ${workDay} công</div>` : '';
+                // ── THANH NÚT HÀNH ĐỘNG CHUNG ──
+                // Nút Giải trình: 1 ca → 1 nút; nhiều ca → 1 nút / ca
+                let explainBtns = '';
+                if (recs.length === 1) {
+                    const rec = recs[0];
+                    const disabled = calcExplainDisabled(rec, firstOfMonth, yesterday);
+                    const attId = rec.id ?? '';
+                    explainBtns = `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
+                        onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}')"
+                        title="Viết giải trình">✍️ Giải trình</button>`;
+                } else if (recs.length > 1) {
+                    recs.forEach((rec, idx) => {
+                        const disabled = calcExplainDisabled(rec, firstOfMonth, yesterday);
+                        const attId = rec.id ?? '';
+                        explainBtns += `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
+                            onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}')"
+                            title="Giải trình ca ${idx+1}">✍️ Ca ${idx+1}</button>`;
+                    });
+                }
 
-                const statusOk = status === 1 || status === 7;
-                const dateInRange = thisDate >= firstOfMonth && thisDate <= yesterday;
-                const explainDisabled = statusOk || !dateInRange || status === 4 || status === 5;
-                const safeEmpName = selectedEmpName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const leaveBtn = `<button class="btn-day btn-day-leave"
+                    onclick="event.stopPropagation();openLeaveModal('${dateStr}')"
+                    title="Đăng ký nghỉ ngày ${day}">✈️ Đăng ký nghỉ</button>`;
 
-                const explainBtn = `<button class="btn-day btn-day-explain" ${explainDisabled ? 'disabled' : ''} onclick="openGiaiTrinhModal('${attId}','${safeEmpName}','${dateStr}')" title="Viết giải trình ngày ${day}">✍️ Giải trình</button>`;
-                const leaveBtn = `<button class="btn-day btn-day-leave" onclick="openLeaveModal('${dateStr}')" title="Đăng ký nghỉ ngày ${day}">✈️ Đăng ký nghỉ</button>`;
+                actionsHtml = `<div class="day-actions">${explainBtns}${leaveBtn}</div>`;
 
-                let dotColor = '#e2e8f0';
-                if (status === 1) dotColor = '#16a34a';
-                else if (status === 2 || status === 3 || status === 6) dotColor = '#d97706';
-                else if (status === 0) dotColor = '#dc2626';
-                else if (status === 4) dotColor = '#0284c7';
-                else if (status === 5) dotColor = '#64748b';
-                else if (status === 7) dotColor = '#2563eb';
-                else if (isWeekend) dotColor = '#16a34a';
+                // Chấm màu cho mobile (1 chấm / ca)
+                let dotsHtml = '<div class="mobile-dots">';
+                if (isWeekend && recs.length === 0) {
+                    dotsHtml += `<span class="mobile-dot" style="background:#16a34a"></span>`;
+                } else if (recs.length === 0) {
+                    dotsHtml += `<span class="mobile-dot" style="background:#e2e8f0"></span>`;
+                } else {
+                    recs.forEach(rec => {
+                        dotsHtml += `<span class="mobile-dot" style="background:${dotColor(rec.status, isWeekend)}"></span>`;
+                    });
+                }
+                dotsHtml += '</div>';
 
-                // Nối chuỗi HTML vào bộ đệm thay vì gán trực tiếp vào DOM
+                // Data attributes lưu JSON các ca cho bottom-sheet
+                const recsJson = JSON.stringify(recs).replace(/"/g, '&quot;');
+
                 htmlBuffer += `
                     <div class="${dayClass}"
                         data-date="${dateStr}"
-                        data-explain-disabled="${explainDisabled}"
-                        data-att-id="${attId}"
                         data-emp-name="${safeEmpName}"
-                        data-in="${timeIn}"
-                        data-out="${timeOut}"
-                        data-work-h="${workH}"
-                        data-work-day="${workDay}"
-                        data-status="${status ?? ''}"
                         data-is-weekend="${isWeekend}"
+                        data-recs="${recsJson}"
                         onclick="handleDayClick(this)">
                         <div class="day-number">${day}</div>
-                        ${statusHtml}
-                        ${inHtml}
-                        ${outHtml}
-                        ${workHtml}
-                        <span class="status-dot" style="background:${dotColor}"></span>
-                        <div class="day-actions">
-                            ${explainBtn}
-                            ${leaveBtn}
-                        </div>
+                        ${innerHtml}
+                        ${dotsHtml}
+                        ${actionsHtml}
                     </div>`;
             }
 
-            // ĐỔ DỮ LIỆU RA GIAO DIỆN ĐÚNG 1 LẦN DUY NHẤT (Nhanh gấp nhiều lần)
             grid.innerHTML = htmlBuffer;
 
         } catch (e) {
@@ -1034,11 +996,11 @@
     }
 
     // ─────────────────────────────────────────
-    // CÁC HÀM XỬ LÝ SỰ KIỆN KHÁC (GIỮ NGUYÊN)
+    // MODAL NGHỈ PHÉP
     // ─────────────────────────────────────────
     function openLeaveModal(dateStr) {
-        document.getElementById('leaveDate').value = dateStr ? dateStr : '';
-        document.getElementById('leaveReason').value = '';
+        document.getElementById('leaveDate').value    = dateStr || '';
+        document.getElementById('leaveReason').value  = '';
         document.getElementById('leaveApprover').value = '';
         document.getElementById('leaveModal').classList.add('active');
     }
@@ -1054,8 +1016,8 @@
         const payload = {
             username,
             leave_date: document.getElementById('leaveDate').value,
-            reason: document.getElementById('leaveReason').value,
-            approver: document.getElementById('leaveApprover').value
+            reason:     document.getElementById('leaveReason').value,
+            approver:   document.getElementById('leaveApprover').value
         };
 
         if (!payload.leave_date || !payload.reason) return alert("Vui lòng nhập đủ thông tin!");
@@ -1079,13 +1041,17 @@
         }
     }
 
+    // ─────────────────────────────────────────
+    // MODAL GIẢI TRÌNH
+    // ─────────────────────────────────────────
     function openGiaiTrinhModal(attId, fullName, dateStr) {
-        const [y, m, d] = (dateStr || '--').split('-');
+        const [y, m, d]  = (dateStr || '--').split('-');
         const displayDate = dateStr ? `${d}/${m}/${y}` : '---';
 
         document.getElementById('gt_username').value = currentUsername;
-        document.getElementById('gt_date').value = dateStr;
-        document.getElementById('gt_reason').value = '';
+        document.getElementById('gt_date').value     = dateStr;
+        document.getElementById('gt_att_id').value   = attId;
+        document.getElementById('gt_reason').value   = '';
 
         document.getElementById('gt_info_line').innerHTML =
             `<strong>Nhân viên:</strong> ${currentName} &nbsp;|&nbsp; <strong>Ngày:</strong> ${displayDate}`;
@@ -1100,24 +1066,21 @@
     document.getElementById('giaiTrinhForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('gtSubmitBtn');
-        btn.disabled = true;
+        btn.disabled  = true;
         btn.innerText = 'ĐANG GỬI...';
 
         const payload = {
-            username: document.getElementById('gt_username').value,
-            date: document.getElementById('gt_date').value,
-            reason: document.getElementById('gt_reason').value.trim(),
-            status: "1"
+            username:   document.getElementById('gt_username').value,
+            date:       document.getElementById('gt_date').value,
+            reason:     document.getElementById('gt_reason').value.trim(),
+            status:     "1"
         };
 
         try {
             const token = localStorage.getItem('hrm_token');
             const res = await fetch('/api/explanations', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
@@ -1130,66 +1093,114 @@
         } catch (err) {
             alert('Lỗi kết nối máy chủ!');
         } finally {
-            btn.disabled = false;
+            btn.disabled  = false;
             btn.innerText = 'GỬI GIẢI TRÌNH';
         }
     });
 
-    function getStatusBadgeHtml(status, isWeekend, leaveReason, leaveStatus) {
-        if (leaveReason) return `<span class="badge badge-leave">⛱ ${leaveReason} <small>(${leaveStatus})</small></span>`;
-        if (isWeekend === 'true') return `<span class="badge badge-weekend-rest">🌿 Nghỉ cuối tuần</span>`;
-        const s = parseInt(status);
-        if (s === 1) return `<span class="badge badge-status-present">✔️ Đúng giờ</span>`;
-        if (s === 2) return `<span class="badge badge-status-late">⚠️ Đi muộn</span>`;
-        if (s === 3) return `<span class="badge badge-status-late">⚠️ Về sớm</span>`;
-        if (s === 6) return `<span class="badge badge-status-late">⚠️ Muộn & Sớm</span>`;
-        if (s === 0) return `<span class="badge badge-status-absent">❌ Vắng mặt</span>`;
-        if (s === 4) return `<span class="badge badge-status-leave">📅 Nghỉ phép</span>`;
-        if (s === 5) return `<span class="badge badge-status-unpaid">📅 Nghỉ KL</span>`;
-        if (s === 7) return `<span class="badge badge-status-inprogress">⚡ Đang có mặt</span>`;
-        return `<span class="badge badge-miss">— Chưa có dữ liệu</span>`;
-    }
-
+    // ─────────────────────────────────────────
+    // BOTTOM SHEET (MOBILE) — HỖ TRỢ ĐA CA
+    // ─────────────────────────────────────────
     function handleDayClick(el) {
         if (window.innerWidth > 480) return;
 
-        const dateStr = el.dataset.date;
-        const empName = el.dataset.empName;
-        const attId = el.dataset.attId;
-        const explainDisabled = el.dataset.explainDisabled === 'true';
-        const timeIn = el.dataset.in || '';
-        const timeOut = el.dataset.out || '';
-        const workH = el.dataset.workH || '';
-        const workDay = el.dataset.workDay || '';
-        const status = el.dataset.status;
-        const isWeekend = el.dataset.isWeekend;
+        const dateStr   = el.dataset.date;
+        const empName   = el.dataset.empName;
+        const isWeekend = el.dataset.isWeekend === 'true';
+        const recs      = JSON.parse(el.dataset.recs || '[]');
 
         const [y, m, d] = dateStr.split('-');
         document.getElementById('sheet-title').textContent = `📅 Ngày ${parseInt(d)}/${parseInt(m)}/${y}`;
 
-        const badgeHtml = getStatusBadgeHtml(status, isWeekend, '', '');
-        const isWeekendBool = isWeekend === 'true';
+        const container = document.getElementById('sheet-shifts-container');
+        container.innerHTML = '';
 
-        const inHtml = !isWeekendBool
-            ? (timeIn ? `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-in">${timeIn}</span></div>`
-                : `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
-        const outHtml = !isWeekendBool
-            ? (timeOut ? `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-out">${timeOut}</span></div>`
-                : `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
-        const workHtml = (workH && !isWeekendBool)
-            ? `<div class="sheet-row"><span class="sheet-label">⏱ Giờ công</span><span class="sheet-val sheet-val-work">${workH}h · ${workDay} công</span></div>` : '';
+        const firstOfMonth = new Date(parseInt(y), parseInt(m) - 1, 1);
+        firstOfMonth.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
 
-        document.getElementById('sheet-status-badge').innerHTML = `
-            <div style="margin-bottom:12px;">${badgeHtml}</div>
-            <div class="sheet-rows">${inHtml}${outHtml}${workHtml}</div>
-        `;
+        if (recs.length === 0) {
+            // Không có dữ liệu
+            const label = isWeekend ? '🌿 Nghỉ cuối tuần' : '— Chưa có dữ liệu';
+            container.innerHTML = `<div style="padding:10px 0;color:#94a3b8;font-size:0.85rem;font-style:italic;">${label}</div>`;
+        } else {
+            recs.forEach((rec, idx) => {
+                const timeIn  = fmtTime(rec.checkin_time);
+                const timeOut = fmtTime(rec.checkout_time);
+                const workH   = rec.actual_hours ?? '';
+                const workDay = rec.actual_workday ?? '';
+                const status  = rec.status ?? null;
+                const attId   = rec.id ?? '';
 
+                const thisDate = new Date(rec.date + 'T00:00:00');
+                const statusOk = status === 1 || status === 7;
+                const dateInRange = thisDate >= firstOfMonth && thisDate <= yesterday;
+                const explainDisabled = statusOk || !dateInRange || status === 4 || status === 5;
+
+                const inHtml = !isWeekend
+                    ? (timeIn  ? `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-in">${timeIn}</span></div>`
+                               : `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-miss">--:--</span></div>`)
+                    : '';
+
+                const outHtml = !isWeekend
+                    ? (timeOut ? `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-out">${timeOut}</span></div>`
+                               : `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-miss">--:--</span></div>`)
+                    : '';
+
+                const workHtml = (workH && !isWeekend)
+                    ? `<div class="sheet-row"><span class="sheet-label">⏱ Giờ công</span><span class="sheet-val sheet-val-work">${workH}h · ${workDay} công</span></div>`
+                    : '';
+
+                const badgeClass = getBadgeStatusClass(status, isWeekend);
+                const statusText = statusLabel(status, isWeekend);
+
+                const card = document.createElement('div');
+                card.className = 'sheet-shift-card';
+                card.innerHTML = `
+                    <div class="sheet-shift-header">
+                        <span class="sheet-shift-title">${recs.length > 1 ? `🔄 Ca ${idx + 1}` : '📋 Thông tin'}</span>
+                        <span class="badge ${badgeClass}" style="display:inline-flex;">${statusText}</span>
+                    </div>
+                    <div class="sheet-shift-body">
+                        ${inHtml}${outHtml}${workHtml}
+                        <button class="sheet-explain-per-shift" ${explainDisabled ? 'disabled' : ''}
+                            data-att-id="${attId}" data-date="${rec.date}" data-emp="${empName}">
+                            ✍️ Viết giải trình${recs.length > 1 ? ' ca này' : ''}
+                        </button>
+                    </div>`;
+
+                // Gắn sự kiện giải trình
+                card.querySelector('.sheet-explain-per-shift').addEventListener('click', function () {
+                    if (this.disabled) return;
+                    closeBottomSheet();
+                    openGiaiTrinhModal(this.dataset.attId, this.dataset.emp, this.dataset.date);
+                });
+
+                container.appendChild(card);
+            });
+        }
+
+        // Nút giải trình chính (chỉ hiển thị nếu 1 ca)
         const explainBtn = document.getElementById('sheet-explain-btn');
-        explainBtn.disabled = explainDisabled;
-        explainBtn.onclick = explainDisabled ? null : () => {
-            closeBottomSheet();
-            openGiaiTrinhModal(attId, empName, dateStr);
-        };
+        if (recs.length === 1) {
+            const rec = recs[0];
+            const thisDate = new Date(rec.date + 'T00:00:00');
+            const yesterday2 = new Date(today); yesterday2.setDate(yesterday2.getDate() - 1);
+            const firstOfMonth2 = new Date(parseInt(y), parseInt(m) - 1, 1);
+            firstOfMonth2.setHours(0, 0, 0, 0);
+            const statusOk = rec.status === 1 || rec.status === 7;
+            const explainDisabled = statusOk || !(thisDate >= firstOfMonth2 && thisDate <= yesterday2) || rec.status === 4 || rec.status === 5;
+            explainBtn.disabled = explainDisabled;
+            explainBtn.style.display = '';
+            explainBtn.onclick = explainDisabled ? null : () => {
+                closeBottomSheet();
+                openGiaiTrinhModal(rec.id ?? '', empName, dateStr);
+            };
+        } else {
+            // Ẩn nút chính nếu nhiều ca (mỗi ca có nút riêng)
+            explainBtn.style.display = 'none';
+        }
 
         document.getElementById('sheet-leave-btn').onclick = () => {
             closeBottomSheet();
@@ -1207,7 +1218,7 @@
     }
 
     // ─────────────────────────────────────────
-    // KHỞI TẠO TỰ ĐỘNG KHI TẢI TRANG XONG
+    // KHỞI TẠO
     // ─────────────────────────────────────────
     window.addEventListener('load', () => {
         loadEmployees();
