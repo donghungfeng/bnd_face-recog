@@ -169,8 +169,8 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
                 else:
                     consecutive_unrecognized[ip] = {"user_id": best_match, "count": 1, "last_time": now}
             
-            # NẾU TRƯỢT ĐẾN LẦN THỨ 7 MÀ VẪN GIỐNG NGƯỜI NÀY NHẤT -> YÊU CẦU XÁC MINH
-            if consecutive_unrecognized[ip]["count"] >= 7:
+            # NẾU TRƯỢT ĐẾN LẦN THỨ 5 MÀ VẪN GIỐNG NGƯỜI NÀY NHẤT -> YÊU CẦU XÁC MINH
+            if consecutive_unrecognized[ip]["count"] >= 5:
                 consecutive_unrecognized.pop(ip, None) # Xóa bộ đếm
                 return {
                     "recognized": "verify_renew", # Gửi status đặc biệt về Frontend

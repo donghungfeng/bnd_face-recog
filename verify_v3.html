@@ -109,10 +109,10 @@
             transform: scaleX(-1);
         }
 
-        /* MẶT NẠ CHUYÊN NGHIỆP */
+        /* MẶT NẠ CHUYÊN NGHIỆP - TÍCH HỢP CSS TRƯỢT MƯỢT MÀ KHI BẤM NÚT */
         .face-mask {
             position: absolute;
-            top: 50%;
+            top: 50%; /* Vị trí mặc định */
             left: 50%;
             transform: translate(-50%, -50%);
             width: 260px;
@@ -122,7 +122,7 @@
             box-shadow: 0 0 0 2000px rgba(15, 23, 42, 0.8);
             z-index: 5;
             pointer-events: none;
-            transition: all 0.3s ease;
+            transition: top 0.4s cubic-bezier(0.25, 1, 0.5, 1), border 0.3s, box-shadow 0.3s;
         }
 
         .face-mask.active {
@@ -146,6 +146,38 @@
         @keyframes scan {
             0%, 100% { top: 5%; }
             50% { top: 95%; }
+        }
+
+        /* KHỐI CHỌN CHIỀU CAO THỦ CÔNG 5 LEVEL */
+        .height-controls {
+            display: flex;
+            width: 100%;
+            max-width: 700px;
+            gap: 5px; /* Giảm gap chút để nhét 5 nút */
+            margin-top: 15px;
+            flex-shrink: 0;
+        }
+
+        .btn-height {
+            flex: 1;
+            padding: 12px 2px; /* Giảm padding ngang chút */
+            background: var(--card);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #94a3b8;
+            border-radius: 8px; /* Giảm radius chút */
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 0.8rem; /* Giảm font size chút để nhét vừa text */
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn-height.active {
+            background: rgba(0, 242, 255, 0.15);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
         }
 
         .status-scanning { color: var(--primary); border-color: var(--primary); }
@@ -271,7 +303,6 @@
             max-width: 80%;
         }
         
-        /* Popup Renew mang phong cách cảnh báo nhẹ */
         .popup-renew { border-color: var(--primary); box-shadow: 0 15px 40px rgba(0, 242, 255, 0.3); }
 
         .popup-close {
@@ -287,7 +318,6 @@
             margin: 0; text-shadow: 0 0 15px rgba(0, 255, 136, 0.5); font-weight: bold;
         }
 
-        /* Nút cho Popup Renew */
         .btn-action {
             padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold;
             font-size: 1rem; cursor: pointer; transition: 0.2s; flex: 1; font-family: 'Roboto', sans-serif;
@@ -302,7 +332,7 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 23, 42, 0.95); z-index: 50; display: none;
             flex-direction: column; align-items: center; justify-content: center;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px); cursor: pointer;
         }
 
         .btn-wake {
@@ -310,8 +340,10 @@
             font-size: 1.2rem; font-family: 'Orbitron', sans-serif; font-weight: bold;
             border-radius: 40px; cursor: pointer; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
             transition: 0.3s; display: flex; align-items: center; gap: 10px;
+            pointer-events: none; 
         }
-        .btn-wake:hover { transform: scale(1.05); box-shadow: 0 0 35px rgba(0, 242, 255, 0.8); }
+        #sleepOverlay:hover .btn-wake { transform: scale(1.05); box-shadow: 0 0 35px rgba(0, 242, 255, 0.8); }
+        
         .icon-sleep { font-size: 3rem; margin-bottom: 15px; animation: float 3s ease-in-out infinite; }
 
         @keyframes float {
@@ -335,9 +367,9 @@
     </header>
 
     <div class="main-wrapper">
-        <div id="sleepOverlay">
+        <div id="sleepOverlay" onclick="wakeUp()">
             <div class="icon-sleep">💤</div>
-            <button class="btn-wake" onclick="wakeUp()">👋 CHẠM ĐỂ KHỞI ĐỘNG</button>
+            <button class="btn-wake">👋 CHẠM ĐỂ KHỞI ĐỘNG</button>
         </div>
 
         <div class="scan-bar"></div>
@@ -348,12 +380,22 @@
         <canvas id="cropCanvas" style="display:none;"></canvas>
     </div>
 
+    <div class="height-controls">
+        <button class="btn-height" id="btnH1" onclick="setManualHeight(5)">Độ Cao 1</button>
+        <button class="btn-height" id="btnH2" onclick="setManualHeight(4)">Độ Cao 2</button>
+        <button class="btn-height active" id="btnH3" onclick="setManualHeight(3)">Độ Cao 3</button>
+        <button class="btn-height" id="btnH4" onclick="setManualHeight(2)">Độ Cao 4</button>
+        <button class="btn-height" id="btnH5" onclick="setManualHeight(1)">Độ Cao 5</button>
+    </div>
+
     <div class="history-container">
         <div class="history-title"><span style="color:var(--success)">●</span> Danh sách chấm công thành công</div>
         <ul class="history-list" id="historyList"></ul>
 
         <div id="debugBox" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); border: 2px solid var(--warning); padding: 10px; border-radius: 10px; z-index: 9999; text-align: center; display: none;">
-            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; color: var(--warning);">👁️ ẢNH CROP GỬI SERVER</p>
+            <button onclick="document.getElementById('debugBox').style.display='none'" style="position: absolute; top: -10px; right: -10px; background: var(--error); color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 5px rgba(0,0,0,0.5);">✖</button>
+            
+            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; color: var(--warning);">👁️ ẢNH ĐÃ CHỤP</p>
             <img id="debugImg" src="" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid #fff;" />
         </div>
     </div>
@@ -395,9 +437,62 @@
         let currentPublicIp = '';
         let popupTimer = null;
 
-        let sleepTimer = null;
+        // ==========================================
+        // KHỐI QUẢN LÝ SLEEP (CƠ CHẾ TIMESTAMP BẤT TỬ)
+        // ==========================================
         let isSleeping = false;
-        const IDLE_TIMEOUT = 5 * 60 * 1000;
+        let lastActiveTime = Date.now();
+        const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 phút
+
+        function keepAwake() {
+            lastActiveTime = Date.now();
+        }
+
+        ['touchstart', 'mousedown', 'click'].forEach(evt => 
+            document.addEventListener(evt, () => {
+                if (!isSleeping) keepAwake();
+            })
+        );
+
+        setInterval(() => {
+            if (!isSleeping && (Date.now() - lastActiveTime > IDLE_TIMEOUT)) {
+                enterSleepMode();
+            }
+        }, 1000);
+
+        // ==========================================
+        // LOGIC NÚT ĐIỀU CHỈNH ĐỘ CAO MẶT NẠ 5 LEVEL
+        // ==========================================
+        let maskOffsetPercent = 50; // Vị trí tâm mặt nạ mặc định (Độ Cao 3)
+
+        function setManualHeight(level) {
+            keepAwake();
+            if (isApiLocked) return;
+
+            document.querySelectorAll('.btn-height').forEach(btn => btn.classList.remove('active'));
+
+            if (level === 1) {
+                maskOffsetPercent = 35; // Nâng tít trờn cao
+                document.getElementById('btnH1').classList.add('active');
+            } else if (level === 2) {
+                maskOffsetPercent = 42.5; // Nâng hơi cao
+                document.getElementById('btnH2').classList.add('active');
+            } else if (level === 4) {
+                maskOffsetPercent = 57.5; // Hạ hơi thấp
+                document.getElementById('btnH4').classList.add('active');
+            } else if (level === 5) {
+                maskOffsetPercent = 65; // Hạ tít xuống thấp
+                document.getElementById('btnH5').classList.add('active');
+            } else {
+                maskOffsetPercent = 50; // Tiêu chuẩn ở giữa (Level 3)
+                document.getElementById('btnH3').classList.add('active');
+            }
+
+            // CSS Transition sẽ đảm nhiệm việc trượt mặt nạ mượt mà
+            faceMask.style.top = `${maskOffsetPercent}%`;
+        }
+
+        // ==========================================
 
         let consecutiveGoodFrames = 0;
         let isLoopRunning = false;
@@ -409,16 +504,15 @@
         const USER_COOLDOWN_MS = 30 * 1000;
         const userCooldowns = {};
         
-        // BIẾN LƯU TRỮ TẠM ẢNH ĐỂ CẬP NHẬT (RENEW)
         let pendingRenewData = null;
 
-        // ---------------- THÔNG SỐ SIẾT CHẶT VÀ ÉP HOLD TIME ----------------
         const REQUIRED_GOOD_FRAMES = 15;  
         const SHARPNESS_THRESHOLD = 65;   
-        const CENTER_X_MIN = 0.35; const CENTER_X_MAX = 0.65;
-        const CENTER_Y_MIN = 0.35; const CENTER_Y_MAX = 0.65;
+        
+        // Dung sai khi người dùng nhét mặt vào mặt nạ (Dọc cho phép lệch tối đa 15% so với tâm mặt nạ)
+        const MASK_TOLERANCE_Y = 0.15; 
+        const CENTER_X_MIN = 0.35; const CENTER_X_MAX = 0.65; // Khóa chặt ngang
         const FACE_MIN_SIZE = 0.25; const FACE_MAX_SIZE = 0.55; 
-        // ---------------------------------------------------------------------
 
         function isImageSharp(canvas, threshold = SHARPNESS_THRESHOLD) {
             try {
@@ -460,7 +554,6 @@
             if (isApiLocked) return;
 
             if (results.detections.length > 0) {
-                resetSleepTimer();
                 emptyFrames = 0;
 
                 const detection = results.detections[0];
@@ -471,7 +564,15 @@
                 const faceX = lastDetection.xCenter;
                 const faceY = lastDetection.yCenter;
 
-                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
+                if (faceSize > 0.15) {
+                    keepAwake();
+                }
+
+                // AI kiểm tra xem khuôn mặt có khớp với VỊ TRÍ MẶT NẠ đang chọn hay không
+                const targetY = maskOffsetPercent / 100;
+                const isCenteredY = Math.abs(faceY - targetY) < MASK_TOLERANCE_Y;
+                const isCenteredX = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX);
+                const isCentered = isCenteredX && isCenteredY;
 
                 let isStraight = true;
                 let poseWarning = "";
@@ -563,13 +664,6 @@
             }
         });
 
-        function resetSleepTimer() {
-            if (sleepTimer) clearTimeout(sleepTimer);
-            if (!isSleeping) {
-                sleepTimer = setTimeout(enterSleepMode, IDLE_TIMEOUT);
-            }
-        }
-
         function enterSleepMode() {
             isSleeping = true;
             if (video.srcObject) {
@@ -582,17 +676,24 @@
             consecutiveGoodFrames = 0;
             holdFill.style.width = "0%";
             faceMask.classList.remove('active');
+            // Tự động trả về vị trí Tiêu chuẩn (Level 3) khi đi ngủ
+            setManualHeight(3);
         }
 
         async function wakeUp() {
+            if (!isSleeping) return; 
             isSleeping = false;
+            keepAwake(); 
+            
             document.getElementById('sleepOverlay').style.display = 'none';
             document.getElementById('resultBox').className = "info status-scanning";
             document.getElementById('resultBox').innerHTML = `<div class="loader"></div> ĐANG KHỞI ĐỘNG LẠI CAMERA...`;
             await startCamera();
-            resetSleepTimer();
         }
 
+        // ==============================================================
+        // PHẦN CROP GIỮ NGUYÊN GỐC 100%: Cắt thành hình vuông quanh tâm khuôn mặt
+        // ==============================================================
         function captureCroppedFace() {
             if (!lastDetection) return null;
 
@@ -669,9 +770,9 @@
             document.getElementById('successPopup').style.display = 'none';
         }
 
-        // ==========================================
-        // KHỐI LOGIC XỬ LÝ RENEW (AUTO UPDATE FACE)
-        // ==========================================
+        // ==============================================================
+        // PHỤC HỒI HOÀN TOÀN TÍNH NĂNG AUTO-RENEW
+        // ==============================================================
         async function submitRenew() {
             if (!pendingRenewData) return;
             
@@ -701,7 +802,6 @@
                 resultBox.innerHTML = `⚠️ LỖI KẾT NỐI SERVER`;
             } finally {
                 pendingRenewData = null;
-                // Mở khóa camera sau khi xử lý xong
                 setTimeout(() => {
                     isApiLocked = false;
                     isProcessing = false;
@@ -720,7 +820,6 @@
             resultBox.className = "info status-warning";
             resultBox.innerHTML = `⚠️ ĐÃ TỪ CHỐI CẬP NHẬT`;
 
-            // Mở khóa camera ngay lập tức
             setTimeout(() => {
                 isApiLocked = false;
                 isProcessing = false;
@@ -730,7 +829,6 @@
                 faceMask.classList.remove('active');
             }, 800);
         }
-        // ==========================================
 
         async function sendToAPI() {
             const now = Date.now();
@@ -748,7 +846,7 @@
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-            let isRenewFlow = false; // Cờ theo dõi xem có dính vào luồng renew không
+            let isRenewFlow = false; 
 
             try {
                 const tempCanvas = document.createElement('canvas');
@@ -810,12 +908,11 @@
                         triggerSuccessPopup(data.user_id.toUpperCase());
                     }
                 } 
-                // XỬ LÝ TÍN HIỆU RENEW TỪ BACKEND
+                // BẮT MÃ LỆNH AUTO RENEW TỪ BACKEND
                 else if (data.recognized === "verify_renew") {
                     isRenewFlow = true; 
-                    isApiLocked = true; // Khóa chặt camera lại
+                    isApiLocked = true;
                     
-                    // Gói ghém dữ liệu chờ gửi đi
                     pendingRenewData = {
                         user_id: data.user_id,
                         image_base64: croppedImage,
@@ -842,8 +939,6 @@
                     resultBox.innerHTML = `⚠️ LỖI KẾT NỐI - ĐANG THỬ LẠI...`;
                 }
             } finally {
-                // Nếu đang dính vào luồng Renew (hiện popup) thì TUYỆT ĐỐI KHÔNG mở khóa camera ở đây.
-                // Việc mở khóa sẽ do 2 nút bấm Submit/Cancel quyết định.
                 if (!isRenewFlow) {
                     setTimeout(() => {
                         isApiLocked = false;
@@ -881,6 +976,7 @@
                 });
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
+                    video.play().catch(e => console.warn("Lỗi play video:", e));
                     if (!isLoopRunning) {
                         isLoopRunning = true;
                         processVideoFrame();
@@ -937,7 +1033,7 @@
         }
 
         startCamera();
-        resetSleepTimer();
+        keepAwake(); 
         schedulePeriodicReload();
     </script>
 </body>
