@@ -2,6 +2,9 @@
 /data/history_db
 /data/face_db
 /__pycache__
-/venv
+/.venv
 /routers/__pycache__
+/service/__pycache__
 /.env
+/venv
+.venv

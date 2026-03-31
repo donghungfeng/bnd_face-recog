@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Danh Mục Ca Trực{% endblock %}
-{% block page_title %}Cấu Hình Danh Mục Ca Trực{% endblock %}
+{% block title %}Danh Mục Lịch Làm Việc{% endblock %}
+{% block page_title %}Cấu Hình Danh Mục Lịch Làm Việc{% endblock %}
 
 {% block content %}
 <div class="grid-container">
     <div class="card">
-        <h3 id="formTitle">+ Thêm Ca Trực Mới</h3>
+        <h3 id="formTitle">+ Thêm Lịch Làm Việc Mới</h3>
         <form id="shiftForm">
             <div class="form-group">
                 <label>Mã Ca (VD: CA_DEM)*</label>
                 <input type="text" id="shift_code" placeholder="Viết liền không dấu" required autocomplete="off">
             </div>
             <div class="form-group">
-                <label>Tên Ca Trực (VD: Ca Đêm Hồi Sức)*</label>
+                <label>Tên Ca Làm Việc (VD: Ca Đêm Hồi Sức)*</label>
                 <input type="text" id="shift_name" placeholder="Tên hiển thị rõ ràng" required autocomplete="off">
             </div>
             <div class="form-group" style="display: flex; gap: 15px;">
@@ -82,7 +82,7 @@
     </div>
 
     <div class="card" style="max-width: 100%; overflow: hidden;">
-        <h3>Danh Sách Ca Trực</h3>
+        <h3>Danh Sách Ca Làm Việc</h3>
         <div style="width: 100%; overflow-x: auto; white-space: nowrap; padding-bottom: 10px;">
             <style>
                 /* Tùy chỉnh thanh cuộn ngang cho đẹp */
@@ -94,7 +94,7 @@
                 <thead>
                     <tr>
                         <th style="width: 10%">MÃ CA</th>
-                        <th style="width: 20%">TÊN CA TRỰC</th>
+                        <th style="width: 20%">TÊN CA LÀM VIỆC</th>
                         <th style="width: 15%">LỊCH LÀM VIỆC</th>
                         <th style="width: 15%">GIỜ CHECK-IN</th>
                         <th style="width: 15%">GIỜ CHECK-OUT</th>
