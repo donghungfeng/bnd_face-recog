@@ -145,6 +145,7 @@ class Explanation(Base):
     date = Column(Date, server_default=func.current_date()) 
     reason = Column(Text, nullable=False)
     status = Column(String(50), nullable=False)
+    shift_code = Column(String(255), nullable=True) # Mã ca trực (VD: CA_DEM)
     
 class Wifi(Base):
     __tablename__ = "wifi"

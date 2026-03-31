@@ -240,6 +240,7 @@ class ExplanationCreate(BaseModel):
     reason: str
     status: str
     date: date
+    shift_code: str
 
 class ExplanationResponse(BaseModel):
     id: int
@@ -247,7 +248,8 @@ class ExplanationResponse(BaseModel):
     date: date
     reason: str
     status: str
-
+    shift_name: Optional[str] = None
+    shift_code: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
     class Config:
@@ -259,11 +261,13 @@ class PaginatedExplanationResponse(BaseModel):
     items: list[ExplanationResponse]
     skip: int
     limit: int
+    shift_code: Optional[str] = None
     
 
 class ExplanationUpdate(BaseModel):
     date: date
     reason: str
+    shift_code: Optional[str] = None
 
 class ChangeMyPassword(BaseModel):
     old_password: str
