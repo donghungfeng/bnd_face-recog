@@ -75,20 +75,8 @@ CREATE TABLE `explanation` (
     `date` DATE NOT NULL,
     `reason` TEXT NOT NULL,
     `status` VARCHAR(50) NOT NULL,
+    `shift_code` VARCHAR(255),
     PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `leave_requests` (
-    `id` INT NOT NULL AUTO_INCREMENT, 
-    `username` VARCHAR(50), 
-    `full_name` VARCHAR(512), 
-    `leave_date` DATE, 
-    `reason` VARCHAR(512), 
-    `approver` VARCHAR(512), 
-    `status` VARCHAR(50), 
-    PRIMARY KEY (`id`),
-    KEY `ix_leave_requests_username` (`username`),
-    KEY `ix_leave_requests_leave_date` (`leave_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `monthly_records` (
@@ -155,5 +143,43 @@ CREATE TABLE `wifi` (
     `status` VARCHAR(50) NOT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE leave_types (
+    id INT NOT NULL AUTO_INCREMENT,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    benefit_rate DECIMAL(5, 2) DEFAULT 100.0,
+    max_num_days INT DEFAULT 0,             
+    scope TEXT,                             
+    status TINYINT DEFAULT 1,
+    note TEXT,                              
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE holidays (
+    id INT NOT NULL AUTO_INCREMENT,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    num_days DECIMAL(4, 1) NOT NULL,
+    scope TEXT,                             
+    status TINYINT DEFAULT 1,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE leave_requests (
+    id INT NOT NULL AUTO_INCREMENT,
+    username VARCHAR(255) NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    type_id INT NOT NULL,
+    reason TEXT,
+    approver_username VARCHAR(255),
+    approver_fullname VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'PENDING',
+    PRIMARY KEY (id),
+    CONSTRAINT fk_leave_type FOREIGN KEY (type_id) REFERENCES leave_types(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 

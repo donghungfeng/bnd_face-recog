@@ -163,9 +163,9 @@ class AttendanceSchema(BaseModel):
     full_name: str
     check_in_time: datetime
     image_path: Optional[str] = None
-    late_minutes: int = 0
-    early_minutes: int = 0
-    explanation_status: str = ""
+    late_minutes: Optional[int] = 0      # Nếu null thì mặc định là 0 phút
+    early_minutes: Optional[int] = 0     # Nếu null thì mặc định là 0 phút
+    explanation_status: Optional[str] = None # Nếu null thì mặc định là None
     explanation_reason: Optional[str] = None
 
     confidence: Optional[float] = None
