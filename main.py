@@ -9,7 +9,7 @@ from database import engine, Base
 from services import load_embeddings, load_system_configs
 from routers import (
     attendance_router, auth_router, config_router, 
-    department_router, employee_router, page_router, 
+    department_router, employee_router, holidays_router, leave_requests_router, leave_types_router, page_router, 
     face_router, admin_router, shift_router, monthly_record_router, explanation_router, wifi_router
 )
 
@@ -74,6 +74,9 @@ app.include_router(config_router.router)
 app.include_router(monthly_record_router.router)
 app.include_router(explanation_router.router)
 app.include_router(wifi_router.router)
+app.include_router(leave_types_router.router)
+app.include_router(holidays_router.router)
+app.include_router(leave_requests_router.router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

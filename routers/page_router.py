@@ -86,3 +86,15 @@ async def wifi(request: Request):
 @router.get("/attendance/detail")
 async def attendance_detail(request: Request):
     return templates.TemplateResponse("attendance_detail.html", {"request": request})
+
+@router.get("/leave-requests")
+async def leave_requests(request: Request):
+    return templates.TemplateResponse("leave_requests.html", {"request": request})
+
+@router.get("/leave-types")
+async def leave_types(request: Request):
+    return templates.TemplateResponse("leave_types.html", {"request": request})
+
+@router.get("/holidays")
+async def holidays(request: Request):
+    return templates.TemplateResponse("holidays.html", {"request": request})
