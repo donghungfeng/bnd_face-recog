@@ -149,7 +149,7 @@ def background_logging(
             )
             db.add(new_log)
 
-        elif len(records_today) < 2:
+        elif len(records_today) < 6: # Tăng giới hạn tạo mới lên tối đa 6 bản ghi
             new_log = Attendance(
                 username=user_id, 
                 full_name=full_name, 
@@ -158,16 +158,16 @@ def background_logging(
                 late_minutes=late_min, 
                 early_minutes=early_min, 
                 confidence=round(confidence*100, 2),
-                client_ip=client_ip,                   
-                latitude=latitude,                     
-                longitude=longitude,                   
+                client_ip=client_ip,                  
+                latitude=latitude,                    
+                longitude=longitude,                  
                 attendance_type=attendance_type,        
                 note=note                            
             )
             db.add(new_log)
         else:
-            # ---> CẬP NHẬT: Ghi đè cả vị trí và IP mới nếu nhân viên chấm lần 2 (Ra về)
-            latest_record = records_today[1] 
+            # ---> CẬP NHẬT: Ghi đè vào bản ghi thứ 6 (index 5) nếu nhân viên quét từ lần thứ 7 trở đi
+            latest_record = records_today[5] 
             if latest_record.image_path:
                 old_img_path = "." + latest_record.image_path 
                 if os.path.exists(old_img_path): os.remove(old_img_path)
@@ -178,18 +178,20 @@ def background_logging(
             latest_record.early_minutes = early_min
             latest_record.confidence = round(confidence*100, 2)
             
-            latest_record.client_ip = client_ip                 # MỚI
-            latest_record.latitude = latitude                   # MỚI
-            latest_record.longitude = longitude                 # MỚI
-            latest_record.attendance_type = attendance_type     # MỚI
-            latest_record.note = note                         # MỚI
+            latest_record.client_ip = client_ip                 
+            latest_record.latitude = latitude                   
+            latest_record.longitude = longitude                 
+            latest_record.attendance_type = attendance_type     
+            latest_record.note = note                         
 
-            if len(records_today) > 2:
-                for extra_record in records_today[2:]:
+            # Dọn dẹp nếu database lỡ có nhiều hơn 6 bản ghi (xóa từ bản ghi thứ 7 trở đi)
+            if len(records_today) > 6:
+                for extra_record in records_today[6:]:
                     if extra_record.image_path:
                         extra_img_path = "." + extra_record.image_path
                         if os.path.exists(extra_img_path): os.remove(extra_img_path)
                     db.delete(extra_record)
+
         db.commit()
     except Exception as e:
         print(f"Lỗi ghi log ngầm: {e}")

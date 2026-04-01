@@ -605,9 +605,9 @@ async def create_manual_attendance(
         username=username.upper(),
         full_name=emp.full_name,
         check_in_time=check_in_dt,
-        confidence=1.0, # Nhập tay thì coi như tin tưởng 100%
+        confidence=65.0, 
         image_path=image_path,
-        client_ip="Thêm thủ công",
+        client_ip="",
         latitude=latitude,
         longitude=longitude,
         attendance_type=attendance_type,
