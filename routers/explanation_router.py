@@ -89,8 +89,8 @@ def create_explanation(expl: ExplanationCreate, db: Session = Depends(get_db)):
     today = date.today()
     if expl.date >= today:
         raise HTTPException(status_code=400, detail="Chỉ có thể giải trình cho các ngày trong quá khứ.")
-    if expl.date.month != today.month or expl.date.year != today.year:
-        raise HTTPException(status_code=400, detail="Chỉ có thể giải trình trong tháng hiện tại.")
+    # if expl.date.month != today.month or expl.date.year != today.year:
+    #     raise HTTPException(status_code=400, detail="Chỉ có thể giải trình trong tháng hiện tại.")
 
     # --- 3. LƯU DATABASE ---
     try:

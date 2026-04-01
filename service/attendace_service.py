@@ -302,7 +302,13 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
 
 def get_hybrid_monthly_records(db: Session, start_date: date, end_date: date, employee_id: Optional[int] = None):
     today = date.today()
-    first_day_of_this_month = date(today.year, today.month, 1)
+    # first_day_of_this_month = date(today.year, today.month, 1)
+    if today.month == 1:
+    # Nếu đang là tháng 1, lùi về năm trước và set tháng là 12
+        first_day_of_this_month = date(today.year - 1, 12, 1)
+    else:
+        # Các tháng khác thì chỉ cần trừ tháng đi 1
+        first_day_of_this_month = date(today.year, today.month - 1, 1)
     result_records = []
 
     def apply_filters(query_obj, is_monthly_table=True):
