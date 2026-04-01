@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Quản Lý Xin Nghỉ{% endblock %}
+{% block page_title %}Xử Lý Yêu Cầu Nghỉ Phép{% endblock %}
+
+{% block extra_css %}
+<style>
+    .grid-container { display: grid; grid-template-columns: 350px 1fr; gap: 20px; align-items: start; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    #formCard { position: sticky; top: 80px; align-self: start; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; color: #475569; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+    .form-actions { display: flex; gap: 10px; margin-top: 15px; }
+    .btn-primary { background: #0ea5e9; color: #fff; font-weight: 700; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; width: 100%; transition: 0.2s; }
+    .btn-primary:hover { background: #0284c7; }
+    .btn-cancel { background: #e2e8f0; color: #475569; font-weight: 700; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; display: none; width: 100%;}
+    
+    /* CSS Nút bấm (Dùng cho Duyệt/Từ chối) */
+    .btn-edit, .btn-del { border: none !important; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-edit { background: #dcfce7 !important; color: #166534 !important; } /* Đổi tông xanh lá cho nút Duyệt */
+    .btn-edit:hover { background: #bbf7d0 !important; transform: translateY(-1px); }
+    .btn-del { background: #fee2e2 !important; color: #dc2626 !important; }
+    .btn-del:hover { background: #fecaca !important; transform: translateY(-1px); }
+
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; color: #64748b; font-size: 0.85rem; text-transform: uppercase; }
+    .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
+    .badge-pending { background: #fef08a; color: #854d0e; }
+    .badge-approved { background: #dcfce7; color: #166534; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid-container">
+    <div class="card" id="formCard">
+        <h3 id="formTitle" style="margin-top: 0; color: #0ea5e9;">+ Tạo Đơn Xin Nghỉ Mới</h3>
+        <form id="dataForm">
+            <div class="form-group">
+                <label>Mã Nhân Viên*</label>
+                <input type="text" id="username" placeholder="VD: TCKT.XUANDT" required>
+            </div>
+            <div class="form-group">
+                <label>Họ Tên*</label>
+                <input type="text" id="fullname" placeholder="Nhập tên nhân viên" required>
+            </div>
+            <div class="form-group">
+                <label>Loại Nghỉ Phép*</label>
+                <select id="type_id" required>
+                    <option value="">-- Đang tải danh mục --</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex:1;">
+                    <label>Từ ngày*</label><input type="date" id="from_date" required>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Đến ngày*</label><input type="date" id="to_date" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Lý do nghỉ*</label>
+                <textarea id="reason" rows="2" placeholder="Ghi rõ lý do..." required></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" id="cancelBtn" class="btn-cancel" onclick="cancelEdit()">HỦY XÓA</button>
+                <button type="submit" id="submitBtn" class="btn-primary">GỬI YÊU CẦU</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top: 0;">Danh Sách Đơn Từ Chờ Duyệt</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nhân Viên</th>
+                    <th>Loại Phép</th>
+                    <th>Thời Gian</th>
+                    <th>Trạng Thái</th>
+                    <th>Người Duyệt</th>
+                    <th>Duyệt / Hủy</th>
+                </tr>
+            </thead>
+            <tbody id="dataTable">
+                <tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Tải danh sách loại nghỉ phép đổ vào Dropdown
+    async function fetchTypes() {
+        const res = await fetch('/leave-types/api');
+        const types = await res.json();
+        const select = document.getElementById('type_id');
+        select.innerHTML = '<option value="">-- Chọn loại phép --</option>';
+        types.forEach(t => {
+            select.innerHTML += `<option value="${t.id}">${t.name} (${t.code})</option>`;
+        });
+    }
+
+    // Tải danh sách đơn
+    async function loadData() {
+        const res = await fetch('/leave-requests/api');
+        const listData = await res.json();
+        const tbody = document.getElementById('dataTable');
+        tbody.innerHTML = '';
+        
+        if(listData.length === 0) return tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chưa có đơn xin nghỉ nào.</td></tr>';
+
+        listData.forEach(item => {
+            let badge = `<span class="badge badge-pending">Chờ Duyệt</span>`;
+            let btnState = '';
+            
+            if (item.status === 'APPROVED') {
+                badge = `<span class="badge badge-approved">Đã Duyệt</span>`;
+                btnState = 'disabled style="opacity:0.3; cursor:not-allowed;"';
+            } else if (item.status === 'REJECTED') {
+                badge = `<span class="badge badge-rejected">Từ Chối</span>`;
+                btnState = 'disabled style="opacity:0.3; cursor:not-allowed;"';
+            }
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${item.username}</strong><br><small>${item.fullname}</small></td>
+                    <td>${item.type_name || item.type_id}</td>
+                    <td>${item.from_date} <br><small>đến</small> ${item.to_date}</td>
+                    <td>${badge}</td>
+                    <td>${item.approver_fullname || '--'}</td>
+                    <td style="display: flex; gap: 5px;">
+                        <button class="btn-edit" ${btnState} onclick="processRequest(${item.id}, 'APPROVED')">✅ Duyệt</button>
+                        <button class="btn-del" ${btnState} onclick="processRequest(${item.id}, 'REJECTED')">❌ Hủy</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    document.getElementById('dataForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            username: document.getElementById('username').value.trim().toUpperCase(),
+            fullname: document.getElementById('fullname').value.trim(),
+            type_id: parseInt(document.getElementById('type_id').value),
+            from_date: document.getElementById('from_date').value,
+            to_date: document.getElementById('to_date').value,
+            reason: document.getElementById('reason').value.trim()
+        };
+
+        const res = await fetch('/leave-requests/api', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+        if(res.ok) { 
+            document.getElementById('dataForm').reset();
+            loadData(); 
+        } else { alert("Có lỗi xảy ra khi tạo đơn!"); }
+    });
+
+    async function processRequest(id, status) {
+        if(confirm(`Bạn chắc chắn muốn ${status === 'APPROVED' ? 'DUYỆT' : 'TỪ CHỐI'} đơn này?`)) {
+            await fetch(`/leave-requests/api/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: status,
+                    approver_username: "ADMIN", // Tạm hardcode
+                    approver_fullname: "Quản trị viên"
+                })
+            });
+            loadData();
+        }
+    }
+
+    fetchTypes();
+    loadData();
+</script>
+{% endblock %}
