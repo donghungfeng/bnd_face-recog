@@ -979,6 +979,7 @@
             roleSpan.classList.add("role-user");
         }
 
+        // Ẩn thanh tìm kiếm nếu là user thường
         if (currentRole === "user") {
             document.getElementById("dashSearchGroup").style.display = "none";
         }
@@ -1001,9 +1002,11 @@
             const statsRes = await fetch('/api/stats', { headers: { "Authorization": `Bearer ${token}` } });
             if (statsRes.ok) {
                 const stats = await statsRes.json();
-
+                
+                // Cập nhật giao diện dựa theo API RBAC mới
                 document.getElementById('val_employees').innerText = stats.total_employees || 0;
                 document.getElementById('val_unique_today').innerText = stats.unique_checkins_today || 0;
+                // Note: API hiện tại chưa trả về total_leaves, nếu backend có update thì đổi lại sau
                 document.getElementById('val_leaves').innerText = stats.total_leaves || 0;
             }
         } catch (error) {
@@ -1011,15 +1014,12 @@
         }
     }
 
-    // --- HÀM MỚI: FETCH SỐ LƯỢNG ĐƠN GIẢI TRÌNH (TỪ ĐẦU THÁNG ĐẾN HÔM NAY) ---
-    // --- HÀM MỚI: FETCH SỐ LƯỢNG ĐƠN GIẢI TRÌNH TỪ API CHUẨN ---
     async function fetchPendingExplanations() {
         const token = localStorage.getItem("hrm_token");
         if (!token) return;
 
-        // Theo yêu cầu: truyền status=1 và limit lớn. 
-        // Tuy nhiên, tối ưu nhất là chỉ cần lấy data.total từ API trả về.
-        const apiUrl = `/api/explanations?status=1&limit=100`;
+        // Tối ưu: Chỉ cần đếm tổng số (total), nên để limit=1 cho API phản hồi cực nhanh
+        const apiUrl = `/api/explanations?status=1&limit=1`;
 
         try {
             const res = await fetch(apiUrl, {
@@ -1029,17 +1029,9 @@
 
             if (res.ok) {
                 const data = await res.json();
-
-                // Theo API của bạn, biến data trả về có dict: { total, items, skip, limit }
-                // Bạn có thể đếm data.items.length hoặc dùng trực tiếp data.total cho chính xác
-                const count = data.items ? data.items.length : 0;
-
-                // Mẹo: Nếu số lượng thực tế lớn hơn limit, dùng data.total sẽ luôn chuẩn xác nhất:
-                // const count = data.total || 0; 
-
+                // Lấy tổng số lượng từ data.total
+                const count = data.total || 0; 
                 document.getElementById('val_explanations').innerText = count;
-            } else {
-                console.error("Lỗi HTTP:", res.status);
             }
         } catch (error) {
             console.error("Lỗi lấy số lượng giải trình:", error);
@@ -1059,6 +1051,7 @@
         const dd = String(todayObj.getDate()).padStart(2, '0');
         const todayStr = `${yyyy}-${mm}-${dd}`;
 
+        // Không cần truyền skip/limit vì data 1 ngày rất nhỏ, Client sẽ tự cắt phân trang
         let apiUrl = `/api/monthly-records?startDate=${todayStr}&endDate=${todayStr}`;
 
         try {
@@ -1071,9 +1064,7 @@
 
             allRawData = await res.json();
 
-            if (currentRole === "user" && currentUsername) {
-                allRawData = allRawData.filter(item => (item.username || "").toUpperCase() === currentUsername);
-            }
+            // ĐÃ XÓA: Đoạn code tự filter theo currentUsername (Vì Backend RBAC đã làm việc này rồi)
 
             applyDashFilters();
 
@@ -1117,7 +1108,7 @@
     }
 
     // ═══════════════════════════════════════════════════
-    // 5. RENDER BẢNG
+    // 5. RENDER BẢNG (CLIENT-SIDE PAGINATION)
     // ═══════════════════════════════════════════════════
     function renderTable() {
         const tbody = document.getElementById('recentTableBody');
@@ -1135,7 +1126,7 @@
         if (currentPage < 1) currentPage = 1;
 
         const startIdx = (currentPage - 1) * itemsPerPage;
-        const pageData = filteredData.slice(startIdx, startIdx + itemsPerPage);
+        const pageData = filteredData.slice(startIdx, startIdx + itemsPerPage); // Lệnh cắt data phân trang siêu mượt
 
         tbody.innerHTML = '';
 

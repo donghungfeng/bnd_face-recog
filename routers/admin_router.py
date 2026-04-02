@@ -17,6 +17,7 @@ from database import get_db
 from models import Employee, Attendance, LeaveRequest, ShiftCategory
 from schemas import EmployeeCreate, LeaveSubmit, ExplainRequest
 from config import DB_PATH
+from routers.auth_router import get_current_user
 
 router = APIRouter()
 
@@ -28,26 +29,64 @@ def read_dashboard(request: Request):
 
 # 3. Thêm API tính toán thống kê (Ở mục 6. API DATABASE)
 @router.get("/api/stats")
-def get_dashboard_stats(db: Session = Depends(get_db)):
-    # Đếm tổng nhân sự & tổng ca
-    total_employees = db.query(Employee).count()
-    total_shifts = db.query(ShiftCategory).count()
+def get_dashboard_stats(
+    current_user: dict = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    role = current_user.get("role", "user")
+    current_username = current_user.get("username")
 
     # Tính toán mốc thời gian của ngày hôm nay
     today_start = datetime.combine(date.today(), time.min)
     today_end = datetime.combine(date.today(), time.max)
 
-    # Đếm tổng số lượt chấm công hôm nay
-    today_attendances = db.query(Attendance).filter(
+    # 1. KHỞI TẠO CÁC QUERY CƠ BẢN
+    emp_query = db.query(Employee)
+    
+    att_query = db.query(Attendance).filter(
         Attendance.check_in_time >= today_start,
         Attendance.check_in_time <= today_end
-    ).count()
+    )
+    
+    unique_checkin_query = db.query(Attendance.username).filter(
+        Attendance.check_in_time >= today_start,
+        Attendance.check_in_time <= today_end
+    )
 
-    # Đếm số lượng nhân viên thực tế đã đi làm hôm nay (Loại bỏ trùng lặp nếu 1 người quẹt nhiều lần)
-    unique_checkins_today = db.query(Attendance.username).filter(
-        Attendance.check_in_time >= today_start,
-        Attendance.check_in_time <= today_end
-    ).distinct().count()
+    # 2. ÁP DỤNG LOGIC PHÂN QUYỀN (RBAC)
+    if role == "user":
+        # User: Chỉ lấy thống kê của chính mình
+        emp_query = emp_query.filter(Employee.username == current_username)
+        att_query = att_query.filter(Attendance.username == current_username)
+        unique_checkin_query = unique_checkin_query.filter(Attendance.username == current_username)
+
+    elif role == "manager":
+        # Manager: Lấy thống kê của các nhân viên trong cùng phòng ban
+        manager = db.query(Employee).filter(Employee.username == current_username).first()
+        if not manager or manager.department_id is None:
+            # Nếu manager không thuộc phòng ban nào -> Trả về 0 để an toàn
+            emp_query = emp_query.filter(False)
+            att_query = att_query.filter(False)
+            unique_checkin_query = unique_checkin_query.filter(False)
+        else:
+            # Lấy danh sách username của nhân viên cùng phòng ban
+            dept_users = [
+                u[0] for u in db.query(Employee.username).filter(Employee.department_id == manager.department_id).all()
+            ]
+            emp_query = emp_query.filter(Employee.username.in_(dept_users))
+            att_query = att_query.filter(Attendance.username.in_(dept_users))
+            unique_checkin_query = unique_checkin_query.filter(Attendance.username.in_(dept_users))
+            
+    # Admin: Không cần filter thêm gì, query sẽ lấy toàn bộ database
+
+    # 3. THỰC THI QUERY VÀ LẤY KẾT QUẢ
+    total_employees = emp_query.count()
+    
+    # Lưu ý: Danh mục ca (ShiftCategory) là dữ liệu dùng chung (Global) nên không cần phân quyền
+    total_shifts = db.query(ShiftCategory).count() 
+
+    today_attendances = att_query.count()
+    unique_checkins_today = unique_checkin_query.distinct().count()
 
     return {
         "total_employees": total_employees,

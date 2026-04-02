@@ -379,6 +379,13 @@
             <input type="hidden" id="gt_username">
             <input type="hidden" id="gt_date">
             <input type="hidden" id="gt_att_id">
+            <input type="hidden" id="gt_shift_code_hidden">
+            
+            <div class="form-group">
+                <label>Ca làm việc đang giải trình</label>
+                <input type="text" id="gt_shift_code_display" disabled style="background: #f1f5f9; color: #475569; font-weight: 700;">
+            </div>
+
             <div class="form-group">
                 <label>Lý do giải trình <span style="color:red">*</span></label>
                 <textarea id="gt_reason" rows="4" required placeholder="Nhập lý do chi tiết..."></textarea>
@@ -452,14 +459,12 @@
 
     async function initLeaveModalData() {
         try {
-            // Load Loại phép
             const resTypes = await fetch('/leave-types/api');
             const types = await resTypes.json();
             const selectType = document.getElementById('leaveType');
             selectType.innerHTML = '<option value="">-- Chọn loại phép --</option>';
             types.forEach(t => selectType.innerHTML += `<option value="${t.id}">${t.name}</option>`);
             
-            // Load Manager
             const resMgrs = await fetch('/api/employees/managers');
             const mgrs = await resMgrs.json();
             const selectMgr = document.getElementById('leaveApprover');
@@ -706,11 +711,17 @@
                 let explainBtns = '';
                 if (recs.length === 1 && !isHol && dayLeaves.length === 0) {
                     const disabled = calcExplainDisabled(recs[0], firstOfMonth, yesterday);
-                    explainBtns = `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''} onclick="event.stopPropagation();openGiaiTrinhModal('${recs[0].id ?? ''}','${safeEmpName}','${dateStr}')">✍️ Giải trình</button>`;
+                    const attId = recs[0].id ?? '';
+                    explainBtns = `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
+                        onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${dateStr}','${recs[0].shift_code || ''}')"
+                        title="Viết giải trình">✍️ Giải trình</button>`;
                 } else if (recs.length > 1 && !isHol && dayLeaves.length === 0) {
                     recs.forEach((rec, idx) => {
                         const disabled = calcExplainDisabled(rec, firstOfMonth, yesterday);
-                        explainBtns += `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''} onclick="event.stopPropagation();openGiaiTrinhModal('${rec.id ?? ''}','${safeEmpName}','${rec.date}')" title="Giải trình ca ${idx+1}">✍️ Ca ${idx+1}</button>`;
+                        const attId = rec.id ?? '';
+                        explainBtns += `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
+                            onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}','${rec.shift_code || ''}')"
+                            title="Giải trình ca ${idx+1}">✍️ Ca ${idx+1}</button>`;
                     });
                 }
 
@@ -760,7 +771,7 @@
     }
 
     // ─────────────────────────────────────────
-    // MODAL XIN NGHỈ (GIAO DIỆN PC & BOTTOM SHEET)
+    // MODAL XIN NGHỈ
     // ─────────────────────────────────────────
     function openLeaveModal(dateStr) {
         let formattedDate = "";
@@ -826,13 +837,23 @@
     // ─────────────────────────────────────────
     // MODAL GIẢI TRÌNH
     // ─────────────────────────────────────────
-    function openGiaiTrinhModal(attId, fullName, dateStr) {
-        const [y, m, d] = (dateStr || '--').split('-');
-        document.getElementById('gt_username').value = document.getElementById('empSelect').value;
-        document.getElementById('gt_date').value = dateStr;
-        document.getElementById('gt_att_id').value = attId;
-        document.getElementById('gt_reason').value = '';
-        document.getElementById('gt_info_line').innerHTML = `<strong>Nhân viên:</strong> ${fullName} &nbsp;|&nbsp; <strong>Ngày:</strong> ${d}/${m}/${y}`;
+    function openGiaiTrinhModal(attId, fullName, dateStr, shiftCode) {
+        const [y, m, d]  = (dateStr || '--').split('-');
+        const displayDate = dateStr ? `${d}/${m}/${y}` : '---';
+
+        document.getElementById('gt_username').value = currentUsername;
+        document.getElementById('gt_date').value     = dateStr;
+        document.getElementById('gt_att_id').value   = attId;
+        
+        const sc = shiftCode || 'Không xác định';
+        document.getElementById('gt_shift_code_hidden').value = shiftCode || '';
+        document.getElementById('gt_shift_code_display').value = sc;
+
+        document.getElementById('gt_reason').value   = '';
+
+        document.getElementById('gt_info_line').innerHTML =
+            `<strong>Nhân viên:</strong> ${currentName} &nbsp;|&nbsp; <strong>Ngày:</strong> ${displayDate}`;
+
         document.getElementById('giaiTrinhModal').classList.add('active');
     }
 
@@ -843,10 +864,11 @@
         const btn = document.getElementById('gtSubmitBtn');
         btn.disabled = true; btn.innerText = 'ĐANG GỬI...';
         const payload = {
-            username: document.getElementById('gt_username').value,
-            date: document.getElementById('gt_date').value,
-            reason: document.getElementById('gt_reason').value.trim(),
-            status: "1"
+            username:   document.getElementById('gt_username').value,
+            date:       document.getElementById('gt_date').value,
+            shift_code: document.getElementById('gt_shift_code_hidden').value,
+            reason:     document.getElementById('gt_reason').value.trim(),
+            status:     "1"
         };
 
         try {
@@ -907,6 +929,7 @@
                     const workDay = rec.actual_workday ?? '';
                     const status  = rec.status ?? null;
                     const attId   = rec.id ?? '';
+                    const shiftCode = rec.shift_code || '';
 
                     const thisDate = new Date(rec.date + 'T00:00:00');
                     const statusOk = status === 1 || status === 7;
@@ -916,17 +939,21 @@
                     const inHtml = !isWeekend ? (timeIn ? `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-in">${timeIn}</span></div>` : `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
                     const outHtml = !isWeekend ? (timeOut ? `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-out">${timeOut}</span></div>` : `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
                     const workHtml = (workH && !isWeekend) ? `<div class="sheet-row"><span class="sheet-label">⏱ Giờ công</span><span class="sheet-val sheet-val-work">${workH}h · ${workDay} công</span></div>` : '';
+                    
+                    const badgeClass = getBadgeStatusClass(status, isWeekend);
+                    const statusText = statusLabel(status, isWeekend);
 
                     const card = document.createElement('div');
                     card.className = 'sheet-shift-card';
                     card.innerHTML = `
                         <div class="sheet-shift-header">
                             <span class="sheet-shift-title">${recs.length > 1 ? `🔄 Ca ${idx + 1}` : '📋 Thông tin chấm công'}</span>
-                            <span class="badge ${getBadgeStatusClass(status, isWeekend)}" style="display:inline-flex;">${statusLabel(status, isWeekend)}</span>
+                            <span class="badge ${badgeClass}" style="display:inline-flex;">${statusText}</span>
                         </div>
                         <div class="sheet-shift-body">
                             ${inHtml}${outHtml}${workHtml}
-                            <button class="sheet-explain-per-shift" ${explainDisabled ? 'disabled' : ''} data-att-id="${attId}" data-date="${rec.date}" data-emp="${empName}">
+                            <button class="sheet-explain-per-shift" ${explainDisabled ? 'disabled' : ''} 
+                                data-att-id="${attId}" data-date="${rec.date}" data-emp="${empName}" data-shift-code="${shiftCode}">
                                 ✍️ Viết giải trình${recs.length > 1 ? ' ca này' : ''}
                             </button>
                         </div>`;
@@ -934,7 +961,7 @@
                     card.querySelector('.sheet-explain-per-shift').addEventListener('click', function () {
                         if (this.disabled) return;
                         closeBottomSheet();
-                        openGiaiTrinhModal(this.dataset.attId, this.dataset.emp, this.dataset.date);
+                        openGiaiTrinhModal(this.dataset.attId, this.dataset.emp, this.dataset.date, this.dataset.shiftCode);
                     });
 
                     container.appendChild(card);
@@ -955,7 +982,7 @@
             explainBtn.style.display = '';
             explainBtn.onclick = explainDisabled ? null : () => {
                 closeBottomSheet();
-                openGiaiTrinhModal(rec.id ?? '', empName, dateStr);
+                openGiaiTrinhModal(rec.id ?? '', empName, dateStr, rec.shift_code || '');
             };
         } else { explainBtn.style.display = 'none'; }
 
