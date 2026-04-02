@@ -5,230 +5,154 @@
 
 {% block extra_css %}
 <style>
-    .grid-container {
-        display: grid;
-        grid-template-columns: 380px 1fr;
-        gap: 20px;
-        align-items: start;
-    }
-
-    .card {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    }
-
-    #formCard {
+    /* ==========================================
+       1. TÙY CHỈNH LAYOUT & CÔNG CỤ (PC)
+       ========================================== */
+    /* Cột form bên trái: Ghim cố định khi cuộn chuột */
+    .sticky-form {
         position: sticky;
         top: 80px;
-        align-self: start;
     }
 
-    .form-group {
-        margin-bottom: 15px;
-    }
+    /* Tiện ích chia cột linh hoạt */
+    .flex-row { display: flex; gap: 10px; }
+    .flex-2 { flex: 2; }
+    .flex-1 { flex: 1; }
 
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-        font-size: 0.9rem;
-        color: #475569;
-    }
-
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #cbd5e1;
+    /* Nút phụ (Nút Hủy/Làm lại) */
+    .btn {
+        padding: 10px 15px;
         border-radius: 6px;
-        box-sizing: border-box;
-        outline: none;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+        text-align: center;
+        transition: 0.2s;
+        font-size: 0.9rem;
     }
+    .btn-cancel { background: #f1f5f9; color: #475569; border: 1px solid var(--border); }
+    .btn-cancel:hover { background: #e2e8f0; }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; border-radius: 4px; }
+    
+    .action-group { display: flex; gap: 5px; flex-wrap: wrap; }
 
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus {
-        border-color: #0ea5e9;
-    }
+    /* Ghi đè cấu trúc Select2 cho khớp UI Base */
+    .select2-container { width: 100% !important; }
+    .select2-container .select2-selection--single { height: 41px !important; border: 1px solid var(--border) !important; border-radius: 6px !important; display: flex; align-items: center; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 39px !important; }
 
-    .form-actions {
+    /* ==========================================
+       2. TRẠNG THÁI (BADGES)
+       ========================================== */
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+    .bg-yellow { background: #fef08a; color: #854d0e; }
+    .bg-green { background: #dcfce7; color: #166534; }
+    .bg-red { background: #fee2e2; color: #991b1b; }
+    .bg-gray { background: #f1f5f9; color: #475569; border: 1px solid var(--border); }
+
+    /* Thẻ bọc input tìm kiếm trong Filter */
+    .filter-inputs {
         display: flex;
         gap: 10px;
-        margin-top: 15px;
+        flex-wrap: wrap;
+        flex: 1;
+        justify-content: flex-end;
     }
 
-    .btn-primary {
-        background: #0ea5e9;
-        color: #fff;
-        font-weight: 700;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 6px;
-        cursor: pointer;
-        width: 100%;
-        transition: 0.2s;
-    }
+    /* ==========================================
+       3. BẢN MOBILE: LIST CARD VIEW DỮ LIỆU
+       ========================================== */
+    @media (max-width: 768px) {
+        .sticky-form { position: static; } /* Tắt ghim form trên mobile */
+        .flex-row { flex-direction: column; } /* Gập các ô input hàng ngang */
+        
+        .filter-inputs { flex-direction: column; width: 100%; }
+        .filter-inputs select, .filter-inputs input, .filter-inputs button { width: 100%; box-sizing: border-box; }
 
-    .btn-primary:hover {
-        background: #0284c7;
-    }
+        /* Biến Table thành List Card */
+        table, thead, tbody, th, td, tr { display: block; width: 100%; box-sizing: border-box; }
+        thead { display: none; } /* Giấu thẻ thead */
 
-    .btn-cancel {
-        background: #e2e8f0;
-        color: #475569;
-        font-weight: 700;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 6px;
-        cursor: pointer;
-        display: none;
-        width: 100%;
-    }
+        tr {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: #fff;
+            padding: 5px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
 
-    .btn-edit,
-    .btn-del {
-        border: none !important;
-        padding: 8px 14px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        transition: 0.2s;
-        font-size: 0.85rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-    }
+        td {
+            border-bottom: 1px solid var(--border);
+            padding: 10px 15px 10px 110px; /* Lùi lề trái đúng 110px để nhường chỗ cho tiêu đề */
+            position: relative; /* Để ghim tiêu đề */
+            text-align: right; /* Ép chữ đẩy sang phải */
+            min-height: 40px;
+            color: var(--text-main);
+            word-wrap: break-word;
+        }
+        td:last-child { border-bottom: none; background: #f9fafb; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
 
-    .btn-edit {
-        background: #dcfce7 !important;
-        color: #166534 !important;
-    }
+        /* Tiêu đề giả bên trái */
+        td::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 15px;
+            top: 12px;
+            width: 90px;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
 
-    .btn-edit:hover {
-        background: #bbf7d0 !important;
-        transform: translateY(-1px);
-    }
-
-    .btn-del {
-        background: #fee2e2 !important;
-        color: #dc2626 !important;
-    }
-
-    .btn-del:hover {
-        background: #fecaca !important;
-        transform: translateY(-1px);
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-    }
-
-    th,
-    td {
-        padding: 12px 15px;
-        border-bottom: 1px solid #e2e8f0;
-        vertical-align: middle;
-    }
-
-    th {
-        background: #f8fafc;
-        color: #64748b;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-    }
-
-    .badge {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: bold;
-        display: inline-block;
-    }
-
-    .badge-pending {
-        background: #fef08a;
-        color: #854d0e;
-    }
-
-    .badge-approved {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .badge-rejected {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .time-display {
-        font-size: 0.85rem;
-        color: #0f172a;
-        font-weight: bold;
-    }
-
-    .time-session {
-        font-size: 0.75rem;
-        color: #64748b;
-        background: #f1f5f9;
-        padding: 2px 6px;
-        border-radius: 4px;
-        margin-left: 5px;
-    }
-
-    /* Custom lại Select2 để khớp với theme hiện tại */
-    .select2-container .select2-selection--single {
-        height: 40px !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 6px !important;
-        display: flex;
-        align-items: center;
-    }
-
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 38px !important;
-    }
-
-    .select2-container--default .select2-selection--single:focus,
-    .select2-container--default.select2-container--focus .select2-selection--single {
-        border-color: #0ea5e9 !important;
-        box-shadow: 0 0 0 1px #0ea5e9;
-        outline: none;
+        /* Đẩy nút hành động sang phải trên mobile */
+        .action-group { justify-content: flex-end; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="grid-container">
-    <div class="card" id="formCard">
-        <h3 id="formTitle" style="margin-top: 0; color: #0ea5e9;">+ Tạo Đơn Xin Nghỉ Mới</h3>
+    
+    <div class="card sticky-form">
+        <h3>+ Tạo Đơn Xin Nghỉ</h3>
         <form id="dataForm">
             <div class="form-group">
-                <label>Mã Nhân Viên*</label>
-                <input type="text" id="username" placeholder="VD: TCKT." required>
+                <label>Mã Nhân Viên *</label>
+                <input type="text" id="username" placeholder="VD: TCKT.XUANDT" required>
             </div>
+            
             <div class="form-group">
-                <label>Họ Tên*</label>
-                <input type="text" id="fullname" placeholder="Nhập tên nhân viên" required>
+                <label>Họ Tên *</label>
+                <input type="text" id="fullname" placeholder="Nhập họ tên" required>
             </div>
+            
             <div class="form-group">
-                <label>Loại Nghỉ Phép*</label>
+                <label>Loại Nghỉ Phép *</label>
                 <select id="type_id" required>
-                    <option value="">-- Đang tải danh mục --</option>
+                    <option value="">-- Chọn loại phép --</option>
                 </select>
             </div>
-
+            
             <div class="form-group">
-                <label>Từ thời gian*</label>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="from_date" class="date-picker" style="flex: 2;" placeholder="dd/mm/yyyy"
-                        required>
-                    <select id="from_session" style="flex: 1;" onchange="syncSessions()">
+                <label>Từ thời gian *</label>
+                <div class="flex-row">
+                    <input type="text" id="from_date" class="flex-2 date-picker" placeholder="dd/mm/yyyy" required>
+                    <select id="from_session" class="flex-1" onchange="syncSessions()">
+                        <option value="Cả ngày">Cả ngày</option>
+                        <option value="Sáng">Sáng</option>
+                        <option value="Chiều">Chiều</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Đến thời gian *</label>
+                <div class="flex-row">
+                    <input type="text" id="to_date" class="flex-2 date-picker" placeholder="dd/mm/yyyy" required>
+                    <select id="to_session" class="flex-1" onchange="syncSessions()">
                         <option value="Cả ngày">Cả ngày</option>
                         <option value="Sáng">Sáng</option>
                         <option value="Chiều">Chiều</option>
@@ -237,127 +161,113 @@
             </div>
 
             <div class="form-group">
-                <label>Đến thời gian*</label>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="to_date" class="date-picker" style="flex: 2;" placeholder="dd/mm/yyyy"
-                        required>
-                    <select id="to_session" style="flex: 1;" onchange="syncSessions()">
-                        <option value="Cả ngày">Cả ngày</option>
-                        <option value="Sáng">Sáng</option>
-                        <option value="Chiều">Chiều</option>
-                    </select>
-                </div>
+                <label>Lý do nghỉ *</label>
+                <textarea id="reason" rows="2" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; font-family: 'Nunito', sans-serif;" placeholder="Ghi rõ lý do..." required></textarea>
             </div>
 
             <div class="form-group">
-                <label>Lý do nghỉ*</label>
-                <textarea id="reason" rows="2" placeholder="Ghi rõ lý do..." required></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Người duyệt*</label>
+                <label>Người duyệt đơn *</label>
                 <select id="approver_username" required>
-                    <option value="">-- Đang tải danh sách quản lý --</option>
+                    <option value="">-- Đang tải... --</option>
                 </select>
             </div>
 
-            <div class="form-actions">
-                <button type="button" class="btn-cancel"
-                    onclick="document.getElementById('dataForm').reset(); $('#type_id, #approver_username').val(null).trigger('change');">HỦY</button>
-                <button type="submit" id="submitBtn" class="btn-primary">GỬI YÊU CẦU</button>
+            <div class="flex-row" style="margin-top: 20px;">
+                <button type="button" class="btn btn-cancel flex-1" onclick="resetForm()">Làm lại</button>
+                <button type="submit" id="submitBtn" class="btn btn-primary flex-2">Gửi Yêu Cầu</button>
             </div>
         </form>
     </div>
 
-    <div class="card" style="overflow-x: auto;">
-        <h3 style="margin-top: 0;">Danh Sách Đơn Từ Chờ Duyệt</h3>
-        <table style="min-width: 600px;">
+    <div class="card">
+        <div class="filter-bar">
+            <h3 style="margin: 0; border: none; padding: 0;">Danh Sách Đơn Từ</h3>
+            <div class="filter-inputs">
+                <select id="statusFilter" style="width: 150px;" onchange="loadData(1)">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="PENDING">Chờ duyệt</option>
+                    <option value="APPROVED">Đã duyệt</option>
+                    <option value="REJECTED">Từ chối</option>
+                </select>
+                <input type="text" id="searchInput" style="width: 200px;" placeholder="🔍 Tìm mã/tên..." onkeyup="handleSearch(event)">
+                <button class="btn btn-primary" style="width: auto;" onclick="loadData(1)">Tìm kiếm</button>
+            </div>
+        </div>
+
+        <table>
             <thead>
                 <tr>
                     <th>Nhân Viên</th>
                     <th>Loại Phép</th>
-                    <th>Thời Gian Nghỉ</th>
+                    <th>Thời Gian</th>
                     <th>Trạng Thái</th>
                     <th>Người Duyệt</th>
-                    <th>Duyệt / Hủy</th>
+                    <th>Hành Động</th>
                 </tr>
             </thead>
             <tbody id="dataTable">
-                <tr>
-                    <td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td>
-                </tr>
+                <tr><td colspan="6" style="text-align:center; padding: 20px;">Đang tải dữ liệu...</td></tr>
             </tbody>
         </table>
+
+        <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 20px;">
+            <button id="prevBtn" class="btn btn-cancel" onclick="changePage(-1)">⬅️ Trước</button>
+            <span id="pageInfo" style="font-weight: bold; color: var(--text-muted);">Trang 1 / 1</span>
+            <button id="nextBtn" class="btn btn-cancel" onclick="changePage(1)">Sau ➡️</button>
+        </div>
     </div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // --------------------------------------------------------
-    // 1. BIẾN TOÀN CỤC & CẤU HÌNH CƠ BẢN
-    // --------------------------------------------------------
-    const fullname = localStorage.getItem("hrm_name") || "Quản trị viên";
-    const username = localStorage.getItem("hrm_username") || "ADMIN";
+    const approverName = localStorage.getItem("hrm_full_name") || "Quản trị viên";
+    const approverUser = localStorage.getItem("hrm_username") || "ADMIN";
+    let currentPage = 1;
+    let totalPages = 1;
 
-    $("#username").val(username);
-    $("#fullname").val(fullname);
-
-    // --------------------------------------------------------
-    // 2. KHỞI TẠO FLATPICKR (Lịch DD/MM/YYYY)
-    // --------------------------------------------------------
+    // Plugins
     flatpickr(".date-picker", {
         dateFormat: "d/m/Y",
         locale: "vn",
-        allowInput: true,
-        onChange: function(selectedDates, dateStr, instance) {
-            syncSessions(); // Tự động đồng bộ buổi khi user chọn ngày
-        }
+        onChange: function() { syncSessions(); }
     });
 
-    // Hàm đồng bộ: Nếu chọn nghỉ trong cùng 1 ngày, Từ buổi nào thì Đến buổi đó
     function syncSessions() {
         const fromDate = document.getElementById('from_date').value;
         const toDate = document.getElementById('to_date').value;
         const fromSession = document.getElementById('from_session');
         const toSession = document.getElementById('to_session');
-
-        if (fromDate && toDate && fromDate === toDate) {
-            toSession.value = fromSession.value;
+        
+        if (fromDate && toDate && fromDate === toDate) { 
+            toSession.value = fromSession.value; 
+            toSession.style.pointerEvents = 'none';
+            toSession.style.opacity = '0.6';
+            toSession.style.background = 'var(--border)';
+        } else {
+            toSession.style.pointerEvents = 'auto';
+            toSession.style.opacity = '1';
+            toSession.style.background = '#fff';
         }
     }
 
-    // Hàm chuyển đổi DD/MM/YYYY (Giao diện) -> YYYY-MM-DD (Gửi cho API MySQL)
     function parseDateForAPI(vnDateStr) {
         if (!vnDateStr) return "";
         const parts = vnDateStr.split('/');
-        if (parts.length === 3) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
+        if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
         return vnDateStr;
     }
 
-    // --------------------------------------------------------
-    // 3. LOAD DATA (TỪ API) VÀ KHỞI TẠO SELECT2
-    // --------------------------------------------------------
+    // Load Data
     async function fetchTypes() {
         try {
             const res = await fetch('/leave-types/api');
             const types = await res.json();
             const select = document.getElementById('type_id');
-            select.innerHTML = '<option value="">-- Chọn loại phép --</option>';
-            
-            types.forEach(t => {
-                select.innerHTML += `<option value="${t.id}">${t.name} (${t.code})</option>`;
-            });
-
-            // Kích hoạt Select2
-            $('#type_id').select2({
-                placeholder: "🔍 Tìm loại phép...",
-                width: '100%',
-                allowClear: true
-            });
-        } catch(e) { console.error("Lỗi lấy danh mục", e); }
+            types.forEach(t => select.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+            $('#type_id').select2();
+        } catch(e) {}
     }
 
     async function fetchManagers() {
@@ -365,146 +275,150 @@
             const res = await fetch('/api/employees/managers');
             const managers = await res.json();
             const select = document.getElementById('approver_username');
-            select.innerHTML = '<option value="">-- Chọn người duyệt --</option>';
-            
-            managers.forEach(m => {
-                select.innerHTML += `<option value="${m.username}">${m.full_name} (${m.username})</option>`;
-            });
-
-            // Kích hoạt Select2
-            $('#approver_username').select2({
-                placeholder: "🔍 Nhập tên hoặc mã NV để tìm...",
-                width: '100%',
-                allowClear: true
-            });
-        } catch(e) { console.error("Lỗi lấy danh sách quản lý", e); }
+            managers.forEach(m => select.innerHTML += `<option value="${m.username}">${m.full_name} (${m.username})</option>`);
+            $('#approver_username').select2();
+        } catch(e) {}
     }
 
-    async function loadData() {
+    async function loadData(page = 1) {
+        currentPage = page;
+        const searchVal = document.getElementById('searchInput').value.trim();
+        const statusVal = document.getElementById('statusFilter').value;
         const tbody = document.getElementById('dataTable');
+        
         try {
-            const res = await fetch('/leave-requests/api');
-            const listData = await res.json();
-            tbody.innerHTML = '';
+            const token = localStorage.getItem('hrm_token');
+            const url = `/leave-requests/api?page=${currentPage}&size=10&search=${encodeURIComponent(searchVal)}&status=${encodeURIComponent(statusVal)}`;
             
-            if(listData.length === 0) return tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8;">Chưa có đơn xin nghỉ nào.</td></tr>';
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const json = await res.json();
+            const listData = json.items || [];
+            totalPages = json.total_pages || 1;
+
+            document.getElementById('pageInfo').innerText = `Trang ${currentPage} / ${totalPages}`;
+            document.getElementById('prevBtn').disabled = currentPage <= 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+
+            tbody.innerHTML = '';
+            if(listData.length === 0) return tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Không có dữ liệu.</td></tr>';
 
             listData.forEach(item => {
-                let badge = `<span class="badge badge-pending">Chờ Duyệt</span>`;
-                let btnState = '';
+                let badgeClass = 'bg-yellow';
+                let badgeText = 'Chờ Duyệt';
+                let btnDisabled = '';
                 
-                if (item.status === 'APPROVED') {
-                    badge = `<span class="badge badge-approved">Đã Duyệt</span>`;
-                    btnState = 'disabled style="opacity:0.3; cursor:not-allowed;"';
-                } else if (item.status === 'REJECTED') {
-                    badge = `<span class="badge badge-rejected">Từ Chối</span>`;
-                    btnState = 'disabled style="opacity:0.3; cursor:not-allowed;"';
-                }
+                if (item.status === 'APPROVED') { badgeClass = 'bg-green'; badgeText = 'Đã Duyệt'; btnDisabled = 'disabled'; }
+                if (item.status === 'REJECTED') { badgeClass = 'bg-red'; badgeText = 'Từ Chối'; btnDisabled = 'disabled'; }
 
                 tbody.innerHTML += `
                     <tr>
-                        <td><strong>${item.username}</strong><br><small style="color:#64748b;">${item.fullname}</small></td>
-                        <td><strong style="color:#0ea5e9;">${item.type_name}</strong></td>
-                        <td>
-                            <div class="time-display">${item.from_date} <span class="time-session">${item.from_session}</span></div>
-                            <div style="color:#94a3b8; font-size:0.75rem; margin: 2px 0;">đến</div>
-                            <div class="time-display">${item.to_date} <span class="time-session">${item.to_session}</span></div>
+                        <td data-label="Nhân Viên">
+                            <strong>${item.username}</strong><br>
+                            <span style="font-size:0.8rem; color: var(--text-muted);">${item.fullname}</span>
                         </td>
-                        <td>${badge}</td>
-                        <td>${item.approver_fullname || '--'}</td>
-                        <td style="gap: 5px;">
-                            <button class="btn-edit" ${btnState} onclick="processRequest(${item.id}, 'APPROVED')">✅ Duyệt</button>
-                            <button class="btn-del" ${btnState} onclick="processRequest(${item.id}, 'REJECTED')">❌ Hủy</button>
+                        <td data-label="Loại Phép">
+                            <strong style="color: var(--primary);">${item.type_name}</strong>
+                        </td>
+                        <td data-label="Thời Gian">
+                            ${item.from_date} <span class="badge bg-gray">${item.from_session}</span><br>
+                            <span style="font-size:0.8rem; color: var(--text-muted);">đến</span><br>
+                            ${item.to_date} <span class="badge bg-gray">${item.to_session}</span>
+                        </td>
+                        <td data-label="Trạng Thái">
+                            <span class="badge ${badgeClass}">${badgeText}</span>
+                        </td>
+                        <td data-label="Người Duyệt">
+                            ${item.approver_fullname || '--'}
+                        </td>
+                        <td data-label="Hành Động">
+                            <div class="action-group">
+                                <button class="btn btn-sm btn-edit btn-cancel" ${btnDisabled} onclick="processRequest(${item.id}, 'APPROVED')">✅ Duyệt</button>
+                                <button class="btn btn-sm btn-del btn-cancel" ${btnDisabled} onclick="processRequest(${item.id}, 'REJECTED')">❌ Hủy</button>
+                            </div>
                         </td>
                     </tr>
                 `;
             });
-        } catch(e) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Lỗi tải dữ liệu.</td></tr>'; }
+        } catch(e) { 
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Lỗi tải dữ liệu.</td></tr>'; 
+        }
     }
 
-    // --------------------------------------------------------
-    // 4. XỬ LÝ SỰ KIỆN (SUBMIT & DUYỆT ĐƠN)
-    // --------------------------------------------------------
+    function changePage(delta) {
+        let newPage = currentPage + delta;
+        if (newPage >= 1 && newPage <= totalPages) loadData(newPage);
+    }
+
+    function handleSearch(e) { if (e.key === 'Enter') loadData(1); }
+
+    // Submit form
     document.getElementById('dataForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        const rawFromDate = document.getElementById('from_date').value;
-        const rawToDate = document.getElementById('to_date').value;
-
         const payload = {
             username: document.getElementById('username').value.trim().toUpperCase(),
             fullname: document.getElementById('fullname').value.trim(),
             type_id: parseInt(document.getElementById('type_id').value),
-            from_date: parseDateForAPI(rawFromDate),
+            from_date: parseDateForAPI(document.getElementById('from_date').value),
             from_session: document.getElementById('from_session').value,
-            to_date: parseDateForAPI(rawToDate),
+            to_date: parseDateForAPI(document.getElementById('to_date').value),
             to_session: document.getElementById('to_session').value,
             reason: document.getElementById('reason').value.trim(),
             approver_username: document.getElementById('approver_username').value
         };
 
-        // Validate cơ bản
         if (new Date(payload.from_date) > new Date(payload.to_date)) {
-            alert("Lỗi: Ngày bắt đầu không thể sau ngày kết thúc!");
-            return;
+            alert("Lỗi: Ngày bắt đầu lớn hơn ngày kết thúc!"); return;
         }
+        if (payload.from_date === payload.to_date) payload.to_session = payload.from_session;
 
-        const submitBtn = document.getElementById('submitBtn');
-        submitBtn.innerText = 'ĐANG GỬI...'; submitBtn.disabled = true;
+        const btn = document.getElementById('submitBtn');
+        btn.innerText = 'Đang gửi...'; btn.disabled = true;
 
         try {
+            const token = localStorage.getItem('hrm_token');
             const res = await fetch('/leave-requests/api', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify(payload) 
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) 
             });
             if(res.ok) { 
-                // Reset form vật lý
-                document.getElementById('dataForm').reset();
-                // Phải reset riêng giao diện của Select2 thì nó mới về rỗng
-                $('#type_id, #approver_username').val(null).trigger('change');
-                
-                loadData(); 
+                alert("Thành công!");
+                resetForm();
+                loadData(1);
             } else { 
-                const err = await res.json();
-                alert("Có lỗi xảy ra: " + (err.detail || 'Không xác định')); 
+                const err = await res.json(); alert("Lỗi: " + (err.detail || '')); 
             }
-        } catch(e) { alert("Lỗi kết nối máy chủ!"); }
-        finally { submitBtn.innerText = 'GỬI YÊU CẦU'; submitBtn.disabled = false; }
+        } catch(e) { alert("Lỗi mạng!"); }
+        finally { btn.innerText = 'Gửi Yêu Cầu'; btn.disabled = false; }
     });
 
     async function processRequest(id, status) {
-        if (userRole !== 'admin' && userRole !== 'manager') {
-            alert("Chỉ Quản lý mới có quyền duyệt đơn!"); return;
+        // Lấy lại userRole để check quyền
+        const role = localStorage.getItem("hrm_role") || "user";
+        if (role !== 'admin' && role !== 'manager') {
+            alert("Chỉ Quản lý được duyệt đơn!"); return;
         }
-
-        if(confirm(`Bạn chắc chắn muốn ${status === 'APPROVED' ? 'DUYỆT' : 'TỪ CHỐI'} đơn này?`)) {
+        if(confirm(`Xác nhận ${status === 'APPROVED' ? 'DUYỆT' : 'TỪ CHỐI'} đơn này?`)) {
             try {
-                await fetch(`/leave-requests/api/${id}/status`, {
+                const token = localStorage.getItem('hrm_token');
+                const res = await fetch(`/leave-requests/api/${id}/status`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        status: status,
-                        approver_username: approverUser,
-                        approver_fullname: approverName
-                    })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ status: status, approver_username: approverUser, approver_fullname: approverName })
                 });
-                loadData();
-            } catch(e) { alert("Lỗi cập nhật!"); }
+                if (res.ok) loadData(currentPage);
+                else alert("Lỗi hệ thống");
+            } catch(e) { alert("Lỗi mạng"); }
         }
     }
 
-    // --------------------------------------------------------
-    // 5. KHỞI CHẠY KHI VỪA TẢI TRANG
-    // --------------------------------------------------------
-    fetchTypes();
-    fetchManagers();
-    loadData();
-
-    // Reset luôn cả Select2 khi bấm Hủy (Nếu bạn có dùng nút Hủy riêng)
-    function cancelEdit() {
+    function resetForm() {
         document.getElementById('dataForm').reset();
         $('#type_id, #approver_username').val(null).trigger('change');
+        syncSessions(); 
     }
+
+    // Init
+    $(document).ready(function() {
+        fetchTypes(); fetchManagers(); loadData(1);
+    });
 </script>
 {% endblock %}

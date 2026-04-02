@@ -70,6 +70,10 @@ async def verify_personal_page(request: Request):
 async def verify_personal_page(request: Request):
     return templates.TemplateResponse("verify_personal_fix.html", {"request": request})
 
+@router.get("/verify_personal_v3")
+async def verify_personal_page(request: Request):
+    return templates.TemplateResponse("verify_personal_v3.html", {"request": request})
+
 
 @router.get("/test_ai")
 async def test_ai_page(request: Request):
