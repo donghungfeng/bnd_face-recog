@@ -677,6 +677,43 @@
         transform: translateY(-1px);
         box-shadow: 0 3px 8px rgba(59,130,246,0.3);
     }
+
+    /* --- CSS NÚT UPLOAD ẢNH HIỆN ĐẠI --- */
+    .custom-file-input {
+        padding: 5px;
+        border: 2px dashed #cbd5e1;
+        background: #f8fafc;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        width: 100%;
+        box-sizing: border-box;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .custom-file-input:hover {
+        border-color: var(--primary);
+        background: #f0f9ff;
+    }
+
+    .custom-file-input::file-selector-button {
+        margin-right: 15px;
+        padding: 8px 16px;
+        border: none;
+        background: #eff6ff;
+        color: var(--primary);
+        font-weight: 800;
+        font-family: 'Nunito', sans-serif;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .custom-file-input::file-selector-button:hover {
+        background: var(--primary);
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -837,7 +874,9 @@
         <form id="giaiTrinhForm">
             <input type="hidden" id="gt_username">
             <input type="hidden" id="gt_date">
-            <input type="hidden" id="gt_shift_code_hidden"> <div style="margin-bottom:14px;">
+            <input type="hidden" id="gt_shift_code_hidden"> 
+            
+            <div style="margin-bottom:14px;">
                 <label style="display:block; font-size:0.82rem; font-weight:700; color:#64748b; margin-bottom:6px;">Ca làm việc đang giải trình</label>
                 <input type="text" id="gt_shift_code_display" disabled 
                     style="width:100%; padding:10px 12px; background: #f1f5f9; border: 1px solid var(--border); border-radius:8px; color: #475569; font-weight: 700; font-family:'Nunito',sans-serif; box-sizing:border-box;">
@@ -849,6 +888,15 @@
                     style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-family:'Nunito',sans-serif; font-size:0.9rem; resize:vertical; box-sizing:border-box; transition:0.2s;"
                     placeholder="Nhập lý do chi tiết tại sao đi muộn / về sớm / vắng mặt..."></textarea>
             </div>
+            
+            <div style="margin-bottom:14px;">
+                <label style="display:block; font-size:0.82rem; font-weight:700; color:#64748b; margin-bottom:6px;">Ảnh đính kèm (Tùy chọn)</label>
+                <input type="file" id="gt_attached_file" class="custom-file-input" accept="image/*" onchange="previewGtAttachment(event)">
+                <div style="text-align: center; margin-top: 10px;">
+                    <img id="gt_attachment_preview" src="" style="display:none; max-height: 120px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                </div>
+            </div>
+
             <div style="display:flex; gap:10px; margin-top:4px;">
                 <button type="button" class="btn-form-cancel" onclick="closeGiaiTrinhModal()">HỦY BỎ</button>
                 <button type="submit" class="btn-form-submit" id="gtSubmitBtn">GỬI GIẢI TRÌNH</button>
@@ -882,35 +930,65 @@
     async function fetchAttendance() {
         const startDate = document.getElementById('startDateFilter')?.value || "";
         const endDate = document.getElementById('endDateFilter')?.value || "";
-        const apiUrl = `/api/monthly-records?startDate=${startDate}&endDate=${endDate}`;
+        
+        const attApiUrl = `/api/monthly-records?startDate=${startDate}&endDate=${endDate}`;
+        // Gọi thêm API lấy toàn bộ giải trình trong khoảng thời gian này
+        const expApiUrl = `/api/explanations?start_date=${startDate}&end_date=${endDate}`;
 
         try {
             document.getElementById('attTableBody').innerHTML =
-                '<tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8;">Đang tải dữ liệu...</td></tr>';
+                '<tr><td colspan="9" style="text-align:center; padding:40px; color:#94a3b8;">Đang tải dữ liệu...</td></tr>';
 
             const token = localStorage.getItem("hrm_token");
-            const res = await fetch(apiUrl, { method: "GET", headers: { "Authorization": `Bearer ${token}` } });
+            
+            // GỌI SONG SONG 2 API
+            const [attRes, expRes] = await Promise.all([
+                fetch(attApiUrl, { method: "GET", headers: { "Authorization": `Bearer ${token}` } }),
+                fetch(expApiUrl, { method: "GET", headers: { "Authorization": `Bearer ${token}` } })
+            ]);
 
-            if (!res.ok) {
-                if (res.status === 401) {
+            if (!attRes.ok) {
+                if (attRes.status === 401) {
                     alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
                     window.location.href = "/login";
                     return;
                 }
-                throw new Error("Mã lỗi: " + res.status);
+                throw new Error("Mã lỗi: " + attRes.status);
             }
 
-            allAttendance = await res.json();
-            allAttendance = allAttendance.map(item => ({
-                ...item,
-                is_fraud: item.is_fraud || false,
-                fraud_note: item.fraud_note || ""
-            }));
+            const rawAttData = await attRes.json();
+            
+            // MAP GIẢI TRÌNH: Nhóm theo key: username_date_shift
+            const expData = expRes.ok ? await expRes.json() : { items: [] };
+            const expMap = {};
+            if (expData.items) {
+                expData.items.forEach(e => {
+                    let eDate = e.date || '';
+                    if (eDate.includes('T')) eDate = eDate.split('T')[0];
+                    const eShift = (e.shift_code || '').trim().toUpperCase();
+                    expMap[`${e.username}_${eDate}_${eShift}`] = true;
+                });
+            }
+
+            // Gắn cờ is_explained vào data chấm công
+            allAttendance = rawAttData.map(item => {
+                let iDate = item.date || '';
+                if (iDate.includes('T')) iDate = iDate.split('T')[0];
+                const iShift = (item.shift_code || '').trim().toUpperCase();
+                const isExplained = expMap[`${item.username}_${iDate}_${iShift}`] || false;
+
+                return {
+                    ...item,
+                    is_fraud: item.is_fraud || false,
+                    fraud_note: item.fraud_note || "",
+                    is_explained: isExplained
+                };
+            });
 
             applyFilters();
         } catch (error) {
             document.getElementById('attTableBody').innerHTML =
-                '<tr><td colspan="8" style="text-align:center; color:red;">Lỗi kết nối máy chủ!</td></tr>';
+                '<tr><td colspan="9" style="text-align:center; color:red;">Lỗi kết nối máy chủ!</td></tr>';
         }
     }
 
@@ -983,7 +1061,7 @@
         tbody.innerHTML = '';
 
         if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8;">Không tìm thấy dữ liệu phù hợp.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px; color:#94a3b8;">Không tìm thấy dữ liệu phù hợp.</td></tr>';
             renderPagination(0);
             return;
         }
@@ -1081,23 +1159,34 @@
     }
 
     function getGiaiTrinhButton(item, startDateLimit, endDateLimit) {
-        // Disabled nếu status là PRESENT (1) hoặc IN_PROGRESS (7)
-        const disabledByStatus = item.status === 1 || item.status === 7;
+        // 1. Kiểm tra xem có đang nhìn lịch người khác không
+        const isViewingOtherUser = item.username !== currentUsername;
 
-        // Disabled nếu ngày bản ghi không nằm trong [mùng 1 tháng trước, hôm qua]
+        // 2. Đã giải trình rồi -> Khóa
+        const isExplained = item.is_explained;
+
+        // 3. Khóa nếu thuộc các trạng thái không cần/không thể giải trình
+        const status = item.status ?? null;
+        const disabledByStatus = status === 1 || status === 7 || status === 4 || status === 5;
+
+        // 4. Khóa nếu ngoài khoảng thời gian cho phép
         let disabledByDate = true;
         if (item.date) {
             const recordDate = new Date(item.date + 'T00:00:00');
             disabledByDate = recordDate < startDateLimit || recordDate > endDateLimit;
         }
 
-        const isDisabled = disabledByStatus || disabledByDate;
+        const isDisabled = isViewingOtherUser || isExplained || disabledByStatus || disabledByDate;
+        
+        // Đổi chữ nút nếu đã giải trình
+        const btnText = isExplained ? '✔️ Đã giải trình' : '✍️ Viết giải trình';
+        
         const safeId   = String(item.id || '');
         const safeName = (item.full_name || '').replace(/'/g, '&#39;');
         const safeDate = item.date || '';
-        const safeShift = item.shift_code || ''; // Lấy mã ca
+        const safeShift = item.shift_code || ''; 
         
-        return `<button class="btn-giai-trinh" ${isDisabled ? 'disabled' : ''} data-gt-id="${safeId}" data-gt-name="${safeName}" data-gt-date="${safeDate}" data-gt-shift="${safeShift}">✍️ Viết giải trình</button>`;
+        return `<button class="btn-giai-trinh" ${isDisabled ? 'disabled' : ''} data-gt-id="${safeId}" data-gt-name="${safeName}" data-gt-date="${safeDate}" data-gt-shift="${safeShift}">${btnText}</button>`;
     }
 
     function renderPagination(totalItems, start, end) {
@@ -1136,18 +1225,38 @@
     // ═══════════════════════════════════════════════════
     // 7. MODAL GIẢI TRÌNH
     // ═══════════════════════════════════════════════════
+    
+    // Hàm preview ảnh khi người dùng chọn file
+    function previewGtAttachment(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('gt_attachment_preview');
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'inline-block';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+    }
+
     function openGiaiTrinhModal(id, fullName, date, shiftCode) {
         document.getElementById('gt_username').value = currentUsername;
         document.getElementById('gt_date').value = date;
         
-        // Gắn mã ca vào input ẩn và input hiển thị
         const sc = shiftCode || 'Không xác định';
         document.getElementById('gt_shift_code_hidden').value = shiftCode || '';
         document.getElementById('gt_shift_code_display').value = sc;
 
+        // Reset form data
         document.getElementById('gt_reason').value = '';
+        document.getElementById('gt_attached_file').value = '';
+        document.getElementById('gt_attachment_preview').style.display = 'none';
+        document.getElementById('gt_attachment_preview').src = '';
 
-        // Hiển thị thông tin bản ghi
         const [y, m, d] = (date || '--').split('-');
         const dateStr = date ? `${d}/${m}/${y}` : '---';
         document.getElementById('gt_info_line').innerHTML =
@@ -1166,30 +1275,40 @@
         btn.disabled = true;
         btn.innerText = 'ĐANG GỬI...';
 
-        const payload = {
-            username: document.getElementById('gt_username').value,
-            date: document.getElementById('gt_date').value,
-            shift_code: document.getElementById('gt_shift_code_hidden').value, // Lấy mã ca gửi lên API
-            reason: document.getElementById('gt_reason').value.trim(),
-            status: "1"
-        };
+        // SỬ DỤNG FORMDATA THAY VÌ JSON.STRINGIFY
+        const formData = new FormData();
+        formData.append('username', document.getElementById('gt_username').value);
+        formData.append('date', document.getElementById('gt_date').value);
+        formData.append('shift_code', document.getElementById('gt_shift_code_hidden').value);
+        formData.append('reason', document.getElementById('gt_reason').value.trim());
+        formData.append('status', '1');
+
+        // Lấy file đính kèm nếu có
+        const fileInput = document.getElementById('gt_attached_file');
+        if (fileInput.files.length > 0) {
+            formData.append('attached_file', fileInput.files[0]);
+        }
 
         try {
             const token = localStorage.getItem('hrm_token');
             const res = await fetch('/api/explanations', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload)
+                // Chú ý: Bỏ header "Content-Type" đi để trình duyệt tự set multipart/form-data
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
             });
+            
             if (res.ok) {
                 alert('Đã gửi giải trình thành công! Vui lòng chờ quản lý duyệt.');
                 closeGiaiTrinhModal();
+                fetchAttendance(); // Reload lại bảng để update nút thành "Đã giải trình"
             } else {
                 const err = await res.json();
                 alert('Lỗi: ' + (err.detail || 'Không thể gửi giải trình'));
             }
         } catch (err) {
             alert('Lỗi kết nối máy chủ!');
+            console.error(err);
         } finally {
             btn.disabled = false;
             btn.innerText = 'GỬI GIẢI TRÌNH';

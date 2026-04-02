@@ -56,6 +56,42 @@
         transition: 0.2s;
     }
 
+    /* --- CSS NÚT UPLOAD ẢNH HIỆN ĐẠI --- */
+    .form-group input[type="file"] {
+        padding: 5px;
+        border: 2px dashed #cbd5e1;
+        background: #f8fafc;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+
+    .form-group input[type="file"]:hover {
+        border-color: var(--primary);
+        background: #f0f9ff;
+    }
+
+    /* Style cho phần nút "Chọn tệp" bên trong */
+    .form-group input[type="file"]::file-selector-button {
+        margin-right: 15px;
+        padding: 8px 16px;
+        border: none;
+        background: #eff6ff;
+        color: var(--primary);
+        font-weight: 800;
+        font-family: 'Nunito', sans-serif;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .form-group input[type="file"]::file-selector-button:hover {
+        background: var(--primary);
+        color: white;
+    }
+
     .form-group input:focus,
     .form-group select:focus,
     .form-group textarea:focus {
@@ -167,6 +203,41 @@
     }
     .btn-pagination:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; }
     .btn-pagination:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* --- MODAL XEM ẢNH --- */
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15, 23, 42, 0.75);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(5px);
+        padding: 16px;
+    }
+    .img-modal-content {
+        position: relative;
+        max-width: 90%;
+        max-height: 90%;
+        text-align: center;
+    }
+    .img-modal-content img {
+        max-width: 100%;
+        max-height: 80vh;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        border: 3px solid white;
+    }
+    .img-modal-close {
+        position: absolute;
+        top: -15px; right: -15px;
+        background: #ef4444; color: white; border: none;
+        width: 35px; height: 35px; border-radius: 50%;
+        font-size: 1.2rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
 </style>
 {% endblock %}
 
@@ -196,6 +267,14 @@
             <div class="form-group">
                 <label>Lý do giải trình*</label>
                 <textarea id="post_reason" rows="4" placeholder="Nhập lý do chi tiết..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Ảnh đính kèm (Tùy chọn)</label>
+                <input type="file" id="post_attached_file" accept="image/*" onchange="previewAttachment(event)">
+                <div style="text-align: center; margin-top: 10px;">
+                    <img id="attachment_preview" src="" style="display:none; max-height: 150px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                </div>
             </div>
 
             <div style="margin-top: 20px;">
@@ -268,7 +347,14 @@
                 </span>
             </div>
         </div>
-        </div>
+    </div>
+</div>
+
+<div id="imageModal" class="modal-overlay" onclick="closeImageModal()">
+    <div class="img-modal-content" onclick="event.stopPropagation()">
+        <button class="img-modal-close" onclick="closeImageModal()">✖</button>
+        <img id="previewImage" src="" alt="Ảnh giải trình">
+    </div>
 </div>
 {% endblock %}
 
@@ -284,6 +370,37 @@
         username: localStorage.getItem("hrm_username") || "",
         role: localStorage.getItem("hrm_role") || "user"
     };
+
+    // --- XỬ LÝ PREVIEW ẢNH KHI CHỌN FILE ---
+    function previewAttachment(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('attachment_preview');
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'inline-block';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+    }
+
+    // --- MODAL XEM ẢNH ---
+    function openImageModal(src) {
+        // Đảm bảo đường dẫn có dấu "/" ở đầu (vd: /static/uploads/...)
+        const imagePath = src.startsWith('/') ? src : '/' + src;
+        document.getElementById('previewImage').src = imagePath;
+        document.getElementById('imageModal').style.display = 'flex';
+    }
+    
+    function closeImageModal() {
+        document.getElementById('imageModal').style.display = 'none';
+        document.getElementById('previewImage').src = "";
+    }
 
     // --- 1. TẢI DANH MỤC CA ---
     async function loadShiftCategories() {
@@ -322,7 +439,6 @@
         } catch (error) { console.error(error); }
     }
 
-    // --- HÀM FILTER DEBOUNCE CỦA BẠN ---
     let tid; 
     function applyFilter() { 
         clearTimeout(tid); 
@@ -345,7 +461,6 @@
         items.forEach(item => {
             const statusInt = parseInt(item.status);
             const st = statusMap[statusInt] || { text: item.status, class: "" };
-
             const [y, m, d] = item.date.split("-");
             const dateStr = `${d}/${m}/${y}`;
 
@@ -363,6 +478,14 @@
 
             const displayShift = item.shift_name || item.shift_code || "Không xác định";
 
+            // HIỂN THỊ NÚT XEM ẢNH NẾU CÓ ĐÍNH KÈM
+            let attachHtml = "";
+            if (item.attached_file) {
+                // Thoát các ký tự đặc biệt để an toàn khi đưa vào hàm JS
+                const safePath = item.attached_file.replace(/'/g, "\\'");
+                attachHtml = `<div style="margin-top:5px; cursor:pointer; color:var(--primary); font-size:0.8rem; font-weight:700;" onclick="openImageModal('${safePath}')">🖼️ Xem đính kèm</div>`;
+            }
+
             tbody.innerHTML += `
                 <tr>
                     <td><b style="color:var(--primary);">${item.username}</b></td>
@@ -372,7 +495,10 @@
                             ↳ ${displayShift}
                         </span>
                     </td>
-                    <td><i>${item.reason}</i></td>
+                    <td>
+                        <i>${item.reason}</i>
+                        ${attachHtml}
+                    </td>
                     <td><span class="badge ${st.class}">${st.text}</span></td>
                     <td style="text-align: center;">${actionHtml || "---"}</td>
                 </tr>
@@ -380,7 +506,7 @@
         });
     }
 
-    // --- 3. LOGIC SỬA ---
+    // --- 3. LOGIC SỬA (ĐỔI ĐỔI LÊN FORM) ---
     function editRecord(id) {
         const item = cachedItems.find(i => i.id === id);
         if (!item) return;
@@ -394,6 +520,20 @@
         document.getElementById("post_username").value = item.username;
         document.getElementById("post_shift_code").value = item.shift_code;
 
+        // Reset file upload input
+        document.getElementById("post_attached_file").value = "";
+        
+        // Hiển thị lại ảnh cũ nếu có trong DB
+        const preview = document.getElementById("attachment_preview");
+        if (item.attached_file) {
+            // Thêm '/' vào trước để đảm bảo load đúng thư mục static
+            preview.src = item.attached_file.startsWith('/') ? item.attached_file : '/' + item.attached_file;
+            preview.style.display = "inline-block";
+        } else {
+            preview.src = "";
+            preview.style.display = "none";
+        }
+
         document.getElementById("saveBtn").innerText = "💾 CẬP NHẬT THAY ĐỔI";
         document.getElementById("cancelEditBtn").style.display = "block";
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -402,26 +542,37 @@
     function cancelEdit() {
         isEditMode = false;
         currentEditId = null;
+
         document.getElementById("explainForm").reset();
+        document.getElementById("attachment_preview").style.display = "none";
+        document.getElementById("attachment_preview").src = "";
+        
         document.getElementById("formTitle").innerText = "+ Thêm Giải Trình Mới";
         document.getElementById("saveBtn").innerText = "LƯU GIẢI TRÌNH";
         document.getElementById("cancelEditBtn").style.display = "none";
         document.getElementById("post_username").value = currentUser.username;
+        
         const d = new Date(); d.setDate(d.getDate() - 1);
         document.getElementById("post_date").valueAsDate = d;
     }
 
-    // --- 4. SUBMIT FORM ---
+    // --- 4. SUBMIT FORM (SỬ DỤNG FORMDATA ĐỂ GỬI FILE) ---
     document.getElementById("explainForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const btn = document.getElementById("saveBtn");
         btn.disabled = true;
 
-        const payload = {
-            date: document.getElementById("post_date").value,
-            reason: document.getElementById("post_reason").value.trim(),
-            shift_code: document.getElementById("post_shift_code").value
-        };
+        // Khởi tạo FormData
+        const formData = new FormData();
+        formData.append("date", document.getElementById("post_date").value);
+        formData.append("reason", document.getElementById("post_reason").value.trim());
+        formData.append("shift_code", document.getElementById("post_shift_code").value);
+
+        // Lấy file ảnh nếu người dùng có chọn
+        const fileInput = document.getElementById("post_attached_file");
+        if (fileInput.files.length > 0) {
+            formData.append("attached_file", fileInput.files[0]);
+        }
 
         try {
             const token = localStorage.getItem("hrm_token");
@@ -432,14 +583,17 @@
                 url = `${API_URL}/${currentEditId}`;
                 method = "PUT";
             } else {
-                payload.username = currentUser.username;
-                payload.status = "1";
+                formData.append("username", currentUser.username);
+                formData.append("status", "1");
             }
 
+            // Gửi request bằng fetch. LƯU Ý: Không set "Content-Type", Browser sẽ tự xử lý cho FormData
             const res = await fetch(url, {
                 method: method,
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                body: JSON.stringify(payload)
+                headers: { 
+                    "Authorization": `Bearer ${token}` 
+                },
+                body: formData
             });
 
             if (res.ok) {
@@ -450,7 +604,7 @@
                 const err = await res.json();
                 alert("Lỗi: " + (err.detail || "Không thể thực hiện"));
             }
-        } catch (err) { alert("Lỗi kết nối!"); }
+        } catch (err) { alert("Lỗi kết nối!"); console.error(err); }
         finally { btn.disabled = false; }
     });
 
@@ -477,7 +631,7 @@
         } catch (e) { alert("Lỗi kết nối!"); }
     }
 
-    // --- 6. PHÂN TRANG CỦA BẠN ---
+    // --- 6. PHÂN TRANG ---
     let totalPages = 1;
 
     function renderPagination(total, limit, skip) {
@@ -491,9 +645,7 @@
         document.getElementById("btnLast").disabled = (currentPage >= totalPages);
     }
 
-    function changePage(delta) {
-        jumpToPage(currentPage + delta);
-    }
+    function changePage(delta) { jumpToPage(currentPage + delta); }
 
     function jumpToPage(page) {
         const p = parseInt(page);

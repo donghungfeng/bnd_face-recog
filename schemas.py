@@ -241,6 +241,7 @@ class ExplanationCreate(BaseModel):
     status: str
     date: date
     shift_code: str
+    attached_file: Optional[str] = None  # <-- THÊM MỚI
 
 class ExplanationResponse(BaseModel):
     id: int
@@ -251,6 +252,7 @@ class ExplanationResponse(BaseModel):
     shift_name: Optional[str] = None
     shift_code: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
+    attached_file: Optional[str] = None  # <-- THÊM MỚI
 
     class Config:
         arbitrary_types_allowed = True
@@ -268,6 +270,7 @@ class ExplanationUpdate(BaseModel):
     date: date
     reason: str
     shift_code: Optional[str] = None
+    attached_file: Optional[str] = None  # <-- THÊM MỚI
 
 class ChangeMyPassword(BaseModel):
     old_password: str

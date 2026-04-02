@@ -60,6 +60,7 @@ app.add_middleware(
 
 # 3. Mount Static Files
 app.mount("/data/history_db", StaticFiles(directory="data/history_db"), name="history_db")
+app.mount("/static", StaticFiles(directory="static"), name="static") # <-- THÊM DÒNG NÀY VÀO ĐÂY
 
 # 4. Gắn các Router
 app.include_router(page_router.router)

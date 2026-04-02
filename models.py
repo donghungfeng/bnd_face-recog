@@ -136,6 +136,7 @@ class Explanation(Base):
     reason = Column(Text, nullable=False)
     status = Column(String(50), nullable=False)
     shift_code = Column(String(255), nullable=True) # Mã ca trực (VD: CA_DEM)
+    attached_file = Column(String(1024), nullable=True)
     
 class Wifi(Base):
     __tablename__ = "wifi"

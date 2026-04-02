@@ -1,26 +1,57 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Query
+﻿from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, Date, and_
+from sqlalchemy import cast, Date, and_, or_
 from typing import Optional, List
 from datetime import date, datetime, timedelta
+import os
+import shutil
+import uuid
 
 from database import get_db
 from models import Explanation, Employee, ShiftAssignment, ShiftCategory, Attendance
-from schemas import PaginatedExplanationResponse, ExplanationCreate, ExplanationUpdate
+from schemas import PaginatedExplanationResponse
 from routers.auth_router import get_current_user
 
 router = APIRouter()
+
+# ==========================================
+# CẤU HÌNH THƯ MỤC LƯU ẢNH
+# ==========================================
+UPLOAD_DIR = "static/uploads/explanations"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+def save_uploaded_file(upload_file: UploadFile) -> str:
+    """Hàm hỗ trợ lưu file và trả về đường dẫn"""
+    if not upload_file:
+        return None
+    
+    # Lấy đuôi file (vd: .jpg, .png)
+    file_extension = upload_file.filename.split(".")[-1]
+    file_name = f"{uuid.uuid4()}.{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, file_name)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(upload_file.file, buffer)
+        
+    # Chuyển đổi dấu \ thành / để đường dẫn chuẩn xác trên mọi HĐH
+    return file_path.replace("\\", "/")
+
+# ==========================================
+# API ENDPOINTS
+# ==========================================
 
 @router.get("/api/explanations", response_model=PaginatedExplanationResponse)
 def get_explanations(
     status: Optional[str] = Query(None, description="Lọc theo trạng thái"),
     username: Optional[str] = Query(None, description="Tìm kiếm theo username"),
+    start_date: Optional[date] = Query(None, description="Từ ngày"),
+    end_date: Optional[date] = Query(None, description="Đến ngày"),
     skip: int = Query(0, ge=0, description="Số bản ghi bỏ qua"),
-    limit: int = Query(10, le=100, description="Số bản ghi tối đa trên 1 trang"),
+    limit: Optional[int] = Query(None, description="Số bản ghi tối đa. Bỏ trống để lấy tất cả"), 
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    # 1. Khởi tạo query và Join với ShiftCategory để lấy shift_name
+    # 1. Khởi tạo query và Join
     query = db.query(
         Explanation,
         ShiftCategory.shift_name
@@ -30,11 +61,15 @@ def get_explanations(
         isouter=True
     )
 
-    # 2. Xử lý lọc theo status và username
+    # 2. Xử lý lọc
     if status:
         query = query.filter(Explanation.status == status)
     if username:
         query = query.filter(Explanation.username.ilike(f"%{username}%"))
+    if start_date:
+        query = query.filter(Explanation.date >= start_date)
+    if end_date:
+        query = query.filter(Explanation.date <= end_date)
 
     # 3. Phân quyền truy cập
     user_role = current_user.get("role")
@@ -44,19 +79,30 @@ def get_explanations(
     if user_role == "user":
         query = query.filter(Explanation.username == user_name)
     elif user_role == "manager":
-        subquery = db.query(Employee.username).filter(Employee.department_id == user_dept)
-        query = query.filter(Explanation.username.in_(subquery))
+        if user_dept:
+            subquery = db.query(Employee.username).filter(Employee.department_id == user_dept)
+            query = query.filter(
+                or_(
+                    Explanation.username == user_name,
+                    Explanation.username.in_(subquery)
+                )
+            )
+        else:
+            query = query.filter(Explanation.username == user_name)
     elif user_role != "admin":
         raise HTTPException(status_code=403, detail="Quyền truy cập bị từ chối")
 
     # 4. Thực hiện đếm và lấy dữ liệu
     total_records = query.count()
-    results = query.offset(skip).limit(limit).all()
+    
+    if limit is not None and limit > 0:
+        results = query.offset(skip).limit(limit).all()
+    else:
+        results = query.offset(skip).all()
 
-    # 5. Map dữ liệu để trả về shift_name trực tiếp trong item
+    # 5. Map dữ liệu để trả về
     items = []
     for exp, s_name in results:
-        # Chuyển object model sang dict và chèn thêm shift_name
         item_dict = {c.name: getattr(exp, c.name) for c in exp.__table__.columns}
         item_dict["shift_name"] = s_name or exp.shift_code
         items.append(item_dict)
@@ -65,36 +111,53 @@ def get_explanations(
         "total": total_records,
         "items": items,
         "skip": skip,
-        "limit": limit
+        "limit": limit if limit is not None else total_records 
     }
 
+
 @router.post("/api/explanations")
-def create_explanation(expl: ExplanationCreate, db: Session = Depends(get_db)):
+def create_explanation(
+    username: str = Form(...),
+    date: date = Form(...),
+    shift_code: str = Form(...),
+    reason: str = Form(...),
+    status: str = Form(...), # Thêm trường status vì schema cũ có
+    attached_file: Optional[UploadFile] = File(None), # Nhận file ảnh
+    db: Session = Depends(get_db)
+):
     # --- 1. KIỂM TRA RÀNG BUỘC TRÙNG LẶP (1 ca/ngày/người) ---
     existing = db.query(Explanation).filter(
         and_(
-            Explanation.username == expl.username,
-            Explanation.date == expl.date,
-            Explanation.shift_code == expl.shift_code
+            Explanation.username == username,
+            Explanation.date == date,
+            Explanation.shift_code == shift_code
         )
     ).first()
 
     if existing:
         raise HTTPException(
             status_code=400, 
-            detail=f"Đã tồn tại giải trình cho ca {expl.shift_code} vào ngày {expl.date}. Mỗi ca chỉ được giải trình một lần."
+            detail=f"Đã tồn tại giải trình cho ca {shift_code} vào ngày {date}. Mỗi ca chỉ được giải trình một lần."
         )
 
     # --- 2. VALIDATE DATE ---
     today = date.today()
-    if expl.date >= today:
+    if date >= today:
         raise HTTPException(status_code=400, detail="Chỉ có thể giải trình cho các ngày trong quá khứ.")
-    # if expl.date.month != today.month or expl.date.year != today.year:
-    #     raise HTTPException(status_code=400, detail="Chỉ có thể giải trình trong tháng hiện tại.")
 
-    # --- 3. LƯU DATABASE ---
+    # --- 3. LƯU ẢNH (NẾU CÓ) ---
+    file_path = save_uploaded_file(attached_file)
+
+    # --- 4. LƯU DATABASE ---
     try:
-        new_explanation = Explanation(**expl.dict())
+        new_explanation = Explanation(
+            username=username,
+            date=date,
+            shift_code=shift_code,
+            reason=reason,
+            status=status,
+            attached_file=file_path # Lưu đường dẫn
+        )
         db.add(new_explanation)
         db.commit()
         db.refresh(new_explanation)
@@ -102,6 +165,7 @@ def create_explanation(expl: ExplanationCreate, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Lỗi lưu dữ liệu: {str(e)}")
+
 
 @router.put("/api/explanations/{exp_id}/approve")
 def approve_explanation(exp_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -112,9 +176,10 @@ def approve_explanation(exp_id: int, db: Session = Depends(get_db), current_user
     if not explanation:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
 
-    explanation.status = "2" # REJECTED
+    explanation.status = "2" # APPROVED (Đã sửa lại comment và message cho đúng logic)
     db.commit()
-    return {"status": "success", "message": "Đã từ chối"}
+    return {"status": "success", "message": "Đã duyệt"}
+
 
 @router.put("/api/explanations/{exp_id}/reject")
 def reject_explanation(exp_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -129,8 +194,17 @@ def reject_explanation(exp_id: int, db: Session = Depends(get_db), current_user:
     db.commit()
     return {"status": "success", "message": "Đã từ chối"}
 
+
 @router.put("/api/explanations/{exp_id}")
-def update_explanation(exp_id: int, expl_update: ExplanationUpdate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def update_explanation(
+    exp_id: int, 
+    date: Optional[date] = Form(None),
+    reason: Optional[str] = Form(None),
+    shift_code: Optional[str] = Form(None),
+    attached_file: Optional[UploadFile] = File(None), # Nhận file ảnh mới
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
+):
     explanation = db.query(Explanation).filter(Explanation.id == exp_id).first()
     if not explanation:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
@@ -142,15 +216,25 @@ def update_explanation(exp_id: int, expl_update: ExplanationUpdate, db: Session 
         raise HTTPException(status_code=400, detail="Chỉ được sửa khi đang chờ duyệt")
 
     try:
-        explanation.date = expl_update.date
-        explanation.reason = expl_update.reason
-        if expl_update.shift_code:
-            explanation.shift_code = expl_update.shift_code
+        if date:
+            explanation.date = date
+        if reason:
+            explanation.reason = reason
+        if shift_code:
+            explanation.shift_code = shift_code
+            
+        # Cập nhật ảnh nếu user upload ảnh mới
+        if attached_file:
+            # (Tùy chọn: có thể viết thêm logic xóa file cũ bằng os.remove)
+            new_file_path = save_uploaded_file(attached_file)
+            explanation.attached_file = new_file_path
+
         db.commit()
         return {"status": "success", "message": "Cập nhật thành công"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/api/shift-categories")
 def get_shift_categories(db: Session = Depends(get_db)):

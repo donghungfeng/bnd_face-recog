@@ -256,6 +256,43 @@
     .sheet-explain-per-shift { font-size: 0.78rem; font-weight: 700; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 4px 8px; cursor: pointer; transition: 0.15s; margin-top: 2px; display: inline-block; }
     .sheet-explain-per-shift:disabled { color: #cbd5e1; background: #f8fafc; border-color: #e2e8f0; cursor: not-allowed; }
 
+    /* --- CSS NÚT UPLOAD ẢNH HIỆN ĐẠI (MODAL GIẢI TRÌNH) --- */
+    .custom-file-input {
+        padding: 5px;
+        border: 2px dashed #cbd5e1;
+        background: #f8fafc;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        width: 100%;
+        box-sizing: border-box;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .custom-file-input:hover {
+        border-color: var(--primary);
+        background: #f0f9ff;
+    }
+
+    .custom-file-input::file-selector-button {
+        margin-right: 15px;
+        padding: 8px 16px;
+        border: none;
+        background: #eff6ff;
+        color: var(--primary);
+        font-weight: 800;
+        font-family: 'Nunito', sans-serif;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .custom-file-input::file-selector-button:hover {
+        background: var(--primary);
+        color: white;
+    }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
         .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
@@ -284,6 +321,7 @@
         .mobile-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
     }
     @media (min-width: 481px) { .mobile-dots { display: none !important; } }
+
 </style>
 {% endblock %}
 
@@ -390,6 +428,15 @@
                 <label>Lý do giải trình <span style="color:red">*</span></label>
                 <textarea id="gt_reason" rows="4" required placeholder="Nhập lý do chi tiết..."></textarea>
             </div>
+            
+            <div class="form-group">
+                <label>Ảnh đính kèm (Tùy chọn)</label>
+                <input type="file" id="gt_attached_file" class="custom-file-input" accept="image/*" onchange="previewGtAttachment(event)">
+                <div style="text-align: center; margin-top: 10px;">
+                    <img id="gt_attachment_preview" src="" style="display:none; max-height: 120px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                </div>
+            </div>
+
             <div style="display:flex; gap:10px; margin-top:4px;">
                 <button type="button" class="btn-form-cancel" onclick="closeGiaiTrinhModal()">Hủy Bỏ</button>
                 <button type="submit" class="btn-form-submit" id="gtSubmitBtn">Gửi Giải Trình</button>
@@ -475,6 +522,25 @@
         } catch (e) { console.error("Lỗi khởi tạo modal", e); }
     }
 
+    function openLeaveModal(dateStr) {
+        if (dateStr) {
+            const [y, m, d] = dateStr.split('-');
+            const fmtDate = `${d}/${m}/${y}`;
+            document.getElementById('leaveFromDate')._flatpickr.setDate(fmtDate);
+            document.getElementById('leaveToDate')._flatpickr.setDate(fmtDate);
+        } else {
+            document.getElementById('leaveForm').reset();
+            document.getElementById('leaveFromDate')._flatpickr.clear();
+            document.getElementById('leaveToDate')._flatpickr.clear();
+        }
+        $('#leaveApprover').val(null).trigger('change');
+        document.getElementById('leaveModal').classList.add('active');
+    }
+
+    function closeLeaveModal() {
+        document.getElementById('leaveModal').classList.remove('active');
+    }
+
     // ─────────────────────────────────────────
     // TẢI DANH SÁCH NHÂN VIÊN & TỰ ĐỘNG CHỌN USER
     // ─────────────────────────────────────────
@@ -502,7 +568,7 @@
     }
 
     // ─────────────────────────────────────────
-    // CÁC HÀM HELPERS HIỂN THỊ
+    // CÁC HÀM HELPERS HIỂN THỊ & LOGIC DISABLED
     // ─────────────────────────────────────────
     function fmtTime(t) { return (!t || t === '---') ? '' : t.split('.')[0].substring(0, 5); }
     function shiftClass(status) {
@@ -572,16 +638,33 @@
             </div>`;
     }
 
-    function calcExplainDisabled(rec, firstOfMonth, yesterday) {
+    // --- LOGIC DISABLED TỔNG HỢP ---
+    function calcExplainDisabled(rec, isViewingOtherUser) {
+        // 1. Nếu đang xem lịch người khác -> Disable
+        if (isViewingOtherUser) return true;
+        
+        // 2. Nếu đã có giải trình rồi -> Disable
+        if (rec.is_explained) return true;
+
+        // 3. Nếu các trạng thái hợp lệ hoặc đang nghỉ -> Disable
         const status = rec.status ?? null;
+        if (status === 1 || status === 7 || status === 4 || status === 5) return true;
+
+        // 4. Nếu không nằm trong khung thời gian cho phép -> Disable
+        if (!rec.date) return true;
         const thisDate = new Date(rec.date + 'T00:00:00');
-        const statusOk = status === 1 || status === 7;
-        const dateInRange = thisDate >= firstOfMonth && thisDate <= yesterday;
-        return statusOk || !dateInRange || status === 4 || status === 5;
+        const limitStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        limitStart.setHours(0,0,0,0);
+        const limitEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+        limitEnd.setHours(0,0,0,0);
+
+        if (thisDate < limitStart || thisDate > limitEnd) return true;
+
+        return false; // Cho phép giải trình
     }
 
     // ─────────────────────────────────────────
-    // RENDER LỊCH (KẾT HỢP CHẤM CÔNG + NGHỈ LỄ + NGHỈ PHÉP)
+    // RENDER LỊCH (KẾT HỢP CHẤM CÔNG + NGHỈ LỄ + NGHỈ PHÉP + GIẢI TRÌNH)
     // ─────────────────────────────────────────
     async function renderCalendar() {
         const empSelect = document.getElementById('empSelect');
@@ -594,6 +677,9 @@
             return;
         }
         if (!monthVal) return;
+
+        // Kiểm tra xem user đang đăng nhập có đang xem lịch của người khác không
+        const isViewingOtherUser = (username !== currentUsername);
 
         const [year, month] = monthVal.split('-');
         const mm = String(month).padStart(2, '0');
@@ -609,16 +695,30 @@
             const selOpt = empSelect.options[empSelect.selectedIndex];
             if (selOpt?.dataset?.empId) employeeIdParam = `&employee_id=${selOpt.dataset.empId}`;
 
-            // GỌI SONG SONG 3 API
-            const [attRes, holRes, leaveRes] = await Promise.all([
+            const encodedUsername = encodeURIComponent(username);
+            const [attRes, holRes, leaveRes, expRes] = await Promise.all([
                 fetch(`/api/monthly-records?startDate=${startDate}&endDate=${endDate}${employeeIdParam}`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch('/holidays/api'),
-                fetch('/leave-requests/api')
+                fetch('/leave-requests/api'),
+                // GỌI API GIẢI TRÌNH VỚI START DATE VÀ END DATE CỦA THÁNG
+                fetch(`/api/explanations?username=${encodedUsername}&start_date=${startDate}&end_date=${endDate}`, { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
             const records = attRes.ok ? await attRes.json() : [];
             const holidays = holRes.ok ? await holRes.json() : [];
             const leaves = leaveRes.ok ? await leaveRes.json() : [];
+            
+            // MAP GIẢI TRÌNH: Chuẩn hóa dữ liệu cắt khoảng trắng và thời gian
+            const expData = expRes.ok ? await expRes.json() : { items: [] };
+            const expMap = {};
+            if (expData.items) {
+                expData.items.forEach(e => {
+                    let eDate = e.date || '';
+                    if (eDate.includes('T')) eDate = eDate.split('T')[0];
+                    const eShift = (e.shift_code || '').trim().toUpperCase(); // Ép chuẩn in hoa + cắt khoảng trắng
+                    expMap[`${eDate}_${eShift}`] = true;
+                });
+            }
 
             // 1. Map Chấm công
             const dayMap = {};
@@ -640,7 +740,7 @@
                 }
             });
 
-            // 3. Map Nghỉ phép (Chỉ lấy đơn Đã Duyệt của user đang chọn)
+            // 3. Map Nghỉ phép
             const leaveMap = {};
             leaves.forEach(l => {
                 if (l.username !== username || l.status !== 'APPROVED') return;
@@ -659,9 +759,6 @@
             // 4. Render Grid
             const firstDay = new Date(year, month - 1, 1).getDay();
             const startOffset = firstDay === 0 ? 6 : firstDay - 1;
-            const firstOfMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
-            firstOfMonth.setHours(0, 0, 0, 0);
-            const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
             const safeEmpName = (selOpt?.text || username).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
             let htmlBuffer = '';
@@ -672,6 +769,14 @@
                 const recs = dayMap[dateStr] || [];
                 const isHol = holMap[dateStr];
                 const dayLeaves = leaveMap[dateStr] || [];
+                
+                // KIỂM TRA ĐÃ GIẢI TRÌNH CHƯA (So khớp an toàn)
+                recs.forEach(r => {
+                    const rShift = (r.shift_code || '').trim().toUpperCase();
+                    if (expMap[`${dateStr}_${rShift}`]) {
+                        r.is_explained = true;
+                    }
+                });
                 
                 const thisDate = new Date(parseInt(year), parseInt(month) - 1, day);
                 thisDate.setHours(0, 0, 0, 0);
@@ -685,9 +790,7 @@
                 else if (dayLeaves.length > 0) dayClass += ' is-leave';
                 else if (isWeekend) dayClass += ' weekend';
 
-                // --- TẠO NỘI DUNG Ô ---
                 let innerHtml = '';
-                
                 if (isHol) innerHtml += `<div class="badge-holiday">🎉 ${isHol}</div>`;
                 dayLeaves.forEach(lv => {
                     innerHtml += `<div class="badge-leave-info">✈️ ${lv.name} (${lv.session})</div>`;
@@ -710,25 +813,30 @@
                 // --- NÚT ACTION TRÊN GIAO DIỆN PC ---
                 let explainBtns = '';
                 if (recs.length === 1 && !isHol && dayLeaves.length === 0) {
-                    const disabled = calcExplainDisabled(recs[0], firstOfMonth, yesterday);
-                    const attId = recs[0].id ?? '';
+                    const rec = recs[0];
+                    const disabled = calcExplainDisabled(rec, isViewingOtherUser);
+                    const btnText = rec.is_explained ? '✔️ Đã giải trình' : '✍️ Giải trình';
+                    const attId = rec.id ?? '';
+                    
                     explainBtns = `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
-                        onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${dateStr}','${recs[0].shift_code || ''}')"
-                        title="Viết giải trình">✍️ Giải trình</button>`;
+                        onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${dateStr}','${rec.shift_code || ''}')"
+                        title="${btnText}">${btnText}</button>`;
+                        
                 } else if (recs.length > 1 && !isHol && dayLeaves.length === 0) {
                     recs.forEach((rec, idx) => {
-                        const disabled = calcExplainDisabled(rec, firstOfMonth, yesterday);
+                        const disabled = calcExplainDisabled(rec, isViewingOtherUser);
+                        const btnText = rec.is_explained ? `✔️ Đã GT Ca ${idx+1}` : `✍️ Ca ${idx+1}`;
                         const attId = rec.id ?? '';
+                        
                         explainBtns += `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
                             onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}','${rec.shift_code || ''}')"
-                            title="Giải trình ca ${idx+1}">✍️ Ca ${idx+1}</button>`;
+                            title="${btnText}">${btnText}</button>`;
                     });
                 }
 
-                const leaveBtn = `<button class="btn-day btn-day-leave" onclick="event.stopPropagation();openLeaveModal('${dateStr}')">✈️ Xin nghỉ</button>`;
+                const leaveBtn = isViewingOtherUser ? '' : `<button class="btn-day btn-day-leave" onclick="event.stopPropagation();openLeaveModal('${dateStr}')">✈️ Xin nghỉ</button>`;
                 const actionsHtml = `<div class="day-actions">${explainBtns}${leaveBtn}</div>`;
 
-                // --- CHẤM TRẠNG THÁI CHO GIAO DIỆN MOBILE ---
                 let dotsHtml = '<div class="mobile-dots">';
                 if (isHol || dayLeaves.length > 0) {
                     dotsHtml += `<span class="mobile-dot" style="background:${dotColor(null, isWeekend, isHol, dayLeaves.length > 0)}"></span>`;
@@ -771,25 +879,123 @@
     }
 
     // ─────────────────────────────────────────
-    // MODAL XIN NGHỈ
+    // BOTTOM SHEET (MOBILE VIEW)
     // ─────────────────────────────────────────
-    function openLeaveModal(dateStr) {
-        let formattedDate = "";
-        if (dateStr) {
-            const parts = dateStr.split('-');
-            formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    function handleDayClick(el) {
+        if (window.innerWidth > 480) return;
+
+        const dateStr   = el.dataset.date;
+        const empName   = el.dataset.empName;
+        const isWeekend = el.dataset.isWeekend === 'true';
+        const recs      = JSON.parse(el.dataset.recs || '[]');
+        const isHol     = el.dataset.isHol;
+        const dayLeaves = JSON.parse(el.dataset.leaves || '[]');
+
+        const username = document.getElementById('empSelect').value;
+        const isViewingOtherUser = (username !== currentUsername);
+
+        const [y, m, d] = dateStr.split('-');
+        document.getElementById('sheet-title').textContent = `📅 Ngày ${parseInt(d)}/${parseInt(m)}/${y}`;
+
+        const container = document.getElementById('sheet-shifts-container');
+        container.innerHTML = '';
+
+        if (isHol) {
+            container.innerHTML += `<div class="badge-holiday" style="font-size: 0.9rem; padding: 8px;">🎉 NGHỈ LỄ: ${isHol}</div>`;
         }
-        
-        document.getElementById('leaveForm').reset();
-        document.getElementById('leaveFromDate').value = formattedDate;
-        document.getElementById('leaveToDate').value = formattedDate;
-        $('#leaveApprover').val(null).trigger('change');
-        
-        document.getElementById('leaveModal').classList.add('active');
+        dayLeaves.forEach(lv => {
+            container.innerHTML += `<div class="badge-leave-info" style="font-size: 0.9rem; padding: 8px; margin-bottom: 5px;">✈️ ĐÃ DUYỆT: ${lv.name} (${lv.session})</div>`;
+        });
+
+        if (!isHol && dayLeaves.every(lv => lv.session !== 'Cả ngày')) {
+            if (recs.length === 0) {
+                const label = isWeekend ? '🌿 Nghỉ cuối tuần' : '— Chưa có dữ liệu chấm công';
+                container.innerHTML += `<div style="padding:10px 0;color:#94a3b8;font-size:0.85rem;font-style:italic;">${label}</div>`;
+            } else {
+                recs.forEach((rec, idx) => {
+                    const timeIn  = fmtTime(rec.checkin_time);
+                    const timeOut = fmtTime(rec.checkout_time);
+                    const workH   = rec.actual_hours ?? '';
+                    const workDay = rec.actual_workday ?? '';
+                    const status  = rec.status ?? null;
+                    const attId   = rec.id ?? '';
+                    const shiftCode = rec.shift_code || '';
+
+                    // Tính logic Disabled
+                    const explainDisabled = calcExplainDisabled(rec, isViewingOtherUser);
+                    const btnText = rec.is_explained ? '✔️ Đã giải trình' : `✍️ Viết giải trình${recs.length > 1 ? ' ca này' : ''}`;
+
+                    const inHtml = !isWeekend ? (timeIn ? `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-in">${timeIn}</span></div>` : `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
+                    const outHtml = !isWeekend ? (timeOut ? `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-out">${timeOut}</span></div>` : `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
+                    const workHtml = (workH && !isWeekend) ? `<div class="sheet-row"><span class="sheet-label">⏱ Giờ công</span><span class="sheet-val sheet-val-work">${workH}h · ${workDay} công</span></div>` : '';
+                    
+                    const badgeClass = getBadgeStatusClass(status, isWeekend);
+                    const statusText = statusLabel(status, isWeekend);
+
+                    const card = document.createElement('div');
+                    card.className = 'sheet-shift-card';
+                    card.innerHTML = `
+                        <div class="sheet-shift-header">
+                            <span class="sheet-shift-title">${recs.length > 1 ? `🔄 Ca ${idx + 1}` : '📋 Thông tin chấm công'}</span>
+                            <span class="badge ${badgeClass}" style="display:inline-flex;">${statusText}</span>
+                        </div>
+                        <div class="sheet-shift-body">
+                            ${inHtml}${outHtml}${workHtml}
+                            <button class="sheet-explain-per-shift" ${explainDisabled ? 'disabled' : ''} 
+                                data-att-id="${attId}" data-date="${rec.date}" data-emp="${empName}" data-shift-code="${shiftCode}">
+                                ${btnText}
+                            </button>
+                        </div>`;
+
+                    card.querySelector('.sheet-explain-per-shift').addEventListener('click', function () {
+                        if (this.disabled) return;
+                        closeBottomSheet();
+                        openGiaiTrinhModal(this.dataset.attId, this.dataset.emp, this.dataset.date, this.dataset.shiftCode);
+                    });
+
+                    container.appendChild(card);
+                });
+            }
+        }
+
+        // Cập nhật Nút Hành động chung (ở đáy sheet, nếu chỉ có 1 ca)
+        const explainBtn = document.getElementById('sheet-explain-btn');
+        if (recs.length === 1 && !isHol && dayLeaves.length === 0) {
+            const rec = recs[0];
+            const explainDisabled = calcExplainDisabled(rec, isViewingOtherUser);
+            
+            explainBtn.disabled = explainDisabled;
+            explainBtn.innerText = rec.is_explained ? '✔️ Đã giải trình' : '✍️ Viết giải trình';
+            explainBtn.style.display = '';
+            explainBtn.onclick = explainDisabled ? null : () => {
+                closeBottomSheet();
+                openGiaiTrinhModal(rec.id ?? '', empName, dateStr, rec.shift_code || '');
+            };
+        } else { 
+            explainBtn.style.display = 'none'; 
+        }
+
+        const leaveBtn = document.getElementById('sheet-leave-btn');
+        if (isViewingOtherUser) {
+            leaveBtn.style.display = 'none';
+        } else {
+            leaveBtn.style.display = '';
+            leaveBtn.onclick = () => { closeBottomSheet(); openLeaveModal(dateStr); };
+        }
+
+        document.getElementById('bottomSheet').classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 
-    function closeLeaveModal() { document.getElementById('leaveModal').classList.remove('active'); }
+    function closeBottomSheet(e) {
+        if (e && e.target !== document.getElementById('bottomSheet')) return;
+        document.getElementById('bottomSheet').classList.remove('active');
+        document.body.style.overflow = '';
+    }
 
+    // ─────────────────────────────────────────
+    // MODAL XIN NGHỈ
+    // ─────────────────────────────────────────
     document.getElementById('leaveForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const empSelect = document.getElementById('empSelect');
@@ -837,6 +1043,24 @@
     // ─────────────────────────────────────────
     // MODAL GIẢI TRÌNH
     // ─────────────────────────────────────────
+    
+    // Hàm preview ảnh
+    function previewGtAttachment(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('gt_attachment_preview');
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'inline-block';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+    }
+
     function openGiaiTrinhModal(attId, fullName, dateStr, shiftCode) {
         const [y, m, d]  = (dateStr || '--').split('-');
         const displayDate = dateStr ? `${d}/${m}/${y}` : '---';
@@ -849,7 +1073,11 @@
         document.getElementById('gt_shift_code_hidden').value = shiftCode || '';
         document.getElementById('gt_shift_code_display').value = sc;
 
+        // Reset form
         document.getElementById('gt_reason').value   = '';
+        document.getElementById('gt_attached_file').value = '';
+        document.getElementById('gt_attachment_preview').style.display = 'none';
+        document.getElementById('gt_attachment_preview').src = '';
 
         document.getElementById('gt_info_line').innerHTML =
             `<strong>Nhân viên:</strong> ${currentName} &nbsp;|&nbsp; <strong>Ngày:</strong> ${displayDate}`;
@@ -863,139 +1091,39 @@
         e.preventDefault();
         const btn = document.getElementById('gtSubmitBtn');
         btn.disabled = true; btn.innerText = 'ĐANG GỬI...';
-        const payload = {
-            username:   document.getElementById('gt_username').value,
-            date:       document.getElementById('gt_date').value,
-            shift_code: document.getElementById('gt_shift_code_hidden').value,
-            reason:     document.getElementById('gt_reason').value.trim(),
-            status:     "1"
-        };
+        
+        // SỬ DỤNG FORMDATA THAY VÌ JSON
+        const formData = new FormData();
+        formData.append('username', document.getElementById('gt_username').value);
+        formData.append('date', document.getElementById('gt_date').value);
+        formData.append('shift_code', document.getElementById('gt_shift_code_hidden').value);
+        formData.append('reason', document.getElementById('gt_reason').value.trim());
+        formData.append('status', '1');
+
+        // Lấy file đính kèm
+        const fileInput = document.getElementById('gt_attached_file');
+        if (fileInput.files.length > 0) {
+            formData.append('attached_file', fileInput.files[0]);
+        }
 
         try {
             const res = await fetch('/api/explanations', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('hrm_token')}` },
-                body: JSON.stringify(payload)
+                // KHÔNG set Content-Type khi gửi FormData
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('hrm_token')}` },
+                body: formData
             });
             if (res.ok) {
                 alert('Đã gửi giải trình thành công!');
                 closeGiaiTrinhModal();
-            } else { alert('Lỗi gửi giải trình!'); }
-        } catch (err) { alert('Lỗi kết nối máy chủ!'); } 
-        finally { btn.disabled = false; btn.innerText = 'GỬI GIẢI TRÌNH'; }
-    });
-
-    // ─────────────────────────────────────────
-    // BOTTOM SHEET (MOBILE VIEW)
-    // ─────────────────────────────────────────
-    function handleDayClick(el) {
-        if (window.innerWidth > 480) return;
-
-        const dateStr   = el.dataset.date;
-        const empName   = el.dataset.empName;
-        const isWeekend = el.dataset.isWeekend === 'true';
-        const recs      = JSON.parse(el.dataset.recs || '[]');
-        const isHol     = el.dataset.isHol;
-        const dayLeaves = JSON.parse(el.dataset.leaves || '[]');
-
-        const [y, m, d] = dateStr.split('-');
-        document.getElementById('sheet-title').textContent = `📅 Ngày ${parseInt(d)}/${parseInt(m)}/${y}`;
-
-        const container = document.getElementById('sheet-shifts-container');
-        container.innerHTML = '';
-
-        const firstOfMonth = new Date(parseInt(y), parseInt(m) - 1, 1);
-        firstOfMonth.setHours(0, 0, 0, 0);
-        const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-
-        // Hiển thị Nhãn Lễ/Phép nếu có
-        if (isHol) {
-            container.innerHTML += `<div class="badge-holiday" style="font-size: 0.9rem; padding: 8px;">🎉 NGHỈ LỄ: ${isHol}</div>`;
-        }
-        dayLeaves.forEach(lv => {
-            container.innerHTML += `<div class="badge-leave-info" style="font-size: 0.9rem; padding: 8px; margin-bottom: 5px;">✈️ ĐÃ DUYỆT: ${lv.name} (${lv.session})</div>`;
-        });
-
-        // Hiển thị thông tin Chấm công
-        if (!isHol && dayLeaves.every(lv => lv.session !== 'Cả ngày')) {
-            if (recs.length === 0) {
-                const label = isWeekend ? '🌿 Nghỉ cuối tuần' : '— Chưa có dữ liệu chấm công';
-                container.innerHTML += `<div style="padding:10px 0;color:#94a3b8;font-size:0.85rem;font-style:italic;">${label}</div>`;
-            } else {
-                recs.forEach((rec, idx) => {
-                    const timeIn  = fmtTime(rec.checkin_time);
-                    const timeOut = fmtTime(rec.checkout_time);
-                    const workH   = rec.actual_hours ?? '';
-                    const workDay = rec.actual_workday ?? '';
-                    const status  = rec.status ?? null;
-                    const attId   = rec.id ?? '';
-                    const shiftCode = rec.shift_code || '';
-
-                    const thisDate = new Date(rec.date + 'T00:00:00');
-                    const statusOk = status === 1 || status === 7;
-                    const dateInRange = thisDate >= firstOfMonth && thisDate <= yesterday;
-                    const explainDisabled = statusOk || !dateInRange || status === 4 || status === 5;
-
-                    const inHtml = !isWeekend ? (timeIn ? `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-in">${timeIn}</span></div>` : `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
-                    const outHtml = !isWeekend ? (timeOut ? `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-out">${timeOut}</span></div>` : `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
-                    const workHtml = (workH && !isWeekend) ? `<div class="sheet-row"><span class="sheet-label">⏱ Giờ công</span><span class="sheet-val sheet-val-work">${workH}h · ${workDay} công</span></div>` : '';
-                    
-                    const badgeClass = getBadgeStatusClass(status, isWeekend);
-                    const statusText = statusLabel(status, isWeekend);
-
-                    const card = document.createElement('div');
-                    card.className = 'sheet-shift-card';
-                    card.innerHTML = `
-                        <div class="sheet-shift-header">
-                            <span class="sheet-shift-title">${recs.length > 1 ? `🔄 Ca ${idx + 1}` : '📋 Thông tin chấm công'}</span>
-                            <span class="badge ${badgeClass}" style="display:inline-flex;">${statusText}</span>
-                        </div>
-                        <div class="sheet-shift-body">
-                            ${inHtml}${outHtml}${workHtml}
-                            <button class="sheet-explain-per-shift" ${explainDisabled ? 'disabled' : ''} 
-                                data-att-id="${attId}" data-date="${rec.date}" data-emp="${empName}" data-shift-code="${shiftCode}">
-                                ✍️ Viết giải trình${recs.length > 1 ? ' ca này' : ''}
-                            </button>
-                        </div>`;
-
-                    card.querySelector('.sheet-explain-per-shift').addEventListener('click', function () {
-                        if (this.disabled) return;
-                        closeBottomSheet();
-                        openGiaiTrinhModal(this.dataset.attId, this.dataset.emp, this.dataset.date, this.dataset.shiftCode);
-                    });
-
-                    container.appendChild(card);
-                });
+                renderCalendar(); 
+            } else { 
+                const err = await res.json();
+                alert('Lỗi gửi giải trình: ' + (err.detail || "")); 
             }
-        }
-
-        // Ẩn nút giải trình tổng nếu có nhiều ca
-        const explainBtn = document.getElementById('sheet-explain-btn');
-        if (recs.length === 1 && !isHol && dayLeaves.length === 0) {
-            const rec = recs[0];
-            const thisDate = new Date(rec.date + 'T00:00:00');
-            const yesterday2 = new Date(today); yesterday2.setDate(yesterday2.getDate() - 1);
-            const firstOfMonth2 = new Date(parseInt(y), parseInt(m) - 1, 1);
-            firstOfMonth2.setHours(0, 0, 0, 0);
-            const explainDisabled = (rec.status === 1 || rec.status === 7) || !(thisDate >= firstOfMonth2 && thisDate <= yesterday2) || rec.status === 4 || rec.status === 5;
-            explainBtn.disabled = explainDisabled;
-            explainBtn.style.display = '';
-            explainBtn.onclick = explainDisabled ? null : () => {
-                closeBottomSheet();
-                openGiaiTrinhModal(rec.id ?? '', empName, dateStr, rec.shift_code || '');
-            };
-        } else { explainBtn.style.display = 'none'; }
-
-        document.getElementById('sheet-leave-btn').onclick = () => { closeBottomSheet(); openLeaveModal(dateStr); };
-        document.getElementById('bottomSheet').classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeBottomSheet(e) {
-        if (e && e.target !== document.getElementById('bottomSheet')) return;
-        document.getElementById('bottomSheet').classList.remove('active');
-        document.body.style.overflow = '';
-    }
+        } catch (err) { alert('Lỗi kết nối máy chủ!'); } 
+        finally { btn.disabled = false; btn.innerText = 'Gửi Giải Trình'; }
+    });
 
     // ─────────────────────────────────────────
     // KHỞI CHẠY KHI TẢI TRANG
