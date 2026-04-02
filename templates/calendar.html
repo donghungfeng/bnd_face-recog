@@ -4,8 +4,11 @@
 {% block page_title %}Lịch Trình Cá Nhân{% endblock %}
 
 {% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
 <style>
-    /* THANH CÔNG CỤ */
+    /* ── THANH CÔNG CỤ ── */
     .filter-bar {
         background: var(--bg-card);
         padding: 12px 20px;
@@ -65,7 +68,7 @@
         box-shadow: 0 4px 10px rgba(67, 97, 238, 0.2);
     }
 
-    /* LƯỚI LỊCH */
+    /* ── LƯỚI LỊCH ── */
     .calendar-wrapper {
         background: var(--bg-card);
         padding: 15px;
@@ -110,20 +113,17 @@
     }
 
     .cal-day.empty { background: transparent; border: none; box-shadow: none; }
-
-    .cal-day.today {
-        border: 2px solid var(--primary);
-        background: #f0f4ff;
-    }
-
-    .cal-day.weekend {
-        background: #f0fdf4;
-        border-color: #86efac;
-    }
-
+    .cal-day.today { border: 2px solid var(--primary); background: #f0f4ff; }
+    .cal-day.weekend { background: #f0fdf4; border-color: #86efac; }
     .cal-day.weekend .day-number { color: #16a34a; }
     .cal-day.today.weekend { background: #f0f4ff; border-color: var(--primary); }
     .cal-day.today.weekend .day-number { color: white; }
+
+    /* CSS ĐẶC BIỆT CHO NGHỈ LỄ & NGHỈ PHÉP */
+    .cal-day.is-holiday { background: #fff1f2; border-color: #fecaca; }
+    .cal-day.is-holiday .day-number { color: #dc2626; }
+    .cal-day.is-leave { background: #f0f9ff; border-color: #bae6fd; }
+    .cal-day.is-leave .day-number { color: #0284c7; }
 
     .day-number {
         font-weight: 700;
@@ -145,7 +145,10 @@
         font-size: 0.8rem;
     }
 
-    /* ══ KHỐI CA ══ */
+    .badge-holiday { background: #ef4444; color: white; padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-align: center; margin-bottom: 2px; box-shadow: 0 2px 4px rgba(239,68,68,0.2); }
+    .badge-leave-info { background: #0ea5e9; color: white; padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-align: center; margin-bottom: 2px; }
+
+    /* ── KHỐI CA CHẤM CÔNG ── */
     .shift-block {
         border: 1px solid #e2e8f0;
         border-radius: 6px;
@@ -157,13 +160,8 @@
         flex-direction: column;
         gap: 2px;
     }
-    .shifts-row .shift-block {
-        margin-bottom: 0;
-        flex: 1;
-        min-width: 0;
-    }
+    .shifts-row .shift-block { margin-bottom: 0; flex: 1; min-width: 0; }
 
-    /* Màu border trái theo trạng thái */
     .shift-block.s-present  { border-left: 3px solid #16a34a; background: #f0fdf4; }
     .shift-block.s-late     { border-left: 3px solid #d97706; background: #fffbeb; }
     .shift-block.s-absent   { border-left: 3px solid #dc2626; background: #fef2f2; }
@@ -172,42 +170,15 @@
     .shift-block.s-progress { border-left: 3px solid #2563eb; background: #eff6ff; }
     .shift-block.s-nodata   { border-left: 3px solid #cbd5e1; background: #f8fafc; }
 
-    .shift-label {
-        font-size: 0.62rem;
-        font-weight: 800;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-bottom: 2px;
-    }
+    .shift-label { font-size: 0.62rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
 
     /* BADGE THÔNG TIN */
-    .badge {
-        font-size: 0.68rem;
-        padding: 2px 5px;
-        border-radius: 4px;
-        font-weight: 700;
-        text-align: left;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: block;
-    }
-
+    .badge { font-size: 0.68rem; padding: 2px 5px; border-radius: 4px; font-weight: 700; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
     .badge-in    { background: #e0f2fe; color: #0284c7; }
     .badge-out   { background: #fce7f3; color: #c026d3; }
     .badge-miss  { background: #f1f5f9; color: #94a3b8; font-weight: 600; font-style: italic; }
     .badge-work  { background: #dcfce7; color: #16a34a; }
-    .badge-leave {
-        background: #fff3cd;
-        color: #d35400;
-        border-left: 3px solid #f39c12;
-        white-space: normal;
-        line-height: 1.3;
-        font-size: 0.65rem;
-    }
 
-    /* Badge trạng thái */
     .badge-status-present  { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
     .badge-status-late     { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
     .badge-status-absent   { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
@@ -216,175 +187,76 @@
     .badge-status-inprogress { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
     .badge-weekend-rest    { background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-style: italic; }
 
-    /* Nhãn đa ca */
-    .multi-shift-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        background: #f1f5f9;
-        color: #64748b;
-        font-size: 0.6rem;
-        font-weight: 700;
-        padding: 1px 5px;
-        border-radius: 10px;
-        margin-bottom: 3px;
-        border: 1px solid #e2e8f0;
-    }
+    .multi-shift-badge { display: inline-flex; align-items: center; gap: 3px; background: #f1f5f9; color: #64748b; font-size: 0.6rem; font-weight: 700; padding: 1px 5px; border-radius: 10px; margin-bottom: 3px; border: 1px solid #e2e8f0; }
+    .shifts-row { display: flex; gap: 4px; align-items: stretch; width: 100%; }
 
-    /* ── LAYOUT ĐA CA: chia cột ngang ── */
-    .shifts-row {
-        display: flex;
-        gap: 4px;
-        align-items: stretch;  /* các ca cùng chiều cao */
-        width: 100%;
-    }
-
-    .shifts-row .shift-block {
-        flex: 1;
-        min-width: 0;
-        margin-bottom: 0;
-    }
-
-    /* Khi chỉ có 1 ca: full width bình thường */
-    .shift-block-solo {
-        width: 100%;
-    }
-
-    /* KHU VỰC NÚT HÀNH ĐỘNG CHUNG — luôn đáy ô */
-    .day-actions {
-        display: flex;
-        gap: 3px;
-        margin-top: auto;
-        padding-top: 4px;
-        border-top: 1px dashed #e2e8f0;
-    }
-
-    .btn-day {
-        flex: 1;
-        padding: 3px 2px;
-        font-size: 0.6rem;
-        font-weight: 700;
-        border-radius: 4px;
-        border: 1px solid;
-        cursor: pointer;
-        transition: 0.15s;
-        text-align: center;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        line-height: 1.4;
-    }
-
-    .btn-day-explain {
-        background: #eff6ff;
-        color: #2563eb;
-        border-color: #bfdbfe;
-    }
-
-    .btn-day-explain:hover:not(:disabled) {
-        background: #2563eb;
-        color: white;
-    }
-
-    .btn-day-explain:disabled {
-        background: #f1f5f9;
-        color: #cbd5e1;
-        border-color: #e2e8f0;
-        cursor: not-allowed;
-    }
-
-    .btn-day-leave {
-        background: #fff7ed;
-        color: #ea580c;
-        border-color: #fed7aa;
-    }
-
+    /* KHU VỰC NÚT HÀNH ĐỘNG CHUNG */
+    .day-actions { display: flex; gap: 3px; margin-top: auto; padding-top: 4px; border-top: 1px dashed #e2e8f0; }
+    .btn-day { flex: 1; padding: 3px 2px; font-size: 0.6rem; font-weight: 700; border-radius: 4px; border: 1px solid; cursor: pointer; transition: 0.15s; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+    .btn-day-explain { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+    .btn-day-explain:hover:not(:disabled) { background: #2563eb; color: white; }
+    .btn-day-explain:disabled { background: #f1f5f9; color: #cbd5e1; border-color: #e2e8f0; cursor: not-allowed; }
+    .btn-day-leave { background: #fff7ed; color: #ea580c; border-color: #fed7aa; }
     .btn-day-leave:hover { background: #ea580c; color: white; }
 
-    /* MODAL */
+    /* ── MODAL ── */
     .modal-overlay {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 2000;
-        opacity: 0;
-        pointer-events: none;
-        transition: 0.3s;
-        backdrop-filter: blur(3px);
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5);
+        display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0;
+        pointer-events: none; transition: 0.3s; backdrop-filter: blur(3px);
     }
-
     .modal-overlay.active { opacity: 1; pointer-events: auto; }
-
     .modal-content {
-        background: white;
-        width: 450px;
-        padding: 25px;
-        border-radius: 14px;
-        transform: translateY(-20px);
-        transition: 0.3s;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        max-width: 95vw;
+        background: white; width: 500px; padding: 25px; border-radius: 14px;
+        transform: translateY(-20px); transition: 0.3s; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        max-width: 95vw; max-height: 90vh; overflow-y: auto;
     }
-
     .modal-overlay.active .modal-content { transform: translateY(0); }
     .modal-content h3 { margin-top: 0; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
-
     .form-group { margin-bottom: 14px; }
-
-    .form-group label {
-        display: block;
-        font-size: 0.82rem;
-        font-weight: 700;
-        color: #64748b;
-        margin-bottom: 6px;
-    }
-
-    .form-group input,
-    .form-group textarea,
-    .form-group select {
-        width: 100%;
-        padding: 9px 12px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        font-family: 'Nunito';
-        font-size: 0.9rem;
-        box-sizing: border-box;
-        transition: 0.2s;
-        outline: none;
-    }
-
-    .form-group input:focus,
-    .form-group textarea:focus { border-color: var(--primary); }
-
-    .info-box {
-        background: #f8fafc;
-        border-radius: 8px;
-        padding: 10px 14px;
-        border: 1px solid #e2e8f0;
-        font-size: 0.85rem;
-        color: #64748b;
-        margin-bottom: 14px;
-    }
-
-    .btn-form-cancel {
-        flex: 1; padding: 10px; border: none;
-        border-radius: 8px; background: #e2e8f0;
-        color: #475569; font-weight: bold; cursor: pointer;
-    }
-
-    .btn-form-submit {
-        flex: 1; padding: 10px; border: none;
-        border-radius: 8px; background: var(--primary);
-        color: white; font-weight: bold; cursor: pointer; transition: 0.2s;
-    }
-
+    .form-group label { display: block; font-size: 0.82rem; font-weight: 700; color: #64748b; margin-bottom: 6px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Nunito'; font-size: 0.9rem; box-sizing: border-box; transition: 0.2s; outline: none; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--primary); }
+    .info-box { background: #f8fafc; border-radius: 8px; padding: 10px 14px; border: 1px solid #e2e8f0; font-size: 0.85rem; color: #64748b; margin-bottom: 14px; }
+    .btn-form-cancel { flex: 1; padding: 10px; border: none; border-radius: 8px; background: #e2e8f0; color: #475569; font-weight: bold; cursor: pointer; }
+    .btn-form-submit { flex: 1; padding: 10px; border: none; border-radius: 8px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
     .btn-form-submit:hover { background: #3751c9; }
 
-    /* ── TABLET ── */
+    /* CSS cho Select2 trong Modal */
+    .select2-container .select2-selection--single { height: 38px !important; border: 1px solid var(--border) !important; border-radius: 8px !important; display: flex; align-items: center;}
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px !important; }
+
+    /* ── BOTTOM SHEET (MOBILE) ── */
+    .bottom-sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 3000; align-items: flex-end; backdrop-filter: blur(3px); }
+    .bottom-sheet-overlay.active { display: flex; }
+    .bottom-sheet { background: white; width: 100%; border-radius: 20px 20px 0 0; padding-bottom: env(safe-area-inset-bottom, 20px); box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18); animation: slideUpSheet 0.26s cubic-bezier(0.34, 1.4, 0.64, 1); max-height: 85vh; overflow-y: auto; }
+    @keyframes slideUpSheet { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .sheet-handle { width: 36px; height: 4px; background: #cbd5e1; border-radius: 2px; margin: 12px auto 0; }
+    .sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 10px; border-bottom: 1px solid #f1f5f9; }
+    .sheet-header h4 { margin: 0; font-size: 1rem; color: var(--text-main); font-weight: 800; }
+    .sheet-close { width: 28px; height: 28px; border-radius: 50%; border: none; background: #f1f5f9; color: #64748b; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .sheet-body { padding: 14px 20px 20px; }
+    .sheet-shifts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .sheet-shift-card { border-radius: 10px; border: 1px solid #e2e8f0; overflow: hidden; }
+    .sheet-shift-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .sheet-shift-title { font-size: 0.8rem; font-weight: 800; color: #475569; }
+    .sheet-shift-body { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .sheet-row { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border-radius: 8px; padding: 9px 12px; border: 1px solid #e2e8f0; }
+    .sheet-label { font-size: 0.82rem; color: #64748b; font-weight: 600; }
+    .sheet-val   { font-size: 0.92rem; font-weight: 800; font-family: monospace; }
+    .sheet-val-in   { color: #0284c7; }
+    .sheet-val-out  { color: #c026d3; }
+    .sheet-val-work { color: #16a34a; }
+    .sheet-val-miss { color: #cbd5e1; }
+    .sheet-actions { display: flex; gap: 10px; }
+    .sheet-btn { flex: 1; padding: 13px 8px; border-radius: 10px; border: 1px solid; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.15s; font-family: 'Nunito', sans-serif; }
+    .sheet-btn-explain { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+    .sheet-btn-explain:disabled { background: #f8fafc; color: #cbd5e1; border-color: #e2e8f0; cursor: not-allowed; }
+    .sheet-btn-leave { background: #fff7ed; color: #ea580c; border-color: #fed7aa; }
+    .sheet-explain-per-shift { font-size: 0.78rem; font-weight: 700; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 4px 8px; cursor: pointer; transition: 0.15s; margin-top: 2px; display: inline-block; }
+    .sheet-explain-per-shift:disabled { color: #cbd5e1; background: #f8fafc; border-color: #e2e8f0; cursor: not-allowed; }
+
+    /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
         .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
         .filter-group { flex-wrap: wrap; gap: 10px; }
@@ -392,193 +264,26 @@
         .filter-bar select, .filter-bar input { max-width: 100%; width: 100%; }
     }
 
-    /* ── MOBILE ≤ 480px ── */
     @media (max-width: 480px) {
         .filter-bar { padding: 10px; border-radius: 10px; gap: 8px; }
-
         .filter-item { flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; }
         .filter-item label { font-size: 0.78rem; }
-
-        .filter-bar select,
-        .filter-bar input { width: 100%; max-width: 100%; font-size: 0.85rem; padding: 8px 10px; }
-
+        .filter-bar select, .filter-bar input { width: 100%; max-width: 100%; font-size: 0.85rem; padding: 8px 10px; }
         .btn-action { width: 100%; justify-content: center; padding: 10px; font-size: 0.85rem; }
-
         .calendar-wrapper { padding: 8px; border-radius: 10px; }
         .calendar-header { font-size: 0.62rem; margin-bottom: 6px; }
         .calendar-grid { gap: 3px; }
-
-        .cal-day {
-            min-height: 52px;
-            padding: 5px 3px 4px;
-            border-radius: 6px;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            align-items: center;
-        }
-
+        .cal-day { min-height: 52px; padding: 5px 3px 4px; border-radius: 6px; cursor: pointer; -webkit-tap-highlight-color: transparent; align-items: center; }
         .cal-day:active { transform: scale(0.93); }
-
-        .day-number {
-            font-size: 0.8rem;
-            align-self: center;
-            text-align: center;
-            width: 100%;
-            margin-bottom: 0;
-        }
-
+        .day-number { font-size: 0.8rem; align-self: center; text-align: center; width: 100%; margin-bottom: 0; }
         .cal-day.today .day-number { width: 22px; height: 22px; font-size: 0.72rem; margin: 0 auto; }
+        
+        .badge, .shift-block, .multi-shift-badge, .day-actions, .badge-holiday, .badge-leave-info { display: none; }
 
-        .badge, .shift-block, .multi-shift-badge, .day-actions, .day-leave-action { display: none; }
-
-        /* Chấm trạng thái nhỏ cho mobile */
-        .mobile-dots {
-            display: flex;
-            gap: 3px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 3px;
-        }
-
-        .mobile-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
+        .mobile-dots { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; margin-top: 3px; }
+        .mobile-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
     }
-
-    @media (min-width: 481px) {
-        .mobile-dots { display: none !important; }
-    }
-
-    /* ══ BOTTOM SHEET ══ */
-    .bottom-sheet-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.45);
-        z-index: 3000;
-        align-items: flex-end;
-        backdrop-filter: blur(3px);
-    }
-
-    .bottom-sheet-overlay.active { display: flex; }
-
-    .bottom-sheet {
-        background: white;
-        width: 100%;
-        border-radius: 20px 20px 0 0;
-        padding-bottom: env(safe-area-inset-bottom, 20px);
-        box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
-        animation: slideUpSheet 0.26s cubic-bezier(0.34, 1.4, 0.64, 1);
-        max-height: 85vh;
-        overflow-y: auto;
-    }
-
-    @keyframes slideUpSheet {
-        from { transform: translateY(100%); opacity: 0; }
-        to   { transform: translateY(0);    opacity: 1; }
-    }
-
-    .sheet-handle { width: 36px; height: 4px; background: #cbd5e1; border-radius: 2px; margin: 12px auto 0; }
-
-    .sheet-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 20px 10px;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    .sheet-header h4 { margin: 0; font-size: 1rem; color: var(--text-main); font-weight: 800; }
-
-    .sheet-close {
-        width: 28px; height: 28px; border-radius: 50%; border: none;
-        background: #f1f5f9; color: #64748b; font-size: 1rem;
-        cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-
-    .sheet-body { padding: 14px 20px 20px; }
-
-    /* Các ca trong bottom sheet */
-    .sheet-shifts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
-
-    .sheet-shift-card {
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
-        overflow: hidden;
-    }
-
-    .sheet-shift-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 7px 12px;
-        background: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
-    }
-
-    .sheet-shift-title { font-size: 0.8rem; font-weight: 800; color: #475569; }
-
-    .sheet-shift-body { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
-
-    .sheet-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: #f8fafc;
-        border-radius: 8px;
-        padding: 9px 12px;
-        border: 1px solid #e2e8f0;
-    }
-
-    .sheet-label { font-size: 0.82rem; color: #64748b; font-weight: 600; }
-    .sheet-val   { font-size: 0.92rem; font-weight: 800; font-family: monospace; }
-    .sheet-val-in   { color: #0284c7; }
-    .sheet-val-out  { color: #c026d3; }
-    .sheet-val-work { color: #16a34a; }
-    .sheet-val-miss { color: #cbd5e1; }
-
-    .sheet-actions { display: flex; gap: 10px; }
-
-    .sheet-btn {
-        flex: 1; padding: 13px 8px; border-radius: 10px; border: 1px solid;
-        font-weight: 700; font-size: 0.88rem; cursor: pointer;
-        display: flex; align-items: center; justify-content: center; gap: 6px;
-        transition: 0.15s; font-family: 'Nunito', sans-serif;
-    }
-
-    .sheet-btn-explain { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-
-    .sheet-btn-explain:disabled {
-        background: #f8fafc; color: #cbd5e1; border-color: #e2e8f0; cursor: not-allowed;
-    }
-
-    .sheet-btn-leave { background: #fff7ed; color: #ea580c; border-color: #fed7aa; }
-
-    /* Giải trình trong sheet multi-shift */
-    .sheet-explain-per-shift {
-        font-size: 0.78rem;
-        font-weight: 700;
-        color: #2563eb;
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 6px;
-        padding: 4px 8px;
-        cursor: pointer;
-        transition: 0.15s;
-        margin-top: 2px;
-        display: inline-block;
-    }
-
-    .sheet-explain-per-shift:disabled,
-    .sheet-explain-per-shift[disabled] {
-        color: #cbd5e1;
-        background: #f8fafc;
-        border-color: #e2e8f0;
-        cursor: not-allowed;
-    }
+    @media (min-width: 481px) { .mobile-dots { display: none !important; } }
 </style>
 {% endblock %}
 
@@ -604,45 +309,68 @@
 
 <div class="calendar-wrapper">
     <div class="calendar-header">
-        <div>Thứ 2</div>
-        <div>Thứ 3</div>
-        <div>Thứ 4</div>
-        <div>Thứ 5</div>
-        <div>Thứ 6</div>
-        <div>Thứ 7</div>
-        <div>Chủ Nhật</div>
+        <div>Thứ 2</div><div>Thứ 3</div><div>Thứ 4</div><div>Thứ 5</div>
+        <div>Thứ 6</div><div>Thứ 7</div><div>Chủ Nhật</div>
     </div>
     <div class="calendar-grid" id="calendarGrid">
-        <div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:#94a3b8;font-style:italic;">
-            👆 Vui lòng chọn nhân viên ở phía trên để xem lịch trình cá nhân...
         </div>
-    </div>
 </div>
 
-<!-- MODAL NGHỈ PHÉP -->
 <div class="modal-overlay" id="leaveModal">
     <div class="modal-content">
         <h3 style="color:var(--primary);">✈️ Đăng Ký Nghỉ Phép / Công Tác</h3>
-        <div class="form-group">
-            <label>Ngày nghỉ / công tác <span style="color:red">*</span></label>
-            <input type="date" id="leaveDate" required>
-        </div>
-        <div class="form-group">
-            <label>Lý do <span style="color:red">*</span></label>
-            <input type="text" id="leaveReason" placeholder="Nhập lý do..." required>
-        </div>
-        <div class="form-group">
-            <label>Người xác nhận (Trưởng phòng / HR)</label>
-            <input type="text" id="leaveApprover" placeholder="VD: Anh Tuấn">
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-            <button class="btn-form-cancel" onclick="closeLeaveModal()">Hủy</button>
-            <button class="btn-form-submit" onclick="submitLeave()">Gửi Đơn</button>
-        </div>
+        <form id="leaveForm">
+            <div class="form-group">
+                <label>Loại Nghỉ Phép *</label>
+                <select id="leaveType" required>
+                    <option value="">-- Đang tải danh mục --</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Từ thời gian *</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="leaveFromDate" class="date-picker" style="flex: 2;" placeholder="dd/mm/yyyy" required>
+                    <select id="leaveFromSession" style="flex: 1;" onchange="syncSessionsModal()">
+                        <option value="Cả ngày">Cả ngày</option>
+                        <option value="Sáng">Sáng</option>
+                        <option value="Chiều">Chiều</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Đến thời gian *</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="leaveToDate" class="date-picker" style="flex: 2;" placeholder="dd/mm/yyyy" required>
+                    <select id="leaveToSession" style="flex: 1;" onchange="syncSessionsModal()">
+                        <option value="Cả ngày">Cả ngày</option>
+                        <option value="Sáng">Sáng</option>
+                        <option value="Chiều">Chiều</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Lý do nghỉ *</label>
+                <textarea id="leaveReason" rows="2" placeholder="Ghi rõ lý do..." required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Người duyệt *</label>
+                <select id="leaveApprover" required>
+                    <option value="">-- Đang tải danh sách quản lý --</option>
+                </select>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn-form-cancel" onclick="closeLeaveModal()">Hủy</button>
+                <button type="submit" class="btn-form-submit" id="leaveSubmitBtn">Gửi Đơn</button>
+            </div>
+        </form>
     </div>
 </div>
 
-<!-- MODAL GIẢI TRÌNH -->
 <div class="modal-overlay" id="giaiTrinhModal">
     <div class="modal-content" style="border-top: 5px solid var(--primary);">
         <h3 style="color:var(--primary);">✍️ Viết Giải Trình</h3>
@@ -663,7 +391,6 @@
     </div>
 </div>
 
-<!-- BOTTOM SHEET (MOBILE) -->
 <div class="bottom-sheet-overlay" id="bottomSheet" onclick="closeBottomSheet(event)">
     <div class="bottom-sheet" onclick="event.stopPropagation()">
         <div class="sheet-handle"></div>
@@ -683,16 +410,65 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
+
 <script>
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const currentUsername = localStorage.getItem("hrm_username") || "";
-    const currentUserRole = localStorage.getItem("hrm_role") || "admin";
+    const currentUserRole = localStorage.getItem("hrm_role") || "user";
     const currentName = localStorage.getItem("hrm_name") || currentUsername;
 
-    document.getElementById('monthSelect').value =
-        `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    document.getElementById('monthSelect').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+    // ─────────────────────────────────────────
+    // KHỞI TẠO DỮ LIỆU DANH MỤC CHO MODAL XIN NGHỈ
+    // ─────────────────────────────────────────
+    flatpickr(".date-picker", {
+        dateFormat: "d/m/Y", locale: "vn", allowInput: true,
+        onChange: function() { syncSessionsModal(); }
+    });
+
+    function syncSessionsModal() {
+        const fromDate = document.getElementById('leaveFromDate').value;
+        const toDate = document.getElementById('leaveToDate').value;
+        const fromSession = document.getElementById('leaveFromSession');
+        const toSession = document.getElementById('leaveToSession');
+        if (fromDate && toDate && fromDate === toDate) {
+            toSession.value = fromSession.value;
+        }
+    }
+
+    function parseDateForAPI(vnDateStr) {
+        if (!vnDateStr) return "";
+        const parts = vnDateStr.split('/');
+        if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        return vnDateStr;
+    }
+
+    async function initLeaveModalData() {
+        try {
+            // Load Loại phép
+            const resTypes = await fetch('/leave-types/api');
+            const types = await resTypes.json();
+            const selectType = document.getElementById('leaveType');
+            selectType.innerHTML = '<option value="">-- Chọn loại phép --</option>';
+            types.forEach(t => selectType.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+            
+            // Load Manager
+            const resMgrs = await fetch('/api/employees/managers');
+            const mgrs = await resMgrs.json();
+            const selectMgr = document.getElementById('leaveApprover');
+            selectMgr.innerHTML = '<option value="">-- Chọn người duyệt --</option>';
+            mgrs.forEach(m => selectMgr.innerHTML += `<option value="${m.username}">${m.full_name} (${m.username})</option>`);
+            
+            $('#leaveApprover').select2({ dropdownParent: $('#leaveModal') });
+        } catch (e) { console.error("Lỗi khởi tạo modal", e); }
+    }
 
     // ─────────────────────────────────────────
     // TẢI DANH SÁCH NHÂN VIÊN & TỰ ĐỘNG CHỌN USER
@@ -700,9 +476,7 @@
     async function loadEmployees() {
         try {
             const token = localStorage.getItem("hrm_token");
-            const res = await fetch('/api/employees/accessible', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch('/api/employees/accessible', { headers: { 'Authorization': `Bearer ${token}` } });
             const json = await res.json();
             const data = json.items || json;
             const select = document.getElementById('empSelect');
@@ -710,41 +484,31 @@
             let optionsHtml = '<option value="">-- Chọn nhân viên --</option>';
             if (Array.isArray(data)) {
                 data.forEach(emp => {
-                    optionsHtml += `<option value="${emp.username}" data-emp-id="${emp.id}">${emp.full_name} (${emp.username})</option>`;
+                    optionsHtml += `<option value="${emp.username}" data-emp-id="${emp.id}" data-fullname="${emp.full_name}">${emp.full_name} (${emp.username})</option>`;
                 });
             }
             select.innerHTML = optionsHtml;
 
-            const isUserExist = Array.from(select.options).some(opt => opt.value === currentUsername);
-            if (isUserExist && currentUsername) {
+            if (Array.from(select.options).some(opt => opt.value === currentUsername)) {
                 select.value = currentUsername;
                 renderCalendar();
             }
-        } catch (e) {
-            console.error("Lỗi khi load nhân viên", e);
-        }
+        } catch (e) { console.error("Lỗi khi load nhân viên", e); }
     }
 
     // ─────────────────────────────────────────
-    // HELPERS
+    // CÁC HÀM HELPERS HIỂN THỊ
     // ─────────────────────────────────────────
-    function fmtTime(t) {
-        if (!t || t === '---') return '';
-        return t.split('.')[0].substring(0, 5);
-    }
-
-    /** Trả về class CSS cho shift-block theo status */
+    function fmtTime(t) { return (!t || t === '---') ? '' : t.split('.')[0].substring(0, 5); }
     function shiftClass(status) {
-        if (status === 1)                    return 's-present';
+        if (status === 1) return 's-present';
         if (status === 2 || status === 3 || status === 6) return 's-late';
-        if (status === 0)                    return 's-absent';
-        if (status === 4)                    return 's-leave';
-        if (status === 5)                    return 's-unpaid';
-        if (status === 7)                    return 's-progress';
+        if (status === 0) return 's-absent';
+        if (status === 4) return 's-leave';
+        if (status === 5) return 's-unpaid';
+        if (status === 7) return 's-progress';
         return 's-nodata';
     }
-
-    /** Nhãn trạng thái ngắn */
     function statusLabel(status, isWeekend) {
         if (status === 1) return '✔️ Đúng giờ';
         if (status === 2) return '⚠️ Đi muộn';
@@ -757,9 +521,9 @@
         if (isWeekend)    return '🌿 Nghỉ cuối tuần';
         return '— Chưa có dữ liệu';
     }
-
-    /** Màu chấm trạng thái cho mobile */
-    function dotColor(status, isWeekend) {
+    function dotColor(status, isWeekend, isHol, hasLeave) {
+        if (isHol) return '#ef4444';
+        if (hasLeave) return '#0ea5e9';
         if (status === 1) return '#16a34a';
         if (status === 2 || status === 3 || status === 6) return '#d97706';
         if (status === 0) return '#dc2626';
@@ -769,44 +533,6 @@
         if (isWeekend)    return '#16a34a';
         return '#e2e8f0';
     }
-
-    /** Render HTML cho 1 khối ca — CHỈ phần thông tin, KHÔNG có nút */
-    function buildShiftBlockHtml(rec, shiftIdx, totalShifts, isWeekend) {
-        const timeIn  = fmtTime(rec.checkin_time);
-        const timeOut = fmtTime(rec.checkout_time);
-        const workH   = rec.actual_hours ?? '';
-        const workDay = rec.actual_workday ?? '';
-        const status  = rec.status ?? null;
-
-        const sc = shiftClass(status);
-
-        const inHtml  = timeIn  ? `<div class="badge badge-in">🔵 ${timeIn}</div>`  : `<div class="badge badge-miss">Vào: --:--</div>`;
-        const outHtml = timeOut ? `<div class="badge badge-out">🔴 ${timeOut}</div>` : `<div class="badge badge-miss">Ra: --:--</div>`;
-        const workHtml = workH  ? `<div class="badge badge-work">⏱ ${workH}h · ${workDay} công</div>` : '';
-
-        const shiftLabelHtml = totalShifts > 1
-            ? `<div class="shift-label">CA ${shiftIdx + 1}</div>`
-            : '';
-
-        return `
-            <div class="shift-block ${sc}">
-                ${shiftLabelHtml}
-                <div class="badge ${getBadgeStatusClass(status, isWeekend)}">${statusLabel(status, isWeekend)}</div>
-                ${!isWeekend ? inHtml : ''}
-                ${!isWeekend ? outHtml : ''}
-                ${!isWeekend && workHtml ? workHtml : ''}
-            </div>`;
-    }
-
-    /** Tính disabled cho nút giải trình của 1 record */
-    function calcExplainDisabled(rec, firstOfMonth, yesterday) {
-        const status  = rec.status ?? null;
-        const thisDate = new Date(rec.date + 'T00:00:00');
-        const statusOk = status === 1 || status === 7;
-        const dateInRange = thisDate >= firstOfMonth && thisDate <= yesterday;
-        return statusOk || !dateInRange || status === 4 || status === 5;
-    }
-
     function getBadgeStatusClass(status, isWeekend) {
         if (status === 1) return 'badge-status-present';
         if (status === 2 || status === 3 || status === 6) return 'badge-status-late';
@@ -818,8 +544,39 @@
         return 'badge-miss';
     }
 
+    function buildShiftBlockHtml(rec, shiftIdx, totalShifts, isWeekend) {
+        const timeIn = fmtTime(rec.checkin_time);
+        const timeOut = fmtTime(rec.checkout_time);
+        const workH = rec.actual_hours ?? '';
+        const workDay = rec.actual_workday ?? '';
+        const status = rec.status ?? null;
+        const sc = shiftClass(status);
+
+        const inHtml  = timeIn  ? `<div class="badge badge-in">🔵 ${timeIn}</div>`  : `<div class="badge badge-miss">Vào: --:--</div>`;
+        const outHtml = timeOut ? `<div class="badge badge-out">🔴 ${timeOut}</div>` : `<div class="badge badge-miss">Ra: --:--</div>`;
+        const workHtml = workH  ? `<div class="badge badge-work">⏱ ${workH}h · ${workDay} công</div>` : '';
+        const shiftLabelHtml = totalShifts > 1 ? `<div class="shift-label">CA ${shiftIdx + 1}</div>` : '';
+
+        return `
+            <div class="shift-block ${sc}">
+                ${shiftLabelHtml}
+                <div class="badge ${getBadgeStatusClass(status, isWeekend)}">${statusLabel(status, isWeekend)}</div>
+                ${!isWeekend ? inHtml : ''}
+                ${!isWeekend ? outHtml : ''}
+                ${!isWeekend && workHtml ? workHtml : ''}
+            </div>`;
+    }
+
+    function calcExplainDisabled(rec, firstOfMonth, yesterday) {
+        const status = rec.status ?? null;
+        const thisDate = new Date(rec.date + 'T00:00:00');
+        const statusOk = status === 1 || status === 7;
+        const dateInRange = thisDate >= firstOfMonth && thisDate <= yesterday;
+        return statusOk || !dateInRange || status === 4 || status === 5;
+    }
+
     // ─────────────────────────────────────────
-    // RENDER LỊCH — HỖ TRỢ NHIỀU CA / NGÀY
+    // RENDER LỊCH (KẾT HỢP CHẤM CÔNG + NGHỈ LỄ + NGHỈ PHÉP)
     // ─────────────────────────────────────────
     async function renderCalendar() {
         const empSelect = document.getElementById('empSelect');
@@ -834,144 +591,149 @@
         if (!monthVal) return;
 
         const [year, month] = monthVal.split('-');
-        const mm      = String(month).padStart(2, '0');
+        const mm = String(month).padStart(2, '0');
         const lastDay = new Date(year, month, 0).getDate();
         const startDate = `${year}-${mm}-01`;
         const endDate   = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
 
-        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:#94a3b8;">Đang tải...</div>`;
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:#94a3b8;">Đang tải dữ liệu đa hệ thống...</div>`;
 
         try {
             const token = localStorage.getItem('hrm_token');
-            const role  = localStorage.getItem('hrm_role') || 'user';
-            const selectedEmpName = empSelect.options[empSelect.selectedIndex]?.text || username;
-
             let employeeIdParam = '';
             const selOpt = empSelect.options[empSelect.selectedIndex];
             if (selOpt?.dataset?.empId) employeeIdParam = `&employee_id=${selOpt.dataset.empId}`;
 
-            const res = await fetch(`/api/monthly-records?startDate=${startDate}&endDate=${endDate}${employeeIdParam}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error(res.status);
-            const records = await res.json();
+            // GỌI SONG SONG 3 API
+            const [attRes, holRes, leaveRes] = await Promise.all([
+                fetch(`/api/monthly-records?startDate=${startDate}&endDate=${endDate}${employeeIdParam}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch('/holidays/api'),
+                fetch('/leave-requests/api')
+            ]);
 
-            // ── GROUP theo ngày (hỗ trợ nhiều ca) ──
-            const dayMap = {}; // { 'YYYY-MM-DD': [rec1, rec2, ...] }
+            const records = attRes.ok ? await attRes.json() : [];
+            const holidays = holRes.ok ? await holRes.json() : [];
+            const leaves = leaveRes.ok ? await leaveRes.json() : [];
+
+            // 1. Map Chấm công
+            const dayMap = {};
             records.forEach(r => {
                 if (!r.date) return;
-                if (role !== 'user' && r.username !== username) return;
                 if (!dayMap[r.date]) dayMap[r.date] = [];
                 dayMap[r.date].push(r);
             });
+            Object.values(dayMap).forEach(arr => arr.sort((a, b) => (a.checkin_time || '99').localeCompare(b.checkin_time || '99')));
 
-            // Sắp xếp các ca trong ngày theo giờ vào
-            Object.values(dayMap).forEach(arr => {
-                arr.sort((a, b) => {
-                    const ta = a.checkin_time || '99:99';
-                    const tb = b.checkin_time || '99:99';
-                    return ta.localeCompare(tb);
-                });
+            // 2. Map Nghỉ lễ
+            const holMap = {};
+            holidays.forEach(h => {
+                let curr = new Date(h.from_date);
+                let end = new Date(h.to_date);
+                while(curr <= end) {
+                    holMap[curr.toISOString().split('T')[0]] = h.name;
+                    curr.setDate(curr.getDate() + 1);
+                }
             });
 
+            // 3. Map Nghỉ phép (Chỉ lấy đơn Đã Duyệt của user đang chọn)
+            const leaveMap = {};
+            leaves.forEach(l => {
+                if (l.username !== username || l.status !== 'APPROVED') return;
+                let curr = new Date(parseDateForAPI(l.from_date));
+                let end = new Date(parseDateForAPI(l.to_date));
+                while(curr <= end) {
+                    const dStr = curr.toISOString().split('T')[0];
+                    if(!leaveMap[dStr]) leaveMap[dStr] = [];
+                    let sessionText = l.from_session;
+                    if(l.from_date !== l.to_date) sessionText = "Cả ngày"; 
+                    leaveMap[dStr].push({ name: l.type_name, session: sessionText });
+                    curr.setDate(curr.getDate() + 1);
+                }
+            });
+
+            // 4. Render Grid
             const firstDay = new Date(year, month - 1, 1).getDay();
             const startOffset = firstDay === 0 ? 6 : firstDay - 1;
-
             const firstOfMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
             firstOfMonth.setHours(0, 0, 0, 0);
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            const safeEmpName = selectedEmpName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+            const safeEmpName = (selOpt?.text || username).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
             let htmlBuffer = '';
+            for (let i = 0; i < startOffset; i++) { htmlBuffer += `<div class="cal-day empty"></div>`; }
 
-            // Ô trống đầu tháng
-            for (let i = 0; i < startOffset; i++) {
-                htmlBuffer += `<div class="cal-day empty"></div>`;
-            }
-
-            // Render từng ngày
             for (let day = 1; day <= lastDay; day++) {
-                const dateStr  = `${year}-${mm}-${String(day).padStart(2, '0')}`;
-                const recs     = dayMap[dateStr] || [];
+                const dateStr = `${year}-${mm}-${String(day).padStart(2, '0')}`;
+                const recs = dayMap[dateStr] || [];
+                const isHol = holMap[dateStr];
+                const dayLeaves = leaveMap[dateStr] || [];
+                
                 const thisDate = new Date(parseInt(year), parseInt(month) - 1, day);
                 thisDate.setHours(0, 0, 0, 0);
-
                 const dayOfWeek = thisDate.getDay();
                 const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                const isToday   = day === today.getDate()
-                    && parseInt(month) === today.getMonth() + 1
-                    && parseInt(year)  === today.getFullYear();
+                const isToday = day === today.getDate() && parseInt(month) === today.getMonth() + 1 && parseInt(year) === today.getFullYear();
 
                 let dayClass = 'cal-day';
-                if (isToday)   dayClass += ' today';
-                if (isWeekend) dayClass += ' weekend';
+                if (isToday) dayClass += ' today';
+                if (isHol) dayClass += ' is-holiday';
+                else if (dayLeaves.length > 0) dayClass += ' is-leave';
+                else if (isWeekend) dayClass += ' weekend';
 
-                // --- Nội dung bên trong ô ---
+                // --- TẠO NỘI DUNG Ô ---
                 let innerHtml = '';
-                let actionsHtml = '';
+                
+                if (isHol) innerHtml += `<div class="badge-holiday">🎉 ${isHol}</div>`;
+                dayLeaves.forEach(lv => {
+                    innerHtml += `<div class="badge-leave-info">✈️ ${lv.name} (${lv.session})</div>`;
+                });
 
-                if (isWeekend && recs.length === 0) {
-                    innerHtml += `<div class="badge badge-weekend-rest">🌿 Nghỉ cuối tuần</div>`;
-                } else if (recs.length === 0) {
-                    innerHtml += `<div class="badge badge-miss">— Chưa có dữ liệu</div>`;
-                    innerHtml += `<div class="badge badge-miss">Vào: --:--</div>`;
-                    innerHtml += `<div class="badge badge-miss">Ra: --:--</div>`;
-                } else if (recs.length === 1) {
-                    // 1 ca: full width, không label CA
-                    innerHtml += buildShiftBlockHtml(recs[0], 0, 1, isWeekend);
-                } else {
-                    // Nhiều ca: chia cột NGANG
-                    innerHtml += `<div class="multi-shift-badge">🔄 ${recs.length} ca</div>`;
-                    innerHtml += `<div class="shifts-row">`;
-                    recs.forEach((rec, idx) => {
-                        innerHtml += buildShiftBlockHtml(rec, idx, recs.length, isWeekend);
-                    });
-                    innerHtml += `</div>`;
+                if (!isHol && dayLeaves.every(lv => lv.session !== 'Cả ngày')) {
+                    if (isWeekend && recs.length === 0) {
+                        innerHtml += `<div class="badge badge-weekend-rest">🌿 Nghỉ cuối tuần</div>`;
+                    } else if (recs.length === 0) {
+                        innerHtml += `<div class="badge badge-miss">— Chưa có dữ liệu</div>`;
+                    } else if (recs.length === 1) {
+                        innerHtml += buildShiftBlockHtml(recs[0], 0, 1, isWeekend);
+                    } else {
+                        innerHtml += `<div class="multi-shift-badge">🔄 ${recs.length} ca</div><div class="shifts-row">`;
+                        recs.forEach((rec, idx) => innerHtml += buildShiftBlockHtml(rec, idx, recs.length, isWeekend));
+                        innerHtml += `</div>`;
+                    }
                 }
 
-                // ── THANH NÚT HÀNH ĐỘNG CHUNG ──
-                // Nút Giải trình: 1 ca → 1 nút; nhiều ca → 1 nút / ca
+                // --- NÚT ACTION TRÊN GIAO DIỆN PC ---
                 let explainBtns = '';
-                if (recs.length === 1) {
-                    const rec = recs[0];
-                    const disabled = calcExplainDisabled(rec, firstOfMonth, yesterday);
-                    const attId = rec.id ?? '';
-                    explainBtns = `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
-                        onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}')"
-                        title="Viết giải trình">✍️ Giải trình</button>`;
-                } else if (recs.length > 1) {
+                if (recs.length === 1 && !isHol && dayLeaves.length === 0) {
+                    const disabled = calcExplainDisabled(recs[0], firstOfMonth, yesterday);
+                    explainBtns = `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''} onclick="event.stopPropagation();openGiaiTrinhModal('${recs[0].id ?? ''}','${safeEmpName}','${dateStr}')">✍️ Giải trình</button>`;
+                } else if (recs.length > 1 && !isHol && dayLeaves.length === 0) {
                     recs.forEach((rec, idx) => {
                         const disabled = calcExplainDisabled(rec, firstOfMonth, yesterday);
-                        const attId = rec.id ?? '';
-                        explainBtns += `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
-                            onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}')"
-                            title="Giải trình ca ${idx+1}">✍️ Ca ${idx+1}</button>`;
+                        explainBtns += `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''} onclick="event.stopPropagation();openGiaiTrinhModal('${rec.id ?? ''}','${safeEmpName}','${rec.date}')" title="Giải trình ca ${idx+1}">✍️ Ca ${idx+1}</button>`;
                     });
                 }
 
-                const leaveBtn = `<button class="btn-day btn-day-leave"
-                    onclick="event.stopPropagation();openLeaveModal('${dateStr}')"
-                    title="Đăng ký nghỉ ngày ${day}">✈️ Đăng ký nghỉ</button>`;
+                const leaveBtn = `<button class="btn-day btn-day-leave" onclick="event.stopPropagation();openLeaveModal('${dateStr}')">✈️ Xin nghỉ</button>`;
+                const actionsHtml = `<div class="day-actions">${explainBtns}${leaveBtn}</div>`;
 
-                actionsHtml = `<div class="day-actions">${explainBtns}${leaveBtn}</div>`;
-
-                // Chấm màu cho mobile (1 chấm / ca)
+                // --- CHẤM TRẠNG THÁI CHO GIAO DIỆN MOBILE ---
                 let dotsHtml = '<div class="mobile-dots">';
-                if (isWeekend && recs.length === 0) {
+                if (isHol || dayLeaves.length > 0) {
+                    dotsHtml += `<span class="mobile-dot" style="background:${dotColor(null, isWeekend, isHol, dayLeaves.length > 0)}"></span>`;
+                } else if (isWeekend && recs.length === 0) {
                     dotsHtml += `<span class="mobile-dot" style="background:#16a34a"></span>`;
                 } else if (recs.length === 0) {
                     dotsHtml += `<span class="mobile-dot" style="background:#e2e8f0"></span>`;
                 } else {
                     recs.forEach(rec => {
-                        dotsHtml += `<span class="mobile-dot" style="background:${dotColor(rec.status, isWeekend)}"></span>`;
+                        dotsHtml += `<span class="mobile-dot" style="background:${dotColor(rec.status, isWeekend, false, false)}"></span>`;
                     });
                 }
                 dotsHtml += '</div>';
 
-                // Data attributes lưu JSON các ca cho bottom-sheet
                 const recsJson = JSON.stringify(recs).replace(/"/g, '&quot;');
+                const dayLeavesJson = JSON.stringify(dayLeaves).replace(/"/g, '&quot;');
 
                 htmlBuffer += `
                     <div class="${dayClass}"
@@ -979,6 +741,8 @@
                         data-emp-name="${safeEmpName}"
                         data-is-weekend="${isWeekend}"
                         data-recs="${recsJson}"
+                        data-is-hol="${isHol || ''}"
+                        data-leaves="${dayLeavesJson}"
                         onclick="handleDayClick(this)">
                         <div class="day-number">${day}</div>
                         ${innerHtml}
@@ -996,37 +760,56 @@
     }
 
     // ─────────────────────────────────────────
-    // MODAL NGHỈ PHÉP
+    // MODAL XIN NGHỈ (GIAO DIỆN PC & BOTTOM SHEET)
     // ─────────────────────────────────────────
     function openLeaveModal(dateStr) {
-        document.getElementById('leaveDate').value    = dateStr || '';
-        document.getElementById('leaveReason').value  = '';
-        document.getElementById('leaveApprover').value = '';
+        let formattedDate = "";
+        if (dateStr) {
+            const parts = dateStr.split('-');
+            formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        
+        document.getElementById('leaveForm').reset();
+        document.getElementById('leaveFromDate').value = formattedDate;
+        document.getElementById('leaveToDate').value = formattedDate;
+        $('#leaveApprover').val(null).trigger('change');
+        
         document.getElementById('leaveModal').classList.add('active');
     }
 
-    function closeLeaveModal() {
-        document.getElementById('leaveModal').classList.remove('active');
-    }
+    function closeLeaveModal() { document.getElementById('leaveModal').classList.remove('active'); }
 
-    async function submitLeave() {
-        const username = document.getElementById('empSelect').value;
-        if (!username) return alert("Vui lòng chọn nhân viên ở bộ lọc trước!");
+    document.getElementById('leaveForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const empSelect = document.getElementById('empSelect');
+        const username = empSelect.value;
+        const selOpt = empSelect.options[empSelect.selectedIndex];
+        const fullname = selOpt?.dataset?.fullname || username;
+        
+        if (!username) return alert("Vui lòng chọn nhân viên ở Lịch trước!");
 
         const payload = {
-            username,
-            leave_date: document.getElementById('leaveDate').value,
-            reason:     document.getElementById('leaveReason').value,
-            approver:   document.getElementById('leaveApprover').value
+            username: username,
+            fullname: fullname,
+            type_id: parseInt(document.getElementById('leaveType').value),
+            from_date: parseDateForAPI(document.getElementById('leaveFromDate').value),
+            from_session: document.getElementById('leaveFromSession').value,
+            to_date: parseDateForAPI(document.getElementById('leaveToDate').value),
+            to_session: document.getElementById('leaveToSession').value,
+            reason: document.getElementById('leaveReason').value.trim(),
+            approver_username: document.getElementById('leaveApprover').value
         };
 
-        if (!payload.leave_date || !payload.reason) return alert("Vui lòng nhập đủ thông tin!");
+        if (new Date(payload.from_date) > new Date(payload.to_date)) {
+            return alert("Ngày bắt đầu không được lớn hơn ngày kết thúc!");
+        }
+
+        const btn = document.getElementById('leaveSubmitBtn');
+        btn.disabled = true; btn.innerText = 'ĐANG GỬI...';
 
         try {
-            const res = await fetch("/api/leave", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+            const res = await fetch("/leave-requests/api", {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
             });
             if (res.ok) {
                 alert("Đăng ký nghỉ thành công!");
@@ -1036,70 +819,52 @@
                 const err = await res.json();
                 alert("Lỗi: " + (err.detail || "Không thể gửi đơn"));
             }
-        } catch (e) {
-            alert("Lỗi kết nối máy chủ");
-        }
-    }
+        } catch (e) { alert("Lỗi kết nối máy chủ"); }
+        finally { btn.disabled = false; btn.innerText = 'Gửi Đơn'; }
+    });
 
     // ─────────────────────────────────────────
     // MODAL GIẢI TRÌNH
     // ─────────────────────────────────────────
     function openGiaiTrinhModal(attId, fullName, dateStr) {
-        const [y, m, d]  = (dateStr || '--').split('-');
-        const displayDate = dateStr ? `${d}/${m}/${y}` : '---';
-
-        document.getElementById('gt_username').value = currentUsername;
-        document.getElementById('gt_date').value     = dateStr;
-        document.getElementById('gt_att_id').value   = attId;
-        document.getElementById('gt_reason').value   = '';
-
-        document.getElementById('gt_info_line').innerHTML =
-            `<strong>Nhân viên:</strong> ${currentName} &nbsp;|&nbsp; <strong>Ngày:</strong> ${displayDate}`;
-
+        const [y, m, d] = (dateStr || '--').split('-');
+        document.getElementById('gt_username').value = document.getElementById('empSelect').value;
+        document.getElementById('gt_date').value = dateStr;
+        document.getElementById('gt_att_id').value = attId;
+        document.getElementById('gt_reason').value = '';
+        document.getElementById('gt_info_line').innerHTML = `<strong>Nhân viên:</strong> ${fullName} &nbsp;|&nbsp; <strong>Ngày:</strong> ${d}/${m}/${y}`;
         document.getElementById('giaiTrinhModal').classList.add('active');
     }
 
-    function closeGiaiTrinhModal() {
-        document.getElementById('giaiTrinhModal').classList.remove('active');
-    }
+    function closeGiaiTrinhModal() { document.getElementById('giaiTrinhModal').classList.remove('active'); }
 
     document.getElementById('giaiTrinhForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('gtSubmitBtn');
-        btn.disabled  = true;
-        btn.innerText = 'ĐANG GỬI...';
-
+        btn.disabled = true; btn.innerText = 'ĐANG GỬI...';
         const payload = {
-            username:   document.getElementById('gt_username').value,
-            date:       document.getElementById('gt_date').value,
-            reason:     document.getElementById('gt_reason').value.trim(),
-            status:     "1"
+            username: document.getElementById('gt_username').value,
+            date: document.getElementById('gt_date').value,
+            reason: document.getElementById('gt_reason').value.trim(),
+            status: "1"
         };
 
         try {
-            const token = localStorage.getItem('hrm_token');
             const res = await fetch('/api/explanations', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('hrm_token')}` },
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
-                alert('Đã gửi giải trình thành công! Vui lòng chờ quản lý duyệt.');
+                alert('Đã gửi giải trình thành công!');
                 closeGiaiTrinhModal();
-            } else {
-                const err = await res.json();
-                alert('Lỗi: ' + (err.detail || 'Không thể gửi giải trình'));
-            }
-        } catch (err) {
-            alert('Lỗi kết nối máy chủ!');
-        } finally {
-            btn.disabled  = false;
-            btn.innerText = 'GỬI GIẢI TRÌNH';
-        }
+            } else { alert('Lỗi gửi giải trình!'); }
+        } catch (err) { alert('Lỗi kết nối máy chủ!'); } 
+        finally { btn.disabled = false; btn.innerText = 'GỬI GIẢI TRÌNH'; }
     });
 
     // ─────────────────────────────────────────
-    // BOTTOM SHEET (MOBILE) — HỖ TRỢ ĐA CA
+    // BOTTOM SHEET (MOBILE VIEW)
     // ─────────────────────────────────────────
     function handleDayClick(el) {
         if (window.innerWidth > 480) return;
@@ -1108,6 +873,8 @@
         const empName   = el.dataset.empName;
         const isWeekend = el.dataset.isWeekend === 'true';
         const recs      = JSON.parse(el.dataset.recs || '[]');
+        const isHol     = el.dataset.isHol;
+        const dayLeaves = JSON.parse(el.dataset.leaves || '[]');
 
         const [y, m, d] = dateStr.split('-');
         document.getElementById('sheet-title').textContent = `📅 Ngày ${parseInt(d)}/${parseInt(m)}/${y}`;
@@ -1117,96 +884,82 @@
 
         const firstOfMonth = new Date(parseInt(y), parseInt(m) - 1, 1);
         firstOfMonth.setHours(0, 0, 0, 0);
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
 
-        if (recs.length === 0) {
-            // Không có dữ liệu
-            const label = isWeekend ? '🌿 Nghỉ cuối tuần' : '— Chưa có dữ liệu';
-            container.innerHTML = `<div style="padding:10px 0;color:#94a3b8;font-size:0.85rem;font-style:italic;">${label}</div>`;
-        } else {
-            recs.forEach((rec, idx) => {
-                const timeIn  = fmtTime(rec.checkin_time);
-                const timeOut = fmtTime(rec.checkout_time);
-                const workH   = rec.actual_hours ?? '';
-                const workDay = rec.actual_workday ?? '';
-                const status  = rec.status ?? null;
-                const attId   = rec.id ?? '';
+        // Hiển thị Nhãn Lễ/Phép nếu có
+        if (isHol) {
+            container.innerHTML += `<div class="badge-holiday" style="font-size: 0.9rem; padding: 8px;">🎉 NGHỈ LỄ: ${isHol}</div>`;
+        }
+        dayLeaves.forEach(lv => {
+            container.innerHTML += `<div class="badge-leave-info" style="font-size: 0.9rem; padding: 8px; margin-bottom: 5px;">✈️ ĐÃ DUYỆT: ${lv.name} (${lv.session})</div>`;
+        });
 
-                const thisDate = new Date(rec.date + 'T00:00:00');
-                const statusOk = status === 1 || status === 7;
-                const dateInRange = thisDate >= firstOfMonth && thisDate <= yesterday;
-                const explainDisabled = statusOk || !dateInRange || status === 4 || status === 5;
+        // Hiển thị thông tin Chấm công
+        if (!isHol && dayLeaves.every(lv => lv.session !== 'Cả ngày')) {
+            if (recs.length === 0) {
+                const label = isWeekend ? '🌿 Nghỉ cuối tuần' : '— Chưa có dữ liệu chấm công';
+                container.innerHTML += `<div style="padding:10px 0;color:#94a3b8;font-size:0.85rem;font-style:italic;">${label}</div>`;
+            } else {
+                recs.forEach((rec, idx) => {
+                    const timeIn  = fmtTime(rec.checkin_time);
+                    const timeOut = fmtTime(rec.checkout_time);
+                    const workH   = rec.actual_hours ?? '';
+                    const workDay = rec.actual_workday ?? '';
+                    const status  = rec.status ?? null;
+                    const attId   = rec.id ?? '';
 
-                const inHtml = !isWeekend
-                    ? (timeIn  ? `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-in">${timeIn}</span></div>`
-                               : `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-miss">--:--</span></div>`)
-                    : '';
+                    const thisDate = new Date(rec.date + 'T00:00:00');
+                    const statusOk = status === 1 || status === 7;
+                    const dateInRange = thisDate >= firstOfMonth && thisDate <= yesterday;
+                    const explainDisabled = statusOk || !dateInRange || status === 4 || status === 5;
 
-                const outHtml = !isWeekend
-                    ? (timeOut ? `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-out">${timeOut}</span></div>`
-                               : `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-miss">--:--</span></div>`)
-                    : '';
+                    const inHtml = !isWeekend ? (timeIn ? `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-in">${timeIn}</span></div>` : `<div class="sheet-row"><span class="sheet-label">🔵 Giờ vào</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
+                    const outHtml = !isWeekend ? (timeOut ? `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-out">${timeOut}</span></div>` : `<div class="sheet-row"><span class="sheet-label">🔴 Giờ ra</span><span class="sheet-val sheet-val-miss">--:--</span></div>`) : '';
+                    const workHtml = (workH && !isWeekend) ? `<div class="sheet-row"><span class="sheet-label">⏱ Giờ công</span><span class="sheet-val sheet-val-work">${workH}h · ${workDay} công</span></div>` : '';
 
-                const workHtml = (workH && !isWeekend)
-                    ? `<div class="sheet-row"><span class="sheet-label">⏱ Giờ công</span><span class="sheet-val sheet-val-work">${workH}h · ${workDay} công</span></div>`
-                    : '';
+                    const card = document.createElement('div');
+                    card.className = 'sheet-shift-card';
+                    card.innerHTML = `
+                        <div class="sheet-shift-header">
+                            <span class="sheet-shift-title">${recs.length > 1 ? `🔄 Ca ${idx + 1}` : '📋 Thông tin chấm công'}</span>
+                            <span class="badge ${getBadgeStatusClass(status, isWeekend)}" style="display:inline-flex;">${statusLabel(status, isWeekend)}</span>
+                        </div>
+                        <div class="sheet-shift-body">
+                            ${inHtml}${outHtml}${workHtml}
+                            <button class="sheet-explain-per-shift" ${explainDisabled ? 'disabled' : ''} data-att-id="${attId}" data-date="${rec.date}" data-emp="${empName}">
+                                ✍️ Viết giải trình${recs.length > 1 ? ' ca này' : ''}
+                            </button>
+                        </div>`;
 
-                const badgeClass = getBadgeStatusClass(status, isWeekend);
-                const statusText = statusLabel(status, isWeekend);
+                    card.querySelector('.sheet-explain-per-shift').addEventListener('click', function () {
+                        if (this.disabled) return;
+                        closeBottomSheet();
+                        openGiaiTrinhModal(this.dataset.attId, this.dataset.emp, this.dataset.date);
+                    });
 
-                const card = document.createElement('div');
-                card.className = 'sheet-shift-card';
-                card.innerHTML = `
-                    <div class="sheet-shift-header">
-                        <span class="sheet-shift-title">${recs.length > 1 ? `🔄 Ca ${idx + 1}` : '📋 Thông tin'}</span>
-                        <span class="badge ${badgeClass}" style="display:inline-flex;">${statusText}</span>
-                    </div>
-                    <div class="sheet-shift-body">
-                        ${inHtml}${outHtml}${workHtml}
-                        <button class="sheet-explain-per-shift" ${explainDisabled ? 'disabled' : ''}
-                            data-att-id="${attId}" data-date="${rec.date}" data-emp="${empName}">
-                            ✍️ Viết giải trình${recs.length > 1 ? ' ca này' : ''}
-                        </button>
-                    </div>`;
-
-                // Gắn sự kiện giải trình
-                card.querySelector('.sheet-explain-per-shift').addEventListener('click', function () {
-                    if (this.disabled) return;
-                    closeBottomSheet();
-                    openGiaiTrinhModal(this.dataset.attId, this.dataset.emp, this.dataset.date);
+                    container.appendChild(card);
                 });
-
-                container.appendChild(card);
-            });
+            }
         }
 
-        // Nút giải trình chính (chỉ hiển thị nếu 1 ca)
+        // Ẩn nút giải trình tổng nếu có nhiều ca
         const explainBtn = document.getElementById('sheet-explain-btn');
-        if (recs.length === 1) {
+        if (recs.length === 1 && !isHol && dayLeaves.length === 0) {
             const rec = recs[0];
             const thisDate = new Date(rec.date + 'T00:00:00');
             const yesterday2 = new Date(today); yesterday2.setDate(yesterday2.getDate() - 1);
             const firstOfMonth2 = new Date(parseInt(y), parseInt(m) - 1, 1);
             firstOfMonth2.setHours(0, 0, 0, 0);
-            const statusOk = rec.status === 1 || rec.status === 7;
-            const explainDisabled = statusOk || !(thisDate >= firstOfMonth2 && thisDate <= yesterday2) || rec.status === 4 || rec.status === 5;
+            const explainDisabled = (rec.status === 1 || rec.status === 7) || !(thisDate >= firstOfMonth2 && thisDate <= yesterday2) || rec.status === 4 || rec.status === 5;
             explainBtn.disabled = explainDisabled;
             explainBtn.style.display = '';
             explainBtn.onclick = explainDisabled ? null : () => {
                 closeBottomSheet();
                 openGiaiTrinhModal(rec.id ?? '', empName, dateStr);
             };
-        } else {
-            // Ẩn nút chính nếu nhiều ca (mỗi ca có nút riêng)
-            explainBtn.style.display = 'none';
-        }
+        } else { explainBtn.style.display = 'none'; }
 
-        document.getElementById('sheet-leave-btn').onclick = () => {
-            closeBottomSheet();
-            openLeaveModal(dateStr);
-        };
-
+        document.getElementById('sheet-leave-btn').onclick = () => { closeBottomSheet(); openLeaveModal(dateStr); };
         document.getElementById('bottomSheet').classList.add('active');
         document.body.style.overflow = 'hidden';
     }
@@ -1218,9 +971,10 @@
     }
 
     // ─────────────────────────────────────────
-    // KHỞI TẠO
+    // KHỞI CHẠY KHI TẢI TRANG
     // ─────────────────────────────────────────
     window.addEventListener('load', () => {
+        initLeaveModalData();
         loadEmployees();
     });
 </script>

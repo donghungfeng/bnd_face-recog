@@ -250,6 +250,21 @@ def auto_update_departments(db: Session = Depends(get_db)):
         "updated_usernames": result
     }
 
+
+@router.get("/api/employees/managers")
+def get_managers(db: Session = Depends(get_db)):
+    # Lấy những tài khoản có role là manager hoặc admin
+    managers = db.query(Employee).filter(Employee.role.in_(["manager", "admin"]), Employee.status == "active").all()
+    
+    return [
+        {
+            "username": m.username,
+            "full_name": m.full_name,
+            "department_id": m.department_id
+        }
+        for m in managers
+    ]
+
 @router.put("/api/employees/{username}")
 def update_employee(username: str, emp: EmployeeCreate, db: Session = Depends(get_db)):
     db_emp = db.query(Employee).filter(Employee.username == username).first()

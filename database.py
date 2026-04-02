@@ -4,11 +4,11 @@ from sqlalchemy.orm import sessionmaker
 import urllib.parse  # Thêm thư viện này
 
 # 1. Khai báo các thông tin riêng biệt
-user = "taikhoan"
-password = "matkhau" # Mật khẩu chứa ký tự đặc biệt
-host = "host"
+user = "admin"
+password = "Donghung@1234#" # Mật khẩu chứa ký tự đặc biệt
+host = "192.168.12.209"
 port = "3306"
-db_name = "db"
+db_name = "hrm_db"
 
 # 2. Mã hóa mật khẩu (dấu # sẽ biến thành %23)
 safe_password = urllib.parse.quote_plus(password)
@@ -19,9 +19,10 @@ SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{user}:{safe_password}@{host}:{port}
 # 4. Tạo Engine
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,
+    pool_size=50,          
+    max_overflow=100,     
+    pool_timeout=30,       
+    pool_recycle=1800,     
     pool_pre_ping=True
 )
 

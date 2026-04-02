@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, Integer, String, Date, Time, DateTime, Text, Boolean
+from sqlalchemy import Column, Float, Integer, Numeric, SmallInteger, String, Date, Time, DateTime, Text, Boolean
 from datetime import datetime
 from database import Base
 from sqlalchemy import ForeignKey, func
@@ -82,16 +82,6 @@ class Attendance(Base):
     attendance_type = Column(String(50), default="Tập trung")
     note = Column(Text, nullable=True)
 
-class LeaveRequest(Base):
-    __tablename__ = "leave_requests"
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, index=True)
-    full_name = Column(String)
-    leave_date = Column(Date, index=True)
-    reason = Column(String)
-    approver = Column(String, nullable=True)
-    status = Column(String, default="Chờ duyệt")
-
 
 class OrganizationUnit(Base):
     __tablename__ = "organization_units"
@@ -157,3 +147,57 @@ class Wifi(Base):
     ip_address = Column(String(45), nullable=True)
     note = Column(Text, nullable=True)
     status = Column(String(50), nullable=False, default="active")
+
+
+class Holiday(Base):
+    __tablename__ = "holidays"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    from_date = Column(Date, nullable=False)
+    to_date = Column(Date, nullable=False)
+    num_days = Column(Numeric(4, 1), nullable=False)         # Decimal(4,1)
+    scope = Column(Text, nullable=True)                      # Áp dụng cho đối tượng nào
+    status = Column(SmallInteger, server_default='1')        # TinyInt mặc định là 1 (Active)
+
+
+# ==========================================
+# 2. BẢNG LOẠI NGHỈ PHÉP (leave_types)
+# ==========================================
+class LeaveType(Base):
+    __tablename__ = "leave_types"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    benefit_rate = Column(Numeric(5, 2), server_default='100.00') # Decimal(5,2) mặc định 100.00%
+    max_num_days = Column(Integer, server_default='0')
+    scope = Column(Text, nullable=True)
+    status = Column(SmallInteger, server_default='1')
+    note = Column(Text, nullable=True)
+
+    # Mối quan hệ 1-Nhiều với bảng leave_requests (1 Loại phép có nhiều Đơn xin nghỉ)
+    requests = relationship("LeaveRequest", back_populates="leave_type")
+
+
+# ==========================================
+# 3. BẢNG ĐƠN XIN NGHỈ PHÉP (leave_requests)
+# ==========================================
+class LeaveRequest(Base):
+    __tablename__ = "leave_requests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(255), nullable=False, index=True)
+    fullname = Column(String(255), nullable=True)             # BỔ SUNG: Tên người xin nghỉ
+    from_date = Column(Date, nullable=False)
+    from_session = Column(String(50), default="Cả ngày")      # BỔ SUNG: Sáng / Chiều / Cả ngày
+    to_date = Column(Date, nullable=False)
+    to_session = Column(String(50), default="Cả ngày")        # BỔ SUNG: Sáng / Chiều / Cả ngày
+    type_id = Column(Integer, ForeignKey("leave_types.id"), nullable=False)
+    reason = Column(Text, nullable=True)
+    approver_username = Column(String(255), nullable=True)
+    approver_fullname = Column(String(255), nullable=True)
+    status = Column(String(50), server_default='PENDING')
+
+    leave_type = relationship("LeaveType", back_populates="requests")

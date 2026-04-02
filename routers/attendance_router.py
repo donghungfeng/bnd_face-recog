@@ -242,6 +242,43 @@ def mark_fraud(req: MarkFraudRequest, db: Session = Depends(get_db)):
     return {"status": "success", "message": "Đã cập nhật trạng thái gian lận"}
 
 
+@router.delete("/api/attendance/clear-unknown")
+def delete_all_unknown(
+    start_date: str = Query(..., description="Ngày bắt đầu"),
+    end_date: str = Query(..., description="Ngày kết thúc"),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    role = current_user.get("role", "user")
+    if role not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Chỉ Admin/Manager mới được xóa rác!")
+
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Sai định dạng ngày (YYYY-MM-DD)")
+
+    unknowns = db.query(Attendance).filter(
+        Attendance.username == "UNKNOWN",
+        Attendance.check_in_time >= start_dt,
+        Attendance.check_in_time <= end_dt
+    ).all()
+    
+    count = 0
+    for record in unknowns:
+        if record.image_path:
+            physical_img_path = "." + record.image_path
+            if os.path.exists(physical_img_path):
+                try: os.remove(physical_img_path)
+                except: pass
+        db.delete(record)
+        count += 1
+        
+    db.commit()
+    return {"status": "success", "message": f"Đã xóa {count} bản ghi UNKNOWN từ {start_date} đến {end_date}"}
+
+
 @router.delete("/api/attendance/{record_id}")
 def delete_attendance_record(
     record_id: int, 
@@ -521,41 +558,7 @@ def get_all_attendance_records(
 
     return records
 
-@router.delete("/api/attendance/clear-unknown")
-def delete_all_unknown(
-    start_date: str = Query(..., description="Ngày bắt đầu"),
-    end_date: str = Query(..., description="Ngày kết thúc"),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    role = current_user.get("role", "user")
-    if role not in ["admin", "manager"]:
-        raise HTTPException(status_code=403, detail="Chỉ Admin/Manager mới được xóa rác!")
 
-    try:
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-        end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Sai định dạng ngày (YYYY-MM-DD)")
-
-    unknowns = db.query(Attendance).filter(
-        Attendance.username == "UNKNOWN",
-        Attendance.check_in_time >= start_dt,
-        Attendance.check_in_time <= end_dt
-    ).all()
-    
-    count = 0
-    for record in unknowns:
-        if record.image_path:
-            physical_img_path = "." + record.image_path
-            if os.path.exists(physical_img_path):
-                try: os.remove(physical_img_path)
-                except: pass
-        db.delete(record)
-        count += 1
-        
-    db.commit()
-    return {"status": "success", "message": f"Đã xóa {count} bản ghi UNKNOWN từ {start_date} đến {end_date}"}
 
 # --- 3. API TẠO NHANH BẢN GHI THỦ CÔNG CÓ ẢNH ---
 @router.post("/api/attendance/manual-create")
