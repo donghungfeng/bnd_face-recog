@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Query, Request, HTTPException, Depends
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 import models
 from database import get_db
+from routers.auth_router import get_current_user
 
 router = APIRouter(prefix="/leave-requests", tags=["Leave Requests"])
 templates = Jinja2Templates(directory="templates")
@@ -31,9 +33,45 @@ async def render_page(request: Request):
     return templates.TemplateResponse("leave_requests.html", {"request": request})
 
 @router.get("/api")
-def get_all_requests(db: Session = Depends(get_db)):
-    # Lấy toàn bộ đơn và dùng Relationship để móc tên loại nghỉ phép
-    records = db.query(models.LeaveRequest).order_by(models.LeaveRequest.id.desc()).all()
+def get_all_requests(
+    page: int = 1,
+    size: int = 10,
+    search: str = Query(None),
+    status: str = Query(None), # <--- 1. Bổ sung tham số nhận status
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    current_username = current_user.get("username")
+    current_role = current_user.get("role", "user")
+
+    query = db.query(models.LeaveRequest)
+
+    # Phân quyền (RBAC)
+    if current_role != "admin":
+        query = query.filter(
+            or_(
+                models.LeaveRequest.username == current_username,
+                models.LeaveRequest.approver_username == current_username
+            )
+        )
+
+    # 2. Logic Lọc theo Trạng thái
+    if status:
+        query = query.filter(models.LeaveRequest.status == status)
+
+    # 3. Logic Tìm kiếm
+    if search:
+        query = query.filter(
+            or_(
+                models.LeaveRequest.username.ilike(f"%{search}%"),
+                models.LeaveRequest.fullname.ilike(f"%{search}%")
+            )
+        )
+
+    # Phân trang
+    total = query.count()
+    offset = (page - 1) * size
+    records = query.order_by(models.LeaveRequest.id.desc()).offset(offset).limit(size).all()
     
     results = []
     for r in records:
@@ -49,7 +87,14 @@ def get_all_requests(db: Session = Depends(get_db)):
             "status": r.status,
             "approver_fullname": r.approver_fullname,
         })
-    return results
+        
+    return {
+        "items": results,
+        "total": total,
+        "page": page,
+        "size": size,
+        "total_pages": (total + size - 1) // size if size > 0 else 1
+    }
 
 @router.post("/api")
 def create_request(item: LeaveRequestModel, db: Session = Depends(get_db)):

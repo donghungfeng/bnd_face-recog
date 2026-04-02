@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime
 import os
 import cv2
@@ -743,3 +744,56 @@ async def confirm_renew(request: FaceRequest, background_tasks: BackgroundTasks)
     except Exception as e:
         if os.path.exists(file_path): os.remove(file_path)
         return {"status": "error", "message": f"Lỗi cập nhật AI: {e}"}
+
+
+# --- API 1: TRẢ VỀ TOÀN BỘ ẢNH CỦA 1 NHÂN VIÊN (Base64) ---
+@router.get("/api/user-faces/{user_id}")
+async def get_user_faces_for_local(user_id: str):
+    user_id = user_id.upper()
+    images = []
+    # Tìm tối đa 5 ảnh của người này
+    possible_files = [f"{user_id}.jpg", f"{user_id}_1.jpg", f"{user_id}_2.jpg", f"{user_id}_3.jpg", f"{user_id}_4.jpg"]
+    
+    for pf in possible_files:
+        file_path = os.path.join(DB_PATH, pf)
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode('utf-8')
+                images.append(encoded)
+    
+    if not images:
+        return {"status": "error", "message": "Tài khoản chưa có ảnh đăng ký"}
+    return {"status": "success", "images": images}
+
+
+# --- API 2: GHI NHẬN CHẤM CÔNG (BỎ QUA DEEPFACE SO KHỚP) ---
+@router.post("/api/log-local-attendance")
+async def log_local_attendance(data: dict, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user_id = data.get("user_id").upper()
+    img_full_base64 = data.get("full_image_base64")
+    client_ip = data.get("client_public_ip")
+    lat = data.get("latitude", 0)
+    lng = data.get("longitude", 0)
+    att_type = data.get("attendance_type", "Cá nhân v3")
+    note = data.get("note", "Local Match")
+    match_probability = data.get("match_probability", 1.0)  # Mặc định 100% nếu Frontend đã xác nhận
+
+    try:
+        # Giải mã ảnh để lưu vào ổ cứng
+        img_full = services.decode_base64(img_full_base64) if img_full_base64 else None
+        
+        # Bỏ qua khâu AI DeepFace, gọi thẳng hàm background_logging để ghi DB
+        background_tasks.add_task(
+            services.background_logging, 
+            user_id, 
+            img_full, 
+            match_probability,
+            client_ip, 
+            lat, 
+            lng, 
+            att_type, 
+            note
+        )
+        return {"status": "success", "message": "Chấm công thành công"}
+    except Exception as e:
+        return {"status": "error", "message": f"Lỗi ghi nhận: {str(e)}"}
