@@ -21,12 +21,24 @@ def calculate_shift_details(shift_dict, c_in_dt, c_out_dt, img_in, img_out):
     Dùng chung logic tính công cũ nhưng dựa trên datetime object thay vì scan objects.
     """
     cat = shift_dict['cat']
+    # 🌟 Đọc cờ nhận diện xem ca này là hệ thống tự xếp hay quản lý xếp
+    is_auto_schedule = shift_dict.get('is_auto_schedule', False) 
+    
     status = constants.AttendanceStatus.ABSENT
     late_min, early_min, actual_hours, actual_workday = 0, 0, 0.0, 0.0
     
     c_in = c_in_dt.time() if c_in_dt else None
     c_out = None
     
+    # --- 🌟 LOGIC MỚI: CHỈ ĐỔI STATUS NẾU LÀ CA X "TỰ ĐỘNG" ---
+    def resolve_final_status(computed_status):
+        if is_auto_schedule: # Nếu hệ thống tự nhét ca X vào -> Chưa có lịch
+            return constants.AttendanceStatus.NO_SCHEDULE
+        elif cat.shift_code in ["X-", "X-/2"]: # Vẫn giữ logic Chế độ 7h
+            return constants.AttendanceStatus.SEVEN_HOURS
+        return computed_status # Ca X do quản lý xếp thì vẫn trả về PRESENT/LATE/EARLY... như bình thường
+    # -----------------------------------------------------------------------------------
+
     # Tính đi muộn
     if c_in_dt and c_in_dt > shift_dict['checkin_to']:
         late_min = int((c_in_dt - shift_dict['checkin_to']).total_seconds() / 60)
@@ -46,11 +58,11 @@ def calculate_shift_details(shift_dict, c_in_dt, c_out_dt, img_in, img_out):
     # Ca đang diễn ra
     if c_out_dt is None and now < ref_checkout_limit:
         status = constants.AttendanceStatus.LATE if late_min > 0 else constants.AttendanceStatus.IN_PROGRESS
-        return c_in, None, status, late_min, 0, img_in, None, 0.0, 0.0
+        return c_in, None, resolve_final_status(status), late_min, 0, img_in, None, 0.0, 0.0
         
     # Vắng mặt (Không In, Không Out)
     if not c_in_dt and not c_out_dt:
-        return None, None, constants.AttendanceStatus.ABSENT, 0, 0, None, None, 0.0, 0.0
+        return None, None, resolve_final_status(constants.AttendanceStatus.ABSENT), 0, 0, None, None, 0.0, 0.0
 
     # Tính về sớm và chốt Status
     if c_out_dt:
@@ -64,7 +76,7 @@ def calculate_shift_details(shift_dict, c_in_dt, c_out_dt, img_in, img_out):
     else:
         status = constants.AttendanceStatus.ABSENT
 
-    # Tính công dựa theo Status
+    # Tính công dựa theo Status gốc
     base_h = float(getattr(cat, 'work_hours', None) or 0.0)
     base_d = float(getattr(cat, 'work_days', None) or 0.0)
     if status == constants.AttendanceStatus.PRESENT:
@@ -76,7 +88,8 @@ def calculate_shift_details(shift_dict, c_in_dt, c_out_dt, img_in, img_out):
         if work_duration >= 4.0:  # Trâm chước nửa công nếu có mặt quá 4 tiếng
             actual_hours, actual_workday = base_h / 2, base_d / 2
 
-    return c_in, c_out, status, late_min, early_min, img_in, img_out, actual_hours, actual_workday
+    # ÁP DỤNG TRẠNG THÁI MỚI VÀO OUTPUT
+    return c_in, c_out, resolve_final_status(status), late_min, early_min, img_in, img_out, actual_hours, actual_workday
 
 
 # --- CÁC HÀM XỬ LÝ CHÍNH ---
@@ -146,9 +159,13 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
         for a in assign_map[emp_id]:
             emp_schedule_map[a.shift_date].extend([c.strip() for c in a.shift_code.split(',') if c.strip()])
 
+        # --- 🌟 THEO DÕI NHỮNG NGÀY BỊ THIẾU LỊCH VÀ PHẢI TỰ CHÈN CA X ---
+        auto_assigned_dates = set()
+
         for s in emp_summaries[emp_id]:
             if s.target_date not in emp_schedule_map or not emp_schedule_map[s.target_date]:
                 emp_schedule_map[s.target_date] = ["X"]
+                auto_assigned_dates.add(s.target_date) # Ghi nhận lại ngày này
 
         # 2. TRẢI PHẲNG (FLATTEN) THÀNH CHUỖI THỜI GIAN
         shifts_chain = []
@@ -172,10 +189,14 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                     checkin_to_dt = datetime.combine(d, ci_to) if ci_to else start_dt
                     checkout_from_dt = datetime.combine(d + timedelta(days=1 if is_ovn else 0), co_from) if co_from else end_dt
                     
+                    # Xác định xem ca X này có phải là do hệ thống tự chèn không
+                    is_auto = (d in auto_assigned_dates) and (c == "X")
+
                     shifts_chain.append({
                         'date': d, 'shift_code': cat.shift_code, 'cat': cat,
                         'start_dt': start_dt, 'end_dt': end_dt,
-                        'checkin_to': checkin_to_dt, 'checkout_from': checkout_from_dt
+                        'checkin_to': checkin_to_dt, 'checkout_from': checkout_from_dt,
+                        'is_auto_schedule': is_auto  # --- 🌟 LƯU CỜ VÀO CHUỖI CA ---
                     })
                     
         shifts_chain.sort(key=lambda x: x['start_dt'])
@@ -193,10 +214,10 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
         shift_out_dt = [None] * N
         shift_in_img = [None] * N
         shift_out_img = [None] * N
+        now = datetime.now()
         
         # ====================================================================================
         # RULE 1 & 2: Ranh giới giao ca (Contiguous & Gap)
-        # NGHIỆP VỤ: CHỈ nối ca khi 2 ca ở cùng 1 ngày, HOẶC ca trước là ca qua đêm
         # ====================================================================================
         for i in range(N - 1):
             s_curr = shifts_chain[i]
@@ -205,7 +226,6 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
             is_same_day = s_curr['date'] == s_next['date']
             is_curr_overnight = _is_overnight_shift(s_curr['cat'])
             
-            # ĐIỂM CHỐT CHẶN: Nếu không thỏa mãn điều kiện nghiệp vụ -> Bỏ qua, cắt đứt liên kết
             if not (is_same_day or is_curr_overnight):
                 continue
                 
@@ -213,12 +233,13 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
             s_next_start = s_next['start_dt']
             
             if e_curr == s_next_start:
-                shift_out_dt[i] = e_curr
-                shift_in_dt[i+1] = e_curr
-                exact = [s for s in emp_scans if s.check_in_time == e_curr]
-                if exact:
-                    shift_out_img[i] = getattr(exact[0], 'image_path', None)
-                    shift_in_img[i+1] = getattr(exact[-1], 'image_path', None)
+                if e_curr <= now:
+                    shift_out_dt[i] = e_curr
+                    shift_in_dt[i+1] = e_curr
+                    exact = [s for s in emp_scans if s.check_in_time == e_curr]
+                    if exact:
+                        shift_out_img[i] = getattr(exact[0], 'image_path', None)
+                        shift_in_img[i+1] = getattr(exact[-1], 'image_path', None)
                     
             elif e_curr < s_next_start:
                 gap_scans = [s for s in emp_scans if e_curr <= s.check_in_time <= s_next_start]
@@ -250,7 +271,6 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                         if shift_out_dt[i-1] is not None and prev_shift['end_dt'] < s_curr['start_dt']:
                             search_start = max(search_start, shift_out_dt[i-1])
                     else:
-                        # Rào chắn độc lập: Chỉ quét từ 00:00 của ngày hiện tại
                         search_start = datetime.combine(s_curr['date'], time.min)
                 else:
                     search_start = datetime.combine(s_curr['date'], time.min)
@@ -275,7 +295,6 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                     if is_same_day or is_curr_overnight:
                         search_end = next_shift['start_dt']
                     else:
-                        # Rào chắn độc lập: Chỉ quét đến 23:59:59 của ngày kết thúc ca hiện tại
                         end_date = s_curr['date'] + timedelta(days=1 if _is_overnight_shift(s_curr['cat']) else 0)
                         search_end = datetime.combine(end_date, time.max)
                 else:

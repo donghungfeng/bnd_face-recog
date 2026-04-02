@@ -10,6 +10,8 @@ class AttendanceStatus(IntEnum):
     UNPAID_LEAVE = 5     # Nghỉ không lương
     LATE_AND_EARLY_LEAVE = 6 # Đi muộn & Về sớm
     IN_PROGRESS = 7
+    NO_SCHEDULE = 8          # Chưa có lịch
+    SEVEN_HOURS = 9          # Chế độ 7h
 
 class ExplanationStatus(IntEnum):
     """Trạng thái giải trình"""
