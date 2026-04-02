@@ -619,7 +619,6 @@
     </div>
 </div>
 
-<!-- MODAL NGHỈ PHÉP -->
 <div class="modal-overlay" id="leaveModal">
     <div class="modal-content">
         <h3 style="color:var(--primary);">✈️ Đăng Ký Nghỉ Phép / Công Tác</h3>
@@ -642,7 +641,6 @@
     </div>
 </div>
 
-<!-- MODAL GIẢI TRÌNH -->
 <div class="modal-overlay" id="giaiTrinhModal">
     <div class="modal-content" style="border-top: 5px solid var(--primary);">
         <h3 style="color:var(--primary);">✍️ Viết Giải Trình</h3>
@@ -651,6 +649,11 @@
             <input type="hidden" id="gt_username">
             <input type="hidden" id="gt_date">
             <input type="hidden" id="gt_att_id">
+            <input type="hidden" id="gt_shift_code_hidden"> <div class="form-group">
+                <label>Ca làm việc đang giải trình</label>
+                <input type="text" id="gt_shift_code_display" disabled style="background: #f1f5f9; color: #475569; font-weight: 700;">
+            </div>
+
             <div class="form-group">
                 <label>Lý do giải trình <span style="color:red">*</span></label>
                 <textarea id="gt_reason" rows="4" required placeholder="Nhập lý do chi tiết..."></textarea>
@@ -663,7 +666,6 @@
     </div>
 </div>
 
-<!-- BOTTOM SHEET (MOBILE) -->
 <div class="bottom-sheet-overlay" id="bottomSheet" onclick="closeBottomSheet(event)">
     <div class="bottom-sheet" onclick="event.stopPropagation()">
         <div class="sheet-handle"></div>
@@ -939,14 +941,14 @@
                     const disabled = calcExplainDisabled(rec, firstOfMonth, yesterday);
                     const attId = rec.id ?? '';
                     explainBtns = `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
-                        onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}')"
+                        onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}','${rec.shift_code || ''}')"
                         title="Viết giải trình">✍️ Giải trình</button>`;
                 } else if (recs.length > 1) {
                     recs.forEach((rec, idx) => {
                         const disabled = calcExplainDisabled(rec, firstOfMonth, yesterday);
                         const attId = rec.id ?? '';
                         explainBtns += `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
-                            onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}')"
+                            onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}','${rec.shift_code || ''}')"
                             title="Giải trình ca ${idx+1}">✍️ Ca ${idx+1}</button>`;
                     });
                 }
@@ -1044,13 +1046,19 @@
     // ─────────────────────────────────────────
     // MODAL GIẢI TRÌNH
     // ─────────────────────────────────────────
-    function openGiaiTrinhModal(attId, fullName, dateStr) {
+    function openGiaiTrinhModal(attId, fullName, dateStr, shiftCode) {
         const [y, m, d]  = (dateStr || '--').split('-');
         const displayDate = dateStr ? `${d}/${m}/${y}` : '---';
 
         document.getElementById('gt_username').value = currentUsername;
         document.getElementById('gt_date').value     = dateStr;
         document.getElementById('gt_att_id').value   = attId;
+        
+        // Setup thông tin ca trực
+        const sc = shiftCode || 'Không xác định';
+        document.getElementById('gt_shift_code_hidden').value = shiftCode || '';
+        document.getElementById('gt_shift_code_display').value = sc;
+
         document.getElementById('gt_reason').value   = '';
 
         document.getElementById('gt_info_line').innerHTML =
@@ -1072,6 +1080,7 @@
         const payload = {
             username:   document.getElementById('gt_username').value,
             date:       document.getElementById('gt_date').value,
+            shift_code: document.getElementById('gt_shift_code_hidden').value,
             reason:     document.getElementById('gt_reason').value.trim(),
             status:     "1"
         };
@@ -1132,6 +1141,7 @@
                 const workDay = rec.actual_workday ?? '';
                 const status  = rec.status ?? null;
                 const attId   = rec.id ?? '';
+                const shiftCode = rec.shift_code || '';
 
                 const thisDate = new Date(rec.date + 'T00:00:00');
                 const statusOk = status === 1 || status === 7;
@@ -1165,7 +1175,7 @@
                     <div class="sheet-shift-body">
                         ${inHtml}${outHtml}${workHtml}
                         <button class="sheet-explain-per-shift" ${explainDisabled ? 'disabled' : ''}
-                            data-att-id="${attId}" data-date="${rec.date}" data-emp="${empName}">
+                            data-att-id="${attId}" data-date="${rec.date}" data-emp="${empName}" data-shift-code="${shiftCode}">
                             ✍️ Viết giải trình${recs.length > 1 ? ' ca này' : ''}
                         </button>
                     </div>`;
@@ -1174,7 +1184,7 @@
                 card.querySelector('.sheet-explain-per-shift').addEventListener('click', function () {
                     if (this.disabled) return;
                     closeBottomSheet();
-                    openGiaiTrinhModal(this.dataset.attId, this.dataset.emp, this.dataset.date);
+                    openGiaiTrinhModal(this.dataset.attId, this.dataset.emp, this.dataset.date, this.dataset.shiftCode);
                 });
 
                 container.appendChild(card);
@@ -1195,7 +1205,7 @@
             explainBtn.style.display = '';
             explainBtn.onclick = explainDisabled ? null : () => {
                 closeBottomSheet();
-                openGiaiTrinhModal(rec.id ?? '', empName, dateStr);
+                openGiaiTrinhModal(rec.id ?? '', empName, dateStr, rec.shift_code || '');
             };
         } else {
             // Ẩn nút chính nếu nhiều ca (mỗi ca có nút riêng)

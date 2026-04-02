@@ -837,6 +837,12 @@
         <form id="giaiTrinhForm">
             <input type="hidden" id="gt_username">
             <input type="hidden" id="gt_date">
+            <input type="hidden" id="gt_shift_code_hidden"> <div style="margin-bottom:14px;">
+                <label style="display:block; font-size:0.82rem; font-weight:700; color:#64748b; margin-bottom:6px;">Ca làm việc đang giải trình</label>
+                <input type="text" id="gt_shift_code_display" disabled 
+                    style="width:100%; padding:10px 12px; background: #f1f5f9; border: 1px solid var(--border); border-radius:8px; color: #475569; font-weight: 700; font-family:'Nunito',sans-serif; box-sizing:border-box;">
+            </div>
+
             <div style="margin-bottom:14px;">
                 <label style="display:block; font-size:0.82rem; font-weight:700; color:#64748b; margin-bottom:6px;">Lý do giải trình <span style="color:red;">*</span></label>
                 <textarea id="gt_reason" rows="4" required
@@ -982,13 +988,15 @@
             return;
         }
 
-        // Tính ngày đầu tháng và ngày hôm qua để kiểm tra điều kiện giải trình
+        // Tính mùng 1 tháng trước và ngày hôm qua để kiểm tra điều kiện giải trình
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        firstOfMonth.setHours(0, 0, 0, 0);
+        
+        const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        firstOfLastMonth.setHours(0, 0, 0, 0);
 
         const startIndex = (currentPage - 1) * rowsPerPage;
         const endIndex = startIndex + rowsPerPage;
@@ -1049,7 +1057,7 @@
                         </div>
                     </td>
                     <td data-label="GIẢI TRÌNH" style="text-align:center;">
-                        ${getGiaiTrinhButton(item, firstOfMonth, yesterday)}
+                        ${getGiaiTrinhButton(item, firstOfLastMonth, yesterday)}
                     </td>
                     <td data-label="CHI TIẾT" style="text-align:center;">
                         <button class="btn-chi-tiet"
@@ -1066,28 +1074,30 @@
         });
 
         tbody.querySelectorAll('button.btn-giai-trinh:not([disabled])').forEach(btn => {
-            btn.addEventListener('click', () => openGiaiTrinhModal(btn.dataset.gtId, btn.dataset.gtName, btn.dataset.gtDate));
+            btn.addEventListener('click', () => openGiaiTrinhModal(btn.dataset.gtId, btn.dataset.gtName, btn.dataset.gtDate, btn.dataset.gtShift));
         });
 
         renderPagination(filteredData.length, startIndex, endIndex);
     }
 
-    function getGiaiTrinhButton(item, firstOfMonth, yesterday) {
+    function getGiaiTrinhButton(item, startDateLimit, endDateLimit) {
         // Disabled nếu status là PRESENT (1) hoặc IN_PROGRESS (7)
         const disabledByStatus = item.status === 1 || item.status === 7;
 
-        // Disabled nếu ngày bản ghi không nằm trong [đầu tháng, hôm qua]
+        // Disabled nếu ngày bản ghi không nằm trong [mùng 1 tháng trước, hôm qua]
         let disabledByDate = true;
         if (item.date) {
             const recordDate = new Date(item.date + 'T00:00:00');
-            disabledByDate = recordDate < firstOfMonth || recordDate > yesterday;
+            disabledByDate = recordDate < startDateLimit || recordDate > endDateLimit;
         }
 
         const isDisabled = disabledByStatus || disabledByDate;
         const safeId   = String(item.id || '');
         const safeName = (item.full_name || '').replace(/'/g, '&#39;');
         const safeDate = item.date || '';
-        return `<button class="btn-giai-trinh" ${isDisabled ? 'disabled' : ''} data-gt-id="${safeId}" data-gt-name="${safeName}" data-gt-date="${safeDate}">✍️ Viết giải trình</button>`;
+        const safeShift = item.shift_code || ''; // Lấy mã ca
+        
+        return `<button class="btn-giai-trinh" ${isDisabled ? 'disabled' : ''} data-gt-id="${safeId}" data-gt-name="${safeName}" data-gt-date="${safeDate}" data-gt-shift="${safeShift}">✍️ Viết giải trình</button>`;
     }
 
     function renderPagination(totalItems, start, end) {
@@ -1126,9 +1136,15 @@
     // ═══════════════════════════════════════════════════
     // 7. MODAL GIẢI TRÌNH
     // ═══════════════════════════════════════════════════
-    function openGiaiTrinhModal(id, fullName, date) {
+    function openGiaiTrinhModal(id, fullName, date, shiftCode) {
         document.getElementById('gt_username').value = currentUsername;
         document.getElementById('gt_date').value = date;
+        
+        // Gắn mã ca vào input ẩn và input hiển thị
+        const sc = shiftCode || 'Không xác định';
+        document.getElementById('gt_shift_code_hidden').value = shiftCode || '';
+        document.getElementById('gt_shift_code_display').value = sc;
+
         document.getElementById('gt_reason').value = '';
 
         // Hiển thị thông tin bản ghi
@@ -1153,6 +1169,7 @@
         const payload = {
             username: document.getElementById('gt_username').value,
             date: document.getElementById('gt_date').value,
+            shift_code: document.getElementById('gt_shift_code_hidden').value, // Lấy mã ca gửi lên API
             reason: document.getElementById('gt_reason').value.trim(),
             status: "1"
         };

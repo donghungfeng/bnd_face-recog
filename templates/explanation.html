@@ -153,7 +153,20 @@
         transition: 0.2s;
     }
 
-    /* Responsive adjustments omitted for brevity, same as your original */
+    /* --- CSS NÚT PHÂN TRANG --- */
+    .btn-pagination {
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-pagination:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; }
+    .btn-pagination:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
 {% endblock %}
 
@@ -193,7 +206,7 @@
         </form>
     </div>
 
-    <div class="card" style="max-width: 100%; overflow: hidden;">
+    <div class="card" style="max-width: 100%; overflow: hidden; display: flex; flex-direction: column;">
         <h3>Danh Sách Giải Trình</h3>
 
         <div class="filter-container" style="display: flex; gap: 15px; margin-bottom: 15px;">
@@ -212,7 +225,7 @@
             </div>
         </div>
 
-        <div style="width: 100%; overflow-x: auto;">
+        <div style="width: 100%; overflow-x: auto; flex: 1;">
             <table>
                 <thead>
                     <tr>
@@ -227,6 +240,34 @@
             </table>
         </div>
 
+        <div id="paginationControls"
+            style="display: flex; justify-content: space-between; align-items: center; padding: 15px 10px 5px 10px; background: #fff; border-top: 1px solid #e2e8f0; font-size: 0.85rem; margin-top: auto;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <button class="btn-pagination" id="btnFirst" onclick="jumpToPage(1)" title="Trang đầu">⏮️</button>
+                <button class="btn-pagination" id="btnPrev" onclick="changePage(-1)" title="Trang trước">◀️</button>
+                <span style="margin: 0 10px;">
+                    Trang <input type="number" id="pageInput" value="1" min="1" onchange="jumpToPage(this.value)"
+                        style="width: 45px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px;">
+                    / <span id="totalPageDisplay">1</span>
+                </span>
+                <button class="btn-pagination" id="btnNext" onclick="changePage(1)" title="Trang sau">▶️</button>
+                <button class="btn-pagination" id="btnLast" onclick="jumpToPage(totalPages)" title="Trang cuối">⏭️</button>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 15px; color: #64748b;">
+                <span id="pageInfo">Tổng số: 0</span>
+                <span>
+                    Kết quả trên trang:
+                    <select id="pageSizeSelect" onchange="updatePageSize(this.value)"
+                        style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px;">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </span>
+            </div>
+        </div>
         </div>
 </div>
 {% endblock %}
@@ -320,7 +361,6 @@
                 actionHtml += `<button onclick="editRecord(${item.id})" class="btn-action" style="background:#e0f2fe; color:#0284c7; margin-left:4px;">✏️ Sửa</button>`;
             }
 
-            // Lấy tên ca, nếu lỗi không có tên ca thì hiển thị mã ca (shift_code)
             const displayShift = item.shift_name || item.shift_code || "Không xác định";
 
             tbody.innerHTML += `
