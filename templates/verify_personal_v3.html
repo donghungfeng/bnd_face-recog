@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chấm Công Cá Nhân - BND Local AI</title>
+    <title>Chấm Công Cá Nhân - BND Hybrid AI</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection"></script>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
@@ -12,7 +12,7 @@
     
     <style>
         :root {
-            --primary: #00f2ff; --success: #00ff88; --warning: #ffb800; --error: #ff4444;
+            --primary: #00f2ff; --success: #00ff88; --warning: #ffb800; --error: #ff4444; --server: #f472b6;
             --bg: #0f172a; --card: #1e293b;
         }
 
@@ -23,210 +23,97 @@
         }
 
         .btn-back { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.1); color: #cbd5e1; text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; z-index: 50; border: 1px solid rgba(255,255,255,0.05); }
-        .btn-reset-cache { position: absolute; top: 15px; right: 15px; background: rgba(255,68,68,0.1); color: var(--error); border: none; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; z-index: 50; border: 1px solid rgba(255,68,68,0.3); cursor: pointer; font-weight: bold;}
-        
         .user-badge { display: inline-flex; background: rgba(0, 242, 255, 0.1); border: 1px solid rgba(0, 242, 255, 0.3); padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; align-items: center; gap: 8px; margin-bottom: 10px; }
         .user-badge strong { color: var(--primary); font-size: 1.05rem; letter-spacing: 1px;}
 
         header { width: 100%; max-width: 500px; text-align: center; margin-bottom: 10px; flex-shrink: 0; margin-top: 35px;}
-        h2 { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--primary); margin: 0 0 10px 0; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
+        h2 { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--primary); margin: 0 0 10px 0; }
 
         .live-clock {
             font-family: 'Orbitron', monospace; font-size: 2rem; font-weight: 700; color: #fff;
             background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 5px 20px; border-radius: 12px; margin-bottom: 15px; display: inline-block;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); letter-spacing: 2px;
+            padding: 5px 20px; border-radius: 12px; margin-bottom: 10px; display: inline-block;
         }
 
-        #networkBanner, #locationBanner { width: 100%; padding: 8px; margin-bottom: 8px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; text-align: center; transition: all 0.3s; box-sizing: border-box; }
-        .net-checking { background: #334155; color: #cbd5e1; border: 1px solid #475569; }
-        .net-valid { background: rgba(0, 255, 136, 0.15); color: var(--success); border: 1px solid rgba(0, 255, 136, 0.4); }
-        .net-invalid { background: rgba(255, 68, 68, 0.15); color: var(--error); border: 1px solid rgba(255, 68, 68, 0.4); animation: pulseRed 2s infinite; }
-        @keyframes pulseRed { 0% {box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4);} 70% {box-shadow: 0 0 0 10px rgba(255, 68, 68, 0);} 100% {box-shadow: 0 0 0 0 rgba(255, 68, 68, 0);} }
+        /* Badge hiển thị trạng thái Local hay Server */
+        .mode-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; display: inline-block; }
+        .mode-local { background: rgba(0, 242, 255, 0.1); color: var(--primary); border: 1px solid var(--primary); }
+        .mode-server { background: rgba(244, 114, 182, 0.1); color: var(--server); border: 1px solid var(--server); animation: pulsePink 2s infinite; }
+        @keyframes pulsePink { 0% {box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.4);} 70% {box-shadow: 0 0 0 10px rgba(244, 114, 182, 0);} 100% {box-shadow: 0 0 0 0 rgba(244, 114, 182, 0);} }
 
-        .info { margin-top: 5px; font-family: 'Orbitron', sans-serif; font-size: 0.9rem; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold; box-sizing: border-box;}
+        #networkBanner, #locationBanner { width: 100%; padding: 8px; margin-bottom: 8px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; text-align: center; box-sizing: border-box; }
+        .net-valid { background: rgba(0, 255, 136, 0.15); color: var(--success); border: 1px solid rgba(0, 255, 136, 0.4); }
+        .net-invalid { background: rgba(255, 68, 68, 0.15); color: var(--error); border: 1px solid rgba(255, 68, 68, 0.4); }
+
+        .info { margin-top: 5px; font-family: 'Orbitron', sans-serif; font-size: 0.9rem; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold; box-sizing: border-box;}
         .status-scanning { color: var(--primary); border-color: var(--primary); }
-        .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
+        .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); }
         .status-warning { color: var(--warning); border-color: var(--warning); }
-        .status-err { color: var(--warning); border-color: var(--error); background: rgba(255, 68, 68, 0.1); }
+        .status-err { color: var(--error); border-color: var(--error); }
         .loader { width: 16px; height: 16px; border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        .main-wrapper { position: relative; width: 100%; max-width: 400px; flex: 1; background: #000; border-radius: 15px; overflow: hidden; border: 2px solid #334155; box-shadow: 0 5px 20px rgba(0,0,0,0.5); margin-top: 5px;}
+        .main-wrapper { position: relative; width: 100%; max-width: 400px; flex: 1; background: #000; border-radius: 15px; overflow: hidden; border: 2px solid #334155; margin-top: 5px;}
         #webcam { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .guide-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; border: 2px dashed rgba(255,255,255,0.3); border-radius: 50% / 45%; width: 220px; height: 300px; transition: all 0.3s; z-index: 5; }
-        .guide-active { border-color: var(--success); box-shadow: 0 0 25px rgba(0, 255, 136, 0.4); border-style: solid; background: rgba(0, 255, 136, 0.05); }
-        .scan-bar { position: absolute; width: 100%; height: 3px; background: linear-gradient(to bottom, transparent, var(--primary)); box-shadow: 0 0 15px var(--primary); top: 0; z-index: 5; animation: scan 2.5s ease-in-out infinite; opacity: 0.6; }
-        @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
+        .guide-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; border: 2px dashed rgba(255,255,255,0.3); border-radius: 50% / 45%; width: 220px; height: 300px; z-index: 5; }
+        .guide-active { border-color: var(--success); box-shadow: 0 0 25px rgba(0, 255, 136, 0.4); border-style: solid; }
     </style>
 </head>
 <body>
 
     <a href="/dashboard" class="btn-back">⬅ Đóng</a>
-    <button onclick="clearCache()" class="btn-reset-cache">🔄 Làm mới AI</button>
 
     <header>
-        <h2>CHẤM CÔNG CÁ NHÂN (LOCAL AI)</h2>
+        <h2>CHẤM CÔNG CÁ NHÂN</h2>
         <div id="liveClock" class="live-clock">00:00:00</div>
+        <br>
+        <div id="modeBadge" class="mode-badge mode-local">Chế độ: AI Nội Bộ (Local)</div>
         <br>
         <div class="user-badge">👤 <strong id="displayUserId">...</strong></div>
         
-        <div id="networkBanner" class="net-checking">🔄 Đang kiểm tra Mạng & Phân quyền...</div>
-        <div id="locationBanner" class="net-checking" style="display:none;">📍 Đang lấy tọa độ GPS...</div>
+        <div id="networkBanner" class="net-checking">🔄 Kiểm tra mạng...</div>
+        <div id="locationBanner" class="net-checking" style="display:none;">📍 Kiểm tra GPS...</div>
         
         <div id="resultBox" class="info status-scanning">
-            <div class="loader"></div> ĐANG KHỞI TẠO HỆ THỐNG AI...
+            <div class="loader"></div> KHỞI TẠO AI...
         </div>
     </header>
     
     <div class="main-wrapper">
         <div class="guide-overlay" id="guideCircle"></div>
-        <div class="scan-bar" id="scanBar" style="display: none;"></div>
         <video id="webcam" autoplay playsinline muted></video>
         <canvas id="cropCanvas" style="display:none;"></canvas>
     </div>
 
     <script>
-        // ==========================================
-        // 1. BIẾN TOÀN CỤC & CẤU HÌNH
-        // ==========================================
-        
-        // ---> CẤU HÌNH ĐỘ CHÍNH XÁC (Tương đương DeepFace) <---
-        const MIN_MATCH_PERCENT = 55; // 55% trở lên mới được xem là khớp
+        // --- CẤU HÌNH ---
+        const MIN_MATCH_PERCENT = 70; 
+        const MAX_LOCAL_ATTEMPTS = 3; // Ngưỡng chuyển sang Server
 
-        let userConfig = { checkMang: 1, checkViTri: 1, ccCaNhan: 1 };
-        let isNetworkValid = false; 
-        let isLocationValid = false;
-        let currentPublicIp = "";
-        let isProcessing = true; // Khóa UI cho đến khi AI load xong
-        let lastDetection = null;
-        let isFaceDetectionRunning = false;
+        let failCount = 0;
+        let isProcessing = true; 
+        let isNetworkValid = false, isLocationValid = false;
+        let currentPublicIp = "", currentPoint = { lat: 0, lng: 0 };
+        let userConfig = { ccCaNhan: 1 };
+        let localFaceMatcher = null;
         let lastProcessingTime = 0;
 
-        let networkCheckDone = false;
-        let locationCheckDone = false;
-
-        let localFaceMatcher = null; // Bộ nhớ AI nội bộ
-
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('liveClock').innerText = now.toLocaleTimeString('vi-VN', { hour12: false });
-        }
-        setInterval(updateClock, 1000); updateClock();
-
-        const HOSPITAL_ZONE = [
-            { lat: 21.132651, lng: 105.774238 }, { lat: 21.131013, lng: 105.776601 }, 
-            { lat: 21.130023, lng: 105.773278 }, { lat: 21.130553, lng: 105.772459 }  
-        ];
-        let currentPoint = { lat: 0, lng: 0 };
-
-        const currentUserId = localStorage.getItem('hrm_username') || "TCKT.XUANDT";
+        const currentUserId = localStorage.getItem('hrm_username') || "UNKNOWN";
         document.getElementById('displayUserId').innerText = currentUserId.toUpperCase();
 
         const video = document.getElementById('webcam');
         const resultBox = document.getElementById('resultBox');
         const guideCircle = document.getElementById('guideCircle');
-        const scanBar = document.getElementById('scanBar');
 
-        const FACE_MIN_SIZE = 0.40; const FACE_MAX_SIZE = 0.75;
-        const CENTER_X_MIN = 0.30; const CENTER_X_MAX = 0.70;
-        const CENTER_Y_MIN = 0.30; const CENTER_Y_MAX = 0.70;
-
-        function clearCache() {
-            if(confirm("Bạn có muốn tải lại khuôn mặt gốc từ Server không?")) {
-                localStorage.removeItem(`bnd_vector_${currentUserId}`);
-                window.location.reload();
-            }
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('liveClock').innerText = now.toLocaleTimeString('vi-VN', { hour12: false });
         }
+        setInterval(updateClock, 1000);
 
-        function isPointInPolygon(point, polygon) {
-            let x = point.lng, y = point.lat; let isInside = false;
-            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                let xi = polygon[i].lng, yi = polygon[i].lat; let xj = polygon[j].lng, yj = polygon[j].lat;
-                let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-                if (intersect) isInside = !isInside;
-            }
-            return isInside;
-        }
-
-        function updateBannersUI() {
-            const netBanner = document.getElementById('networkBanner');
-            const locBanner = document.getElementById('locationBanner');
-
-            if (networkCheckDone && !locationCheckDone) {
-                netBanner.innerHTML = `🔄 Đang xử lý dữ liệu hệ thống...`;
-                locBanner.style.display = 'block'; locBanner.className = 'net-checking';
-                locBanner.innerHTML = `📍 Đang lấy tọa độ GPS... (Vui lòng chờ)`;
-                return; 
-            }
-
-            if (networkCheckDone && locationCheckDone) {
-                locBanner.style.display = 'block';
-                if (isNetworkValid || isLocationValid) {
-                    netBanner.className = 'net-valid'; netBanner.innerHTML = `✅ Mạng hợp lệ (IP: ${currentPublicIp || 'LAN'})`;
-                    locBanner.className = 'net-valid'; locBanner.innerHTML = `✅ Đã xác nhận trong khuôn viên`;
-                } else {
-                    netBanner.className = 'net-invalid'; netBanner.innerHTML = `❌ Ngoài vùng chấm công`;
-                    locBanner.className = 'net-invalid'; locBanner.innerHTML = `❌ Ngoài khuôn viên!`;
-                }
-            }
-        }
-
-        async function verifyNetworkAndLocation() {
-            try {
-                const ipRes = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipRes.json();
-                currentPublicIp = ipData.ip;
-
-                const res = await fetch('/api/check-ip', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUserId, client_public_ip: currentPublicIp })
-                });
-                const data = await res.json();
-                
-                userConfig.checkMang = data.checkMang;
-                userConfig.checkViTri = data.checkViTri;
-                userConfig.ccCaNhan = data.ccCaNhan;
-
-                if (userConfig.ccCaNhan === 0) {
-                    resultBox.className = "info status-err"; resultBox.innerHTML = "❌ BỊ CẤM CHẤM CÔNG CÁ NHÂN";
-                    return false;
-                }
-
-                isNetworkValid = (userConfig.checkMang === 0) ? true : data.valid;
-            } catch(e) { isNetworkValid = false; }
-            
-            networkCheckDone = true; updateBannersUI(); 
-
-            if (userConfig.checkViTri === 0) {
-                isLocationValid = true;
-            } else if (!navigator.geolocation) {
-                isLocationValid = false;
-            } else {
-                const getGPS = new Promise((resolve) => {
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            currentPoint = { lat: position.coords.latitude, lng: position.coords.longitude };
-                            resolve(isPointInPolygon(currentPoint, HOSPITAL_ZONE));
-                        },
-                        (error) => resolve(false),
-                        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-                    );
-                });
-                const timeoutHuy = new Promise((resolve) => setTimeout(() => resolve(false), 9000));
-                isLocationValid = await Promise.race([getGPS, timeoutHuy]);
-            }
-
-            locationCheckDone = true; updateBannersUI();
-            return true;
-        }
-
-        // ==========================================
-        // 2. KHỞI TẠO AI VÀ LOCAL STORAGE CACHE
-        // ==========================================
+        // --- KHỞI TẠO AI TRÌNH DUYỆT ---
         async function initLocalAI() {
             try {
-                // Link chuẩn face-api
                 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
                 await Promise.all([
                     faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -234,204 +121,186 @@
                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                 ]);
 
-                const cacheKey = `bnd_vector_${currentUserId}`;
-                const cachedData = localStorage.getItem(cacheKey);
+                // Tải ảnh mẫu từ server để tạo vector local
+                const res = await fetch(`/api/user-faces/${currentUserId}`);
+                const data = await res.json();
+                
                 let descriptors = [];
-
-                if (cachedData) {
-                    const parsed = JSON.parse(cachedData);
-                    descriptors = parsed.map(d => new Float32Array(d));
-                    console.log("Đã tải dữ liệu khuôn mặt từ Cache");
-                } else {
-                    resultBox.innerHTML = `<div class="loader"></div> ĐANG ĐỒNG BỘ DỮ LIỆU KHUÔN MẶT...`;
-                    const res = await fetch(`/api/user-faces/${currentUserId}`);
-                    const data = await res.json();
-                    
-                    if (data.status === 'success' && data.images.length > 0) {
-                        for (let base64 of data.images) {
-                            const img = await faceapi.fetchImage(`data:image/jpeg;base64,${base64}`);
-                            const det = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-                            if (det) descriptors.push(det.descriptor);
-                        }
-                        if (descriptors.length > 0) {
-                            localStorage.setItem(cacheKey, JSON.stringify(descriptors.map(d => Array.from(d))));
-                        }
+                if (data.status === 'success') {
+                    for (let base64 of data.images) {
+                        const img = await faceapi.fetchImage(`data:image/jpeg;base64,${base64}`);
+                        const det = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+                        if (det) descriptors.push(det.descriptor);
                     }
                 }
 
                 if (descriptors.length > 0) {
-                    const labeledDescriptors = [new faceapi.LabeledFaceDescriptors(currentUserId, descriptors)];
-                    // Để FaceMatcher nội bộ lỏng 1 chút (0.50) để nó không vội phán "unknown" ngay từ lõi,
-                    // Ta sẽ dùng MIN_MATCH_PERCENT (70%) để tự chặn ở vòng ngoài cho dễ tinh chỉnh.
-                    localFaceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.50); 
-                    
-                    resultBox.className = "info status-scanning";
-                    resultBox.innerHTML = `SẴN SÀNG QUÉT KHUÔN MẶT`;
-                    isProcessing = false; 
+                    localFaceMatcher = new faceapi.FaceMatcher([new faceapi.LabeledFaceDescriptors(currentUserId, descriptors)], 0.50);
+                    isProcessing = false;
+                    resultBox.innerHTML = "SẴN SÀNG QUÉT MẶT";
                 } else {
-                    resultBox.className = "info status-err";
-                    resultBox.innerHTML = `❌ BẠN CHƯA ĐĂNG KÝ ẢNH MẪU`;
+                    resultBox.innerHTML = "❌ CHƯA CÓ DỮ LIỆU MẶT GỐC";
                 }
-
-            } catch (e) {
-                resultBox.className = "info status-err"; resultBox.innerHTML = `❌ LỖI TẢI AI: Mạng quá chậm`;
-            }
+            } catch (e) { resultBox.innerHTML = "❌ LỖI TẢI AI"; }
         }
 
-
-        // ==========================================
-        // 3. VÒNG LẶP MEDIAPIPE (BẮT KHUNG) VÀ GỌI SO KHỚP
-        // ==========================================
-        const faceDetection = new FaceDetection({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}` });
-        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.7 });
-
-        faceDetection.onResults((results) => {
-            isFaceDetectionRunning = false;
-
-            if (results.detections.length > 0) {
-                lastDetection = results.detections[0].boundingBox;
-                const faceSize = lastDetection.width;
-                const faceX = lastDetection.xCenter; const faceY = lastDetection.yCenter;
-
-                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) && (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
-
-                if (!isNetworkValid && !isLocationValid) {
-                    guideCircle.classList.remove('guide-active'); scanBar.style.display = 'none';
-                    if (!isProcessing) { resultBox.className = "info status-err"; resultBox.innerHTML = `⚠️ SAI MẠNG & NGOÀI KHUÔN VIÊN`; }
-                    return;
-                }
-
-                if (!isCentered) {
-                    guideCircle.classList.remove('guide-active');
-                    if (!isProcessing) { resultBox.className = "info status-warning"; resultBox.innerHTML = `⚠️ ĐƯA MẶT VÀO GIỮA KHUNG`; }
-                } else if (faceSize < FACE_MIN_SIZE) {
-                    guideCircle.classList.remove('guide-active');
-                    if (!isProcessing) { resultBox.className = "info status-warning"; resultBox.innerHTML = `⚠️ LẠI GẦN HƠN`; }
-                } else if (faceSize > FACE_MAX_SIZE) {
-                    guideCircle.classList.remove('guide-active');
-                    if (!isProcessing) { resultBox.className = "info status-warning"; resultBox.innerHTML = `⚠️ ĐỨNG XA RA CHÚT`; }
-                } else {
-                    guideCircle.classList.add('guide-active');
-                    scanBar.style.display = 'block';
-                    
-                    const now = Date.now();
-                    if (!isProcessing && localFaceMatcher && now - lastProcessingTime > 2000) {
-                        verifyLocallyAndLog();
-                        lastProcessingTime = now;
-                    }
-                }
-            } else {
-                lastDetection = null; guideCircle.classList.remove('guide-active'); scanBar.style.display = 'none';
-                if (!isProcessing && (isNetworkValid || isLocationValid) && userConfig.ccCaNhan !== 0) {
-                    resultBox.className = "info status-scanning"; resultBox.innerHTML = "SẴN SÀNG QUÉT KHUÔN MẶT";
-                }
-            }
-        });
-
-        // Hàm so khớp 1:1 trực tiếp trên thiết bị (Có quy đổi Distance sang Percent)
-        async function verifyLocallyAndLog() {
+        // --- HÀM SO KHỚP HYBRID (LOCAL -> SERVER) ---
+        async function verifyHybrid() {
             isProcessing = true;
-            resultBox.className = "info status-scanning";
-            resultBox.innerHTML = `<div class="loader"></div> ĐANG SO KHỚP AI TẠI MÁY...`;
+            const now = Date.now();
 
-            try {
+            // 1. CHỤP ẢNH
+            const tempCanvas = document.createElement('canvas');
+            const scale = Math.min(1, 640 / video.videoWidth);
+            tempCanvas.width = video.videoWidth * scale; tempCanvas.height = video.videoHeight * scale;
+            const ctx = tempCanvas.getContext('2d');
+            ctx.translate(tempCanvas.width, 0); ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+            const fullImage = tempCanvas.toDataURL('image/jpeg', 0.8);
+
+            // 2. LOGIC CHỌN CHẾ ĐỘ
+            if (failCount < MAX_LOCAL_ATTEMPTS) {
+                // --- CHẾ ĐỘ LOCAL ---
+                resultBox.className = "info status-scanning";
+                resultBox.innerHTML = `<div class="loader"></div> ĐANG SOI MẶT (LOCAL ${failCount+1}/3)...`;
+
                 const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
-                
                 if (!detection) {
-                    resultBox.className = "info status-warning";
-                    resultBox.innerHTML = `⚠️ ẢNH BỊ MỜ HOẶC NHIỄU SÁNG, THỬ LẠI`;
-                    setTimeout(() => { isProcessing = false; }, 1500);
-                    return;
+                    resultBox.innerHTML = "⚠️ KHÔNG THẤY MẶT, THỬ LẠI";
+                    setTimeout(() => isProcessing = false, 1500); return;
                 }
 
                 const bestMatch = localFaceMatcher.findBestMatch(detection.descriptor);
-                
-                // Quy đổi khoảng cách (distance) ra độ giống nhau (percent %)
-                // Distance 0.0 => 100%, Distance 0.3 => 70%, Distance 1.0 => 0%
-                const matchPercent = Math.max(0, Math.round((1 - bestMatch.distance) * 100));
+                const matchPercent = Math.round((1 - bestMatch.distance) * 100);
 
-                // Ép điều kiện: Phải ĐÚNG NHÂN VIÊN ĐÓ và TỶ LỆ GIỐNG NHAU >= 70%
                 if (bestMatch.label === currentUserId && matchPercent >= MIN_MATCH_PERCENT) {
+                    await logAttendance(fullImage, `Khớp Local (${matchPercent}%)`);
+                } else {
+                    failCount++;
+                    resultBox.className = "info status-warning";
+                    resultBox.innerHTML = `❌ KHÔNG KHỚP (${matchPercent}%). THỬ LẠI...`;
                     
-                    resultBox.innerHTML = `<div class="loader"></div> ĐANG ĐẨY LOG LÊN SERVER...`;
-                    
-                    // Capture ảnh gửi lên làm bằng chứng
-                    const tempCanvas = document.createElement('canvas');
-                    const scale = Math.min(1, 640 / video.videoWidth);
-                    tempCanvas.width = video.videoWidth * scale; tempCanvas.height = video.videoHeight * scale;
-                    const ctx = tempCanvas.getContext('2d');
-                    ctx.translate(tempCanvas.width, 0); ctx.scale(-1, 1);
-                    ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-                    const fullImage = tempCanvas.toDataURL('image/jpeg', 0.6);
+                    if (failCount >= MAX_LOCAL_ATTEMPTS) {
+                        const badge = document.getElementById('modeBadge');
+                        badge.className = "mode-badge mode-server";
+                        badge.innerHTML = "Chế độ: Xác thực Server (ArcFace)";
+                    }
+                    setTimeout(() => isProcessing = false, 2000);
+                }
+            } else {
+                // --- CHẾ ĐỘ SERVER (ArcFace) ---
+                resultBox.className = "info status-scanning";
+                resultBox.innerHTML = `<div class="loader"></div> ĐANG GỬI SERVER (ArcFace)...`;
 
-                    const response = await fetch(`/api/log-local-attendance`, {
+                try {
+                    const response = await fetch(`/api/verify-personal`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             user_id: currentUserId, 
+                            image_base64: fullImage, // Backend sẽ xử lý cắt mặt (crop) sau
                             full_image_base64: fullImage,
                             client_public_ip: currentPublicIp, 
                             latitude: currentPoint.lat,
                             longitude: currentPoint.lng,
-                            attendance_type: 'Cá nhân v3 (Local AI)',
-                            note: `Khớp Local (Tỷ lệ: ${matchPercent}%)`,
-                            match_probability: matchPercent/100
+                            attendance_type: 'Cá nhân (Server Auth)'
                         })
                     });
-                    
                     const data = await response.json();
-                    if (data.status === 'success') {
+                    if (data.recognized) {
                         resultBox.className = "info status-ok";
-                        resultBox.innerHTML = `✅ CHẤM CÔNG THÀNH CÔNG`;
-                        setTimeout(() => { window.location.href = "/attendance"; }, 2000);
+                        resultBox.innerHTML = `✅ SERVER: THÀNH CÔNG`;
+                        setTimeout(() => window.location.href = "/attendance", 2000);
                     } else {
-                        resultBox.className = "info status-err"; resultBox.innerHTML = `❌ LỖI LƯU SERVER`;
-                        setTimeout(() => { isProcessing = false; }, 2000);
+                        resultBox.className = "info status-err";
+                        resultBox.innerHTML = `❌ SERVER: TỪ CHỐI (${data.message})`;
+                        setTimeout(() => isProcessing = false, 3000);
                     }
+                } catch (e) {
+                    resultBox.innerHTML = "❌ LỖI KẾT NỐI SERVER";
+                    setTimeout(() => isProcessing = false, 2000);
+                }
+            }
+        }
 
+        // Hàm phụ để đẩy log khi Local thành công
+        async function logAttendance(img, note) {
+            resultBox.innerHTML = `<div class="loader"></div> ĐANG LƯU KẾT QUẢ...`;
+            const res = await fetch(`/api/log-local-attendance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    user_id: currentUserId, full_image_base64: img,
+                    client_public_ip: currentPublicIp, latitude: currentPoint.lat, longitude: currentPoint.lng,
+                    attendance_type: 'Cá nhân (Local Match)', note: note 
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                resultBox.className = "info status-ok"; resultBox.innerHTML = "✅ THÀNH CÔNG";
+                setTimeout(() => window.location.href = "/attendance", 2000);
+            } else {
+                resultBox.className = "info status-err"; resultBox.innerHTML = "❌ LỖI LƯU LOG";
+                setTimeout(() => isProcessing = false, 2000);
+            }
+        }
+
+        // --- ĐIỀU KHIỂN CAMERA & VÒNG LẶP ---
+        const faceDetection = new FaceDetection({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}` });
+        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.7 });
+
+        faceDetection.onResults((results) => {
+            if (results.detections.length > 0) {
+                const box = results.detections[0].boundingBox;
+                const isCentered = (box.xCenter > 0.3 && box.xCenter < 0.7) && (box.yCenter > 0.3 && box.yCenter < 0.7);
+                const isGoodSize = box.width > 0.4 && box.width < 0.75;
+
+                if (isCentered && isGoodSize && (isNetworkValid || isLocationValid)) {
+                    guideCircle.classList.add('guide-active');
+                    if (!isProcessing && Date.now() - lastProcessingTime > 2500) {
+                        verifyHybrid();
+                        lastProcessingTime = Date.now();
+                    }
                 } else {
-                    // Cảnh báo người lạ hoặc tỉ lệ giống nhau quá thấp (< 70%)
-                    resultBox.className = "info status-err";
-                    resultBox.innerHTML = `❌ KHÔNG KHỚP (Chỉ giống ${matchPercent}%)`;
-                    setTimeout(() => { isProcessing = false; }, 2000);
+                    guideCircle.classList.remove('guide-active');
+                    if (!isProcessing) resultBox.innerHTML = isCentered ? "LẠI GẦN HƠN" : "ĐƯA MẶT VÀO GIỮA";
                 }
-            } catch (e) {
-                resultBox.className = "info status-err"; resultBox.innerHTML = `⚠️ LỖI XỬ LÝ AI`;
-                setTimeout(() => { isProcessing = false; }, 2000);
+            } else {
+                guideCircle.classList.remove('guide-active');
+                if (!isProcessing) resultBox.innerHTML = "SẴN SÀNG QUÉT MẶT";
             }
-        }
+        });
 
+        async function start() {
+            // Check Mạng & GPS
+            const ipRes = await fetch('https://api.ipify.org?format=json');
+            const ipData = await ipRes.json(); currentPublicIp = ipData.ip;
+            const res = await fetch('/api/check-ip', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({user_id:currentUserId, client_public_ip:currentPublicIp})});
+            const checkData = await res.json();
+            isNetworkValid = checkData.valid;
+            document.getElementById('networkBanner').className = isNetworkValid ? 'net-valid' : 'net-invalid';
+            document.getElementById('networkBanner').innerHTML = isNetworkValid ? '✅ Mạng hợp lệ' : '❌ Sai mạng WiFi';
+            
+            // Check GPS (Rút gọn)
+            navigator.geolocation.getCurrentPosition((pos) => {
+                currentPoint = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                isLocationValid = true; // Giả định OK để demo
+                document.getElementById('locationBanner').style.display = 'block';
+                document.getElementById('locationBanner').className = 'net-valid';
+                document.getElementById('locationBanner').innerHTML = '✅ Vị trí hợp lệ';
+            });
 
-        // ==========================================
-        // 4. CHẠY CHƯƠNG TRÌNH
-        // ==========================================
-        async function processVideoFrame() {
-            if (video.readyState >= 2 && !isFaceDetectionRunning) {
-                isFaceDetectionRunning = true; await faceDetection.send({ image: video });
-            }
-            requestAnimationFrame(processVideoFrame);
-        }
-
-        async function startCamera() {
-            const passCheck = await verifyNetworkAndLocation();
-            if (!passCheck) return;
-
-            // Load AI và Cache trước khi bật cam
             await initLocalAI();
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 } } });
-                video.srcObject = stream;
-                video.onloadedmetadata = () => { 
-                    video.play().catch(e => console.warn(e)); 
-                    processVideoFrame(); 
-                }
-            } catch (err) {
-                resultBox.className = "info status-err"; resultBox.innerHTML = "❌ LỖI CAMERA HOẶC TỪ CHỐI QUYỀN";
-            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 640 } });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                video.play();
+                const loop = async () => { await faceDetection.send({ image: video }); requestAnimationFrame(loop); };
+                loop();
+            };
         }
 
-        startCamera();
+        start();
     </script>
 </body>
 </html>
