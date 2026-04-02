@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mô Phỏng Hybrid AI - BND</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #00f2ff; --success: #00ff88; --warning: #ffb800; --error: #ff4444; --server: #f472b6;
+            --bg: #0f172a; --card: #1e293b;
+        }
+
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Roboto', sans-serif; background: var(--bg); color: #f8fafc; 
+            margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; overflow-y: auto;
+        }
+
+        header { width: 100%; max-width: 800px; text-align: center; margin-bottom: 20px; margin-top: 10px;}
+        h2 { font-family: 'Orbitron', sans-serif; font-size: 1.5rem; color: var(--primary); margin: 0 0 5px 0; }
+        p { color: #cbd5e1; font-size: 0.9rem; margin-top: 0; }
+
+        .info-box { 
+            font-family: 'Orbitron', sans-serif; font-size: 0.9rem; padding: 12px; 
+            border-radius: 8px; background: var(--card); border: 1px solid rgba(255,255,255,0.1); 
+            display: flex; align-items: center; justify-content: center; gap: 10px; 
+            font-weight: bold; width: 100%; max-width: 800px; margin-bottom: 20px;
+        }
+        
+        .status-scanning { color: var(--primary); border-color: var(--primary); }
+        .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); }
+        .status-warning { color: var(--warning); border-color: var(--warning); background: rgba(255, 184, 0, 0.1);}
+        .status-err { color: var(--error); border-color: var(--error); background: rgba(255, 68, 68, 0.1);}
+        .status-server { color: var(--server); border-color: var(--server); background: rgba(244, 114, 182, 0.1); }
+        
+        .loader { width: 16px; height: 16px; border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 800px; margin-bottom: 20px; }
+
+        .panel {
+            background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column; align-items: center; overflow: hidden;
+        }
+
+        .panel h3 { font-family: 'Orbitron', sans-serif; color: var(--primary); margin: 0 0 15px 0; font-size: 1rem; text-align: center; }
+
+        .input-group { width: 100%; display: flex; gap: 10px; margin-bottom: 15px; }
+        .input-group input[type="text"] {
+            flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #475569; 
+            background: #0f172a; color: #fff; outline: none; font-family: inherit; font-weight: bold;
+        }
+        .input-group input[type="text"]:focus { border-color: var(--primary); }
+        
+        .btn {
+            background: var(--primary); color: #000; font-weight: bold; border: none; 
+            padding: 10px 15px; border-radius: 6px; cursor: pointer; transition: 0.2s; white-space: nowrap;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0, 242, 255, 0.3); }
+        .btn:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+
+        .image-preview {
+            width: 100%; height: 220px; background: #000; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            border: 2px dashed rgba(255,255,255,0.2); position: relative;
+        }
+        .image-preview img { max-width: 100%; max-height: 100%; object-fit: contain; display: none; }
+        .empty-text { color: #64748b; font-size: 0.85rem; position: absolute; }
+
+        .gallery-container {
+            display: flex; gap: 10px; overflow-x: auto; width: 100%; height: 100%; padding: 10px;
+            align-items: center; justify-content: flex-start;
+        }
+        .gallery-item { position: relative; height: 100%; flex-shrink: 0; }
+        .gallery-item img { height: 100%; width: auto; object-fit: cover; border-radius: 6px; border: 1px solid #475569; display: block; }
+        .gallery-item .dl-btn {
+            position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.7); color: #fff; 
+            text-decoration: none; font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; font-weight: bold;
+        }
+        .gallery-item .dl-btn:hover { background: var(--primary); color: #000; }
+
+        .btn-simulate {
+            background: var(--success); color: #000; font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem; padding: 15px; border-radius: 8px; width: 100%; max-width: 800px;
+            margin-bottom: 20px; border: none; font-weight: bold; cursor: pointer;
+        }
+        .btn-simulate:hover:not(:disabled) { box-shadow: 0 0 15px rgba(0, 255, 136, 0.4); transform: scale(1.01); }
+        .btn-simulate:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+
+        .result-panel {
+            width: 100%; max-width: 800px; background: var(--card); padding: 20px; 
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+            display: none; flex-direction: column; align-items: center;
+        }
+        .cropped-face {
+            width: 150px; height: 150px; border-radius: 50%; border: 3px solid var(--primary);
+            object-fit: cover; margin-bottom: 15px; background: #000; box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+        }
+        
+        .log-box {
+            width: 100%; background: #000; padding: 15px; border-radius: 8px; border: 1px solid #334155;
+            font-family: 'Courier New', Courier, monospace; font-size: 0.9rem; color: #a3b8cc;
+            white-space: pre-wrap; overflow-x: auto; line-height: 1.5; margin-top: 15px;
+        }
+        .log-step { color: var(--primary); font-weight: bold; }
+        .log-success { color: var(--success); }
+        .log-fail { color: var(--error); }
+        .log-server { color: var(--server); }
+        .log-warning { color: var(--warning); font-style: italic; }
+
+        .gallery-container::-webkit-scrollbar { height: 6px; }
+        .gallery-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+        @media (max-width: 768px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .image-preview { height: 250px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>HYBRID AI SIMULATOR</h2>
+        <p>Thuật toán Điểm Tịnh Tiến (Khắc khe) + Chống Méo Khuôn Mặt</p>
+    </header>
+
+    <div id="statusBox" class="info-box status-scanning">
+        <div class="loader"></div> ĐANG TẢI MODEL AI NỀN TẢNG...
+    </div>
+
+    <div class="main-grid">
+        <div class="panel">
+            <h3>1. ẢNH ĐĂNG KÝ (TỪ DB)</h3>
+            <div class="input-group">
+                <input type="text" id="userIdInput" placeholder="Nhập mã NV (VD: TCKT.XUANDT)">
+                <button class="btn" id="fetchBtn" onclick="fetchUserFace()" disabled>LẤY ẢNH</button>
+            </div>
+            <div class="image-preview" style="justify-content: flex-start;">
+                <span id="text1" class="empty-text" style="width: 100%; text-align: center;">Chưa tải ảnh</span>
+                <div id="galleryDb" class="gallery-container" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>2. ẢNH TỪ CAMERA (CẦN TEST)</h3>
+            <input type="file" id="fileUpload" accept="image/*" style="width: 100%; margin-bottom: 15px; color: #cbd5e1; font-size: 0.9rem;" disabled>
+            <div class="image-preview">
+                <span id="text2" class="empty-text">Chưa up ảnh</span>
+                <img id="imgScene" />
+            </div>
+        </div>
+    </div>
+
+    <button id="simulateBtn" class="btn-simulate" disabled onclick="runHybridSimulation()">🤖 CHẠY MÔ PHỎNG HYBRID</button>
+
+    <div id="resultPanel" class="result-panel">
+        <h3 style="color: #cbd5e1; margin-top: 0; font-size: 0.9rem; text-transform: uppercase;">KHUÔN MẶT ĐÃ CẮT (CHUẨN 224x224):</h3>
+        <img id="imgCropped" class="cropped-face" src="">
+        
+        <div class="log-box" id="logBox"></div>
+    </div>
+
+    <script>
+        const statusBox = document.getElementById('statusBox');
+        const fetchBtn = document.getElementById('fetchBtn');
+        const fileUpload = document.getElementById('fileUpload');
+        const simulateBtn = document.getElementById('simulateBtn');
+        
+        const galleryDb = document.getElementById('galleryDb');
+        const imgScene = document.getElementById('imgScene');
+        const imgCropped = document.getElementById('imgCropped');
+        const resultPanel = document.getElementById('resultPanel');
+        const logBox = document.getElementById('logBox');
+
+        let isModelLoaded = false;
+        let localFaceMatcher = null; 
+        let fullSceneBase64ForServer = null;
+
+        function addLog(text, type = '') {
+            let colorClass = '';
+            if (type === 'step') colorClass = 'log-step';
+            if (type === 'success') colorClass = 'log-success';
+            if (type === 'fail') colorClass = 'log-fail';
+            if (type === 'server') colorClass = 'log-server';
+            if (type === 'warning') colorClass = 'log-warning';
+            
+            const time = new Date().toLocaleTimeString('vi-VN');
+            logBox.innerHTML += `<span class="${colorClass}">[${time}] ${text}</span>\n`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        async function initAI() {
+            try {
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+                await Promise.all([
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+                isModelLoaded = true;
+                fetchBtn.disabled = false; fileUpload.disabled = false;
+                statusBox.className = "info-box status-ok";
+                statusBox.innerHTML = "✅ TẢI MODEL THÀNH CÔNG. SẴN SÀNG!";
+            } catch (e) {
+                statusBox.className = "info-box status-err";
+                statusBox.innerHTML = "❌ LỖI TẢI MODEL TỪ CDN";
+            }
+        }
+
+        async function fetchUserFace() {
+            const userId = document.getElementById('userIdInput').value.trim().toUpperCase();
+            if (!userId) return alert('Vui lòng nhập mã nhân viên!');
+
+            fetchBtn.innerText = "ĐANG TẢI..."; fetchBtn.disabled = true;
+            statusBox.className = "info-box status-scanning";
+            statusBox.innerHTML = `<div class="loader"></div> Đang gọi API lấy dữ liệu...`;
+
+            try {
+                const res = await fetch(`/api/user-faces/${userId}`);
+                const data = await res.json();
+
+                if (data.status === 'success' && data.images && data.images.length > 0) {
+                    document.getElementById('text1').style.display = 'none';
+                    galleryDb.style.display = 'flex';
+                    galleryDb.innerHTML = ''; 
+                    
+                    let descriptors = [];
+                    statusBox.innerHTML = `<div class="loader"></div> Đang trích xuất Vector từ ${data.images.length} ảnh gốc...`;
+
+                    for (let i = 0; i < data.images.length; i++) {
+                        const imgSrc = `data:image/jpeg;base64,${data.images[i]}`;
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'gallery-item';
+                        itemDiv.innerHTML = `
+                            <img src="${imgSrc}" crossorigin="anonymous" id="dbImg_${i}">
+                            <a href="${imgSrc}" download="Avatar_${userId}_${i+1}.jpg" class="dl-btn">⬇ Tải</a>
+                        `;
+                        galleryDb.appendChild(itemDiv);
+
+                        const imgEl = document.getElementById(`dbImg_${i}`);
+                        await new Promise(resolve => {
+                            imgEl.onload = async () => {
+                                const det = await faceapi.detectSingleFace(imgEl).withFaceLandmarks().withFaceDescriptor();
+                                if (det) descriptors.push(det.descriptor);
+                                resolve();
+                            }
+                        });
+                    }
+
+                    if (descriptors.length > 0) {
+                        // Nới lỏng ngưỡng lấy dữ liệu của Matcher để tự ta xử lý toán học bên dưới
+                        localFaceMatcher = new faceapi.FaceMatcher([new faceapi.LabeledFaceDescriptors(userId, descriptors)], 0.65);
+                        statusBox.className = "info-box status-ok";
+                        statusBox.innerHTML = `✅ THÀNH CÔNG: Đã tạo tập AI từ ${descriptors.length}/${data.images.length} ảnh!`;
+                        checkReady();
+                    } else {
+                        statusBox.className = "info-box status-err";
+                        statusBox.innerHTML = `❌ LỖI: Không tìm thấy mặt trong ảnh gốc!`;
+                        localFaceMatcher = null; checkReady();
+                    }
+                } else {
+                    statusBox.className = "info-box status-warning";
+                    statusBox.innerHTML = `⚠️ KHÔNG CÓ DỮ LIỆU ĐĂNG KÝ CHO: ${userId}`;
+                    galleryDb.style.display = 'none'; document.getElementById('text1').style.display = 'block';
+                    localFaceMatcher = null; checkReady();
+                }
+            } catch (e) {
+                statusBox.className = "info-box status-err";
+                statusBox.innerHTML = "❌ LỖI KẾT NỐI SERVER";
+            }
+            fetchBtn.innerText = "LẤY ẢNH"; fetchBtn.disabled = false;
+        }
+
+        fileUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    fullSceneBase64ForServer = event.target.result;
+                    imgScene.src = fullSceneBase64ForServer;
+                    imgScene.style.display = 'block';
+                    document.getElementById('text2').style.display = 'none';
+                    resultPanel.style.display = 'none';
+                    checkReady();
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function checkReady() { simulateBtn.disabled = !(localFaceMatcher && imgScene.src); }
+
+        async function runHybridSimulation() {
+            simulateBtn.disabled = true;
+            resultPanel.style.display = 'flex';
+            logBox.innerHTML = "--- BẮT ĐẦU MÔ PHỎNG LUỒNG CHẤM CÔNG ---\n";
+            statusBox.className = "info-box status-scanning";
+            statusBox.innerHTML = `<div class="loader"></div> ĐANG CHẠY MÔ PHỎNG...`;
+
+            try {
+                addLog("> 1. Đang phân tích không gian gốc của ảnh...", "step");
+                const natW = imgScene.naturalWidth;
+                const natH = imgScene.naturalHeight;
+                
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = natW; tempCanvas.height = natH;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(imgScene, 0, 0, natW, natH);
+
+                const detectionScene = await faceapi.detectSingleFace(tempCanvas);
+                
+                if (!detectionScene) {
+                    addLog("❌ KHÔNG TÌM THẤY MẶT TRONG ẢNH UPLOAD!", "fail");
+                    statusBox.className = "info-box status-err"; statusBox.innerHTML = `❌ LỖI: KHÔNG THẤY MẶT`;
+                    simulateBtn.disabled = false; return;
+                }
+
+                // CROP CHỐNG MÉO Y NHƯ THUẬT TOÁN MEDIAPIPE
+                const box = detectionScene.box;
+                addLog(`Đã tìm thấy mặt tại Box: X:${Math.round(box.x)}, Y:${Math.round(box.y)}`);
+
+                const mpWidth = box.width * 1.25;
+                const mpHeight = box.height * 1.25;
+                const xCenter = box.x + (box.width / 2);
+                const yCenter = box.y + (box.height / 2) - (box.height * 0.15);
+
+                const padding = 0.3;
+                let paddedW = mpWidth * (1 + padding);
+                let paddedH = mpHeight * (1 + padding);
+
+                const squareSize = Math.max(paddedW, paddedH);
+                
+                let startX = xCenter - (squareSize / 2);
+                let startY = yCenter - (squareSize / 2);
+
+                const cropCanvas = document.createElement('canvas');
+                cropCanvas.width = 224; 
+                cropCanvas.height = 224;
+                const cropCtx = cropCanvas.getContext('2d');
+                
+                cropCtx.fillStyle = "#000000";
+                cropCtx.fillRect(0, 0, 224, 224);
+                
+                let sx = Math.max(0, startX);
+                let sy = Math.max(0, startY);
+                let sw = Math.min(natW - sx, squareSize - (sx - startX));
+                let sh = Math.min(natH - sy, squareSize - (sy - startY));
+
+                let scale = 224 / squareSize;
+                let dx = (sx - startX) * scale;
+                let dy = (sy - startY) * scale;
+                let dw = sw * scale;
+                let dh = sh * scale;
+
+                cropCtx.drawImage(tempCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
+                
+                const croppedBase64ForServer = cropCanvas.toDataURL('image/jpeg', 0.85);
+                imgCropped.src = croppedBase64ForServer; 
+                addLog(`Đã Auto-Crop (Padding 0.3) -> Chống méo hình vuông`);
+
+                // SO KHỚP CLIENT
+                addLog("\n> 2. VÒNG 1: THUẬT TOÁN LOCAL (CLIENT)", "step");
+                const finalDetection = await faceapi.detectSingleFace(cropCanvas).withFaceLandmarks().withFaceDescriptor();
+                
+                if (!finalDetection) {
+                    addLog(`=> LỖI: Ảnh Crop không thể nhận diện!`, "fail");
+                    statusBox.className = "info-box status-err"; statusBox.innerHTML = `❌ LỖI RÚT TRÍCH VECTOR`;
+                    simulateBtn.disabled = false; return;
+                }
+
+                const bestMatch = localFaceMatcher.findBestMatch(finalDetection.descriptor);
+                const distance = bestMatch.distance;
+                
+                // ========================================================
+                // THUẬT TOÁN ÁP CHẾ ĐIỂM SỐ (PIECEWISE MAPPING BÀN TAY SẮT)
+                // Lấy mốc sinh tử là 0.53.
+                // ========================================================
+                let matchPercent = 0;
+                
+                if (distance <= 0.40) {
+                    matchPercent = 90 + ((0.40 - distance) / 0.40) * 10; 
+                } else if (distance <= 0.53) {
+                    // Từ 0.40 đến 0.53 -> Hạ cánh an toàn (90% xuống 70%)
+                    matchPercent = 70 + ((0.53 - distance) / 0.13) * 20;
+                } else {
+                    // Lớn hơn 0.53 -> Ép rớt thẳng tay (Dưới 70%)
+                    matchPercent = 70 - ((distance - 0.53) / 0.17) * 40;
+                }
+                
+                // Chuẩn hóa điểm không vọt qua 100 hay âm
+                matchPercent = Math.max(0, Math.min(100, Math.round(matchPercent)));
+                const userId = document.getElementById('userIdInput').value.trim().toUpperCase();
+
+                addLog(`Khoảng cách Euclidean (Distance): ${distance.toFixed(4)}`);
+                addLog(`Điểm Tỷ lệ Giống nhau (Khắc khe): ${matchPercent}%`);
+
+                if (bestMatch.label === userId && matchPercent >= 70) {
+                    addLog(`=> KẾT LUẬN: ĐẠT NGƯỠNG BẢO MẬT (>= 70%). CHẤM CÔNG LOCAL THÀNH CÔNG!`, "success");
+                    statusBox.className = "info-box status-ok";
+                    statusBox.innerHTML = `✅ LOCAL MATCH: THÀNH CÔNG (${matchPercent}%)`;
+                } else {
+                    addLog(`=> KẾT LUẬN: LOCAL THẤT BẠI (Dưới 70%). KÍCH HOẠT FALLBACK!`, "fail");
+                    
+                    addLog("\n> 3. VÒNG 2: THUẬT TOÁN ARCFACE (SERVER)", "server");
+                    statusBox.className = "info-box status-server";
+                    statusBox.innerHTML = `<div class="loader" style="border-top-color: var(--server)"></div> ĐANG GỬI LÊN SERVER...`;
+
+                    try {
+                        const response = await fetch(`/api/verify-personal`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                user_id: userId, 
+                                image_base64: croppedBase64ForServer, 
+                                full_image_base64: fullSceneBase64ForServer,
+                                client_public_ip: "127.0.0.1", 
+                                latitude: 0, longitude: 0,
+                                attendance_type: 'Mô phỏng AI Tool'
+                            })
+                        });
+                        
+                        let data;
+                        try { data = await response.json(); } catch (e) { throw new Error(`Crash 500`); }
+                        
+                        addLog(`Response từ Server: Code ${response.status}`);
+                        if (data.recognized) {
+                            addLog(`=> KẾT LUẬN SERVER: THÀNH CÔNG! (ArcFace Distance: ${data.distance})`, "success");
+                            statusBox.className = "info-box status-ok";
+                            statusBox.innerHTML = `✅ CỨU THUA BỞI SERVER: THÀNH CÔNG!`;
+                        } else {
+                            addLog(`=> KẾT LUẬN SERVER: TỪ CHỐI! LÝ DO: ${data.message}`, "fail");
+                            if(data.distance) addLog(`(ArcFace Distance: ${data.distance})`);
+                            statusBox.className = "info-box status-err";
+                            statusBox.innerHTML = `❌ SERVER CŨNG BÓ TAY: ${data.message}`;
+                        }
+                    } catch (serverErr) {
+                        addLog(`=> LỖI KẾT NỐI API SERVER: ${serverErr.message}`, "fail");
+                        statusBox.className = "info-box status-err";
+                        statusBox.innerHTML = `❌ LỖI GỌI API SERVER`;
+                    }
+                }
+            } catch (error) {
+                addLog(`LỖI HỆ THỐNG CRASH: ${error.message}`, "fail");
+                statusBox.className = "info-box status-err";
+                statusBox.innerHTML = `❌ CÓ LỖI XẢY RA`;
+            }
+
+            simulateBtn.disabled = false;
+        }
+
+        initAI();
+    </script>
+</body>
+</html>
