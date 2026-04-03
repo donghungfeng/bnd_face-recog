@@ -55,14 +55,13 @@ def calculate_shift_details(shift_dict, c_in_dt, c_out_dt, img_in, img_out):
         if img_out is None and c_out_dt == c_in_dt:
             img_out = img_in
             
+    # Vắng mặt (Không In, Không Out)
+    if not c_in_dt and not c_out_dt:
+        return None, None, resolve_final_status(constants.AttendanceStatus.ABSENT), 0, 0, None, None, 0.0, 0.0
     # Ca đang diễn ra
     if c_out_dt is None and now < ref_checkout_limit:
         status = constants.AttendanceStatus.LATE if late_min > 0 else constants.AttendanceStatus.IN_PROGRESS
         return c_in, None, resolve_final_status(status), late_min, 0, img_in, None, 0.0, 0.0
-        
-    # Vắng mặt (Không In, Không Out)
-    if not c_in_dt and not c_out_dt:
-        return None, None, resolve_final_status(constants.AttendanceStatus.ABSENT), 0, 0, None, None, 0.0, 0.0
 
     # Tính về sớm và chốt Status
     if c_out_dt:
