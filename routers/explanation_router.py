@@ -17,23 +17,23 @@ router = APIRouter()
 # ==========================================
 # CẤU HÌNH THƯ MỤC LƯU ẢNH
 # ==========================================
-UPLOAD_DIR = "static/uploads/explanations"
+UPLOAD_DIR = "data/explanation_db"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def save_uploaded_file(upload_file: UploadFile) -> str:
-    """Hàm hỗ trợ lưu file và trả về đường dẫn"""
     if not upload_file:
         return None
     
-    # Lấy đuôi file (vd: .jpg, .png)
+    dated_dir = os.path.join(UPLOAD_DIR, datetime.now().strftime("%Y_%m_%d"))
+    os.makedirs(dated_dir, exist_ok=True)
+
     file_extension = upload_file.filename.split(".")[-1]
     file_name = f"{uuid.uuid4()}.{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, file_name)
+    file_path = os.path.join(dated_dir, file_name)
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(upload_file.file, buffer)
         
-    # Chuyển đổi dấu \ thành / để đường dẫn chuẩn xác trên mọi HĐH
     return file_path.replace("\\", "/")
 
 # ==========================================
