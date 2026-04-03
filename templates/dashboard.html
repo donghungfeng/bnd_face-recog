@@ -863,6 +863,14 @@
             <h4>Đang có mặt</h4>
             <p class="num blue" id="statInProgress">0</p>
         </div>
+        <div class="stat-card-small">
+            <h4>Chưa có lịch</h4>
+            <p class="num" style="color:#94a3b8;" id="statNoSchedule">0</p>
+        </div>
+        <div class="stat-card-small">
+            <h4>Chế độ 7h</h4>
+            <p class="num" style="color:#4338ca;" id="statSevenHours">0</p>
+        </div>
     </div>
 
     <div class="filter-bar">
@@ -882,6 +890,8 @@
                 <option value="4">📅 Nghỉ phép</option>
                 <option value="5">📅 Nghỉ KL</option>
                 <option value="7">⚡ Đang có mặt</option>
+                <option value="8">➖ Chưa có lịch</option>
+                <option value="9">⏱️ Chế độ 7h</option>
             </select>
         </div>
     </div>
@@ -1087,6 +1097,9 @@
         });
 
         let present = 0, late = 0, early = 0, lateEarly = 0, absent = 0, inProgress = 0;
+        // 🌟 THÊM 2 BIẾN MỚI
+        let noSchedule = 0, sevenHours = 0;
+
         filteredData.forEach(item => {
             if (item.status === 1) present++;
             else if (item.status === 2) late++;
@@ -1094,6 +1107,8 @@
             else if (item.status === 6) lateEarly++;
             else if (item.status === 0) absent++;
             else if (item.status === 7) inProgress++;
+            else if (item.status === 8) noSchedule++;   // 🌟
+            else if (item.status === 9) sevenHours++;   // 🌟
         });
 
         document.getElementById('statPresent').innerText = present;
@@ -1102,6 +1117,9 @@
         document.getElementById('statLateEarly').innerText = lateEarly;
         document.getElementById('statAbsent').innerText = absent;
         document.getElementById('statInProgress').innerText = inProgress;
+        // 🌟 CẬP NHẬT UI (cần thêm 2 thẻ HTML bên dưới)
+        document.getElementById('statNoSchedule').innerText = noSchedule;
+        document.getElementById('statSevenHours').innerText = sevenHours;
 
         currentPage = 1;
         renderTable();
@@ -1145,7 +1163,8 @@
             else if (item.status === 4) statusBadge = `<span class="badge" style="background:#eff6ff; color:#0284c7;">📅 Nghỉ phép</span>`;
             else if (item.status === 5) statusBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b;">📅 Nghỉ KL</span>`;
             else if (item.status === 7) statusBadge = `<span class="badge badge-inprogress">⚡ Đang có mặt</span>`;
-
+            else if (item.status === 8) statusBadge = `<span class="badge" style="background:#f1f5f9;color:#64748b;border-color:#cbd5e1;">➖ Chưa có lịch</span>`;
+            else if (item.status === 9) statusBadge = `<span class="badge" style="background:#e0e7ff;color:#4338ca;border-color:#c7d2fe;">⏱️ Chế độ 7h</span>`;
             if (item.explanation_status === 2) statusBadge = `<span class="badge badge-approved">✔️ Đã duyệt</span>`;
 
             let subViolation = "";
