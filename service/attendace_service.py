@@ -250,6 +250,8 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
             if not (is_same_day or is_curr_overnight):
                 continue
                 
+            if is_curr_overnight and s_next['is_auto_schedule']:
+                continue
             e_curr = s_curr['end_dt']
             s_next_start = s_next['start_dt']
             
