@@ -74,11 +74,12 @@ def get_explanations(
     # 3. Phân quyền truy cập
     user_role = current_user.get("role")
     user_name = current_user.get("username")
-    user_dept = current_user.get("department_id")
 
     if user_role == "user":
         query = query.filter(Explanation.username == user_name)
     elif user_role == "manager":
+        manager_db = db.query(Employee).filter(Employee.username == user_name).first()
+        user_dept = manager_db.department_id if manager_db else None;
         if user_dept:
             subquery = db.query(Employee.username).filter(Employee.department_id == user_dept)
             query = query.filter(
