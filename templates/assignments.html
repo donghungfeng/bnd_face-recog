@@ -229,7 +229,7 @@
     let pageSize = 15;
     let totalPages = 1;
     let shiftMapCache = {}; 
-
+    const currentUserRole = localStorage.getItem("hrm_role") || "user";
     // BIẾN LƯU NHIỀU CA TRỰC ĐƯỢC CHỌN
     let selectedShiftCodes = []; 
     let currentModalEmpId = null;
@@ -388,13 +388,15 @@
                 const dObj = new Date(dStr);
                 const isWE = (dObj.getDay() === 0 || dObj.getDay() === 6);
                 const assign = shiftMap[emp.id]?.[dStr];
-
+                const canEdit = currentUserRole !== 'user';
                 if (assign && assign.shift_code) {
-                    // Nếu có nhiều ca thì tên nó sẽ hiện đầy đủ (vd: HC, CA1)
-                    row += `<td class="${isWE ? 'weekend-cell' : ''}" style="background:#e0f2fe; color:#0369a1; cursor:pointer; font-weight:bold" 
-                            onclick="openAssignModal(${emp.id}, '${emp.full_name}', '${dStr}')">${assign.shift_code}</td>`;
+                    row += `<td class="${isWE ? 'weekend-cell' : ''}" 
+                            style="background:#e0f2fe; color:#0369a1; font-weight:bold; cursor:${canEdit ? 'pointer' : 'default'};"
+                            ${canEdit ? `onclick="openAssignModal(${emp.id}, '${emp.full_name}', '${dStr}')"` : ''}>
+                            ${assign.shift_code}</td>`;
                 } else {
-                    row += `<td class="cell-empty ${isWE ? 'weekend-cell' : ''}" onclick="openAssignModal(${emp.id}, '${emp.full_name}', '${dStr}')"></td>`;
+                    row += `<td class="${canEdit ? 'cell-empty' : ''} ${isWE ? 'weekend-cell' : ''}"
+                            ${canEdit ? `onclick="openAssignModal(${emp.id}, '${emp.full_name}', '${dStr}')"` : ''}></td>`;
                 }
             });
             row += "</tr>";

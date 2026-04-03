@@ -165,7 +165,28 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
         for s in emp_summaries[emp_id]:
             if s.target_date not in emp_schedule_map or not emp_schedule_map[s.target_date]:
                 emp_schedule_map[s.target_date] = ["X"]
-                auto_assigned_dates.add(s.target_date) # Ghi nhận lại ngày này
+                auto_assigned_dates.add(s.target_date)
+
+        # --- 🌟 XÁC ĐỊNH NGÀY CẦN BỎ QUA ---
+        # Nếu ngày D không có lịch (auto X) VÀ ngày D-1 có ca qua đêm thật sự
+        # thì ngày D không cần tạo bản ghi riêng — scan cuối thuộc về ca đêm D-1
+        skip_dates = set()
+        for d in auto_assigned_dates:
+            prev_day = d - timedelta(days=1)
+            prev_codes = emp_schedule_map.get(prev_day, [])
+            # Chỉ xét ngày hôm trước nếu đó là lịch thật (không phải cũng auto-assigned)
+            prev_is_real = prev_day not in auto_assigned_dates
+            if prev_is_real and any(
+                _is_overnight_shift(cat_map.get(c))
+                for c in prev_codes
+                if c in cat_map
+            ):
+                skip_dates.add(d)
+
+        # 🌟 Ngày hợp lệ để tạo bản ghi cho employee này:
+        # loại bỏ skip_dates vì scan của những ngày đó thuộc ca đêm hôm trước
+        # → dù startDate truy vấn = ngày D, cũng không hiển thị bản ghi ngày D
+        emp_valid_dates = set(dates) - skip_dates
 
         # 2. TRẢI PHẲNG (FLATTEN) THÀNH CHUỖI THỜI GIAN
         shifts_chain = []
@@ -196,7 +217,7 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                         'date': d, 'shift_code': cat.shift_code, 'cat': cat,
                         'start_dt': start_dt, 'end_dt': end_dt,
                         'checkin_to': checkin_to_dt, 'checkout_from': checkout_from_dt,
-                        'is_auto_schedule': is_auto  # --- 🌟 LƯU CỜ VÀO CHUỖI CA ---
+                        'is_auto_schedule': is_auto
                     })
                     
         shifts_chain.sort(key=lambda x: x['start_dt'])
@@ -285,20 +306,25 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                 search_start = s_curr['start_dt']
                 if shift_in_dt[i] is not None:
                     search_start = max(search_start, shift_in_dt[i])
-                
-                search_end = datetime.max
-                if i < N - 1:
+
+                is_curr_overnight = _is_overnight_shift(s_curr['cat'])
+                next_day = s_curr['date'] + timedelta(days=1)
+
+                # 🌟 Ca qua đêm + ngày hôm sau không có lịch thật →
+                # checkout là bản ghi cuối cùng của ngày hôm sau, không bị chặn bởi ca X
+                if is_curr_overnight and next_day in auto_assigned_dates:
+                    search_end = datetime.combine(next_day, time.max)
+                elif i < N - 1:
                     next_shift = shifts_chain[i+1]
                     is_same_day = s_curr['date'] == next_shift['date']
-                    is_curr_overnight = _is_overnight_shift(s_curr['cat'])
-                    
+
                     if is_same_day or is_curr_overnight:
                         search_end = next_shift['start_dt']
                     else:
-                        end_date = s_curr['date'] + timedelta(days=1 if _is_overnight_shift(s_curr['cat']) else 0)
+                        end_date = s_curr['date'] + timedelta(days=1 if is_curr_overnight else 0)
                         search_end = datetime.combine(end_date, time.max)
                 else:
-                    end_date = s_curr['date'] + timedelta(days=1 if _is_overnight_shift(s_curr['cat']) else 0)
+                    end_date = s_curr['date'] + timedelta(days=1 if is_curr_overnight else 0)
                     search_end = datetime.combine(end_date, time.max)
                 
                 avail = [s for s in emp_scans if s.check_in_time >= search_start and s.check_in_time <= search_end]
@@ -316,7 +342,8 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
         # ====================================================================================
         for i in range(N):
             s_curr = shifts_chain[i]
-            if s_curr['date'] not in dates: continue
+            # emp_valid_dates đã loại sẵn skip_dates — một điều kiện duy nhất
+            if s_curr['date'] not in emp_valid_dates: continue
                 
             c_in, c_out, status, late, early, img_in, img_out, hrs, days = calculate_shift_details(
                 s_curr, shift_in_dt[i], shift_out_dt[i], shift_in_img[i], shift_out_img[i]

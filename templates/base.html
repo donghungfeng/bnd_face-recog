@@ -409,7 +409,7 @@
             // THÊM "nav-faces" VÀO CUỐI DANH SÁCH ADMIN:
             "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad","nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3" ],
             "manager": [ "nav-dashboard", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3" ],
-            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3" ]
+            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3", "nav-assignments" ]
         };
         if (!isAuthPage) {
             // Bước A: Ẩn TOÀN BỘ menu đi trước
@@ -428,7 +428,7 @@
             const currentPath = window.location.pathname;
             
             // Nhân viên thường không được vào các trang cấu hình và lương
-            if (userRole === "user" && ["/departments", "/employees", "/shifts", "/assignments", "/payroll", "/wifi"].some(p => currentPath.includes(p))) {
+            if (userRole === "user" && ["/departments", "/employees", "/shifts", "/payroll", "/wifi"].some(p => currentPath.includes(p))) {
                 alert("Bạn không có quyền truy cập trang này!");
                 window.location.href = "/dashboard";
             }

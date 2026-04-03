@@ -79,6 +79,10 @@ async def verify_personal_page(request: Request):
 async def test_ai_page(request: Request):
     return templates.TemplateResponse("test_ai.html", {"request": request})
 
+@router.get("/test_ai_v2")
+async def test_ai_page(request: Request):
+    return templates.TemplateResponse("test_ai_v2.html", {"request": request})
+
 @router.get("/enroll_image")
 async def enroll_image(request: Request):
     return templates.TemplateResponse("enroll_image.html", {"request": request})
