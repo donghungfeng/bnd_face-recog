@@ -185,7 +185,12 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
         # 🌟 Ngày hợp lệ để tạo bản ghi cho employee này:
         # loại bỏ skip_dates vì scan của những ngày đó thuộc ca đêm hôm trước
         # → dù startDate truy vấn = ngày D, cũng không hiển thị bản ghi ngày D
-        emp_valid_dates = set(dates) - skip_dates
+        emp_dates = {s.target_date for s in emp_summaries[emp_id]}
+        emp_valid_dates = emp_dates - skip_dates
+
+        # Nếu ngày D là skip_date thì ca đêm D-1 cần được tạo bản ghi
+        for d in skip_dates:
+            emp_valid_dates.add(d - timedelta(days=1))
 
         # 2. TRẢI PHẲNG (FLATTEN) THÀNH CHUỖI THỜI GIAN
         shifts_chain = []
