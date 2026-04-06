@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from database import engine, Base
-from services import load_embeddings, load_system_configs
+from services import load_all_embeddings, load_system_configs
 from routers import (
     attendance_router, auth_router, config_router, 
     department_router, employee_router, holidays_router, leave_requests_router, leave_types_router, page_router, 
@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     
     # Nạp AI Embeddings và Config
     print("🧠 Đang nạp AI Embeddings vào bộ nhớ...")
-    load_embeddings()
+    load_all_embeddings()
     load_system_configs()
     print(f"✅ Hệ thống AI và Cấu hình đã sẵn sàng trên {db_type}!")
     
