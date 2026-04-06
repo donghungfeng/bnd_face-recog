@@ -1168,8 +1168,8 @@
             if (item.explanation_status === 2) statusBadge = `<span class="badge badge-approved">✔️ Đã duyệt</span>`;
 
             let subViolation = "";
-            if (item.late_minutes > 0) subViolation += `<div style="font-size:0.75rem; color:#d97706; font-weight:600; margin-top:3px;">Muộn: ${item.late_minutes}p</div>`;
-            if (item.early_minutes > 0) subViolation += `<div style="font-size:0.75rem; color:#ea580c; font-weight:600; margin-top:3px;">Sớm: ${item.early_minutes}p</div>`;
+            if (item.late_minutes > 0 && item.status != 9) subViolation += `<div style="font-size:0.75rem; color:#d97706; font-weight:600; margin-top:3px;">Muộn: ${item.late_minutes}p</div>`;
+            if (item.early_minutes > 0 && item.status != 9) subViolation += `<div style="font-size:0.75rem; color:#ea580c; font-weight:600; margin-top:3px;">Sớm: ${item.early_minutes}p</div>`;
 
             const fmt = (t) => (t && t !== "---") ? t.split('.')[0] : "---";
             const cin = fmt(item.checkin_time);
