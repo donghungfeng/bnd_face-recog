@@ -8,7 +8,8 @@ import shutil
 import uuid
 
 from database import get_db
-from models import Explanation, Employee, ShiftAssignment, ShiftCategory, Attendance
+# BỔ SUNG THÊM EmployeeDepartment
+from models import Explanation, Employee, ShiftAssignment, ShiftCategory, Attendance, EmployeeDepartment
 from schemas import PaginatedExplanationResponse
 from routers.auth_router import get_current_user
 
@@ -51,6 +52,8 @@ def get_explanations(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    current_username = current_user.get("username")
+
     # 1. Khởi tạo query và Join
     query = db.query(
         Explanation,
@@ -71,35 +74,43 @@ def get_explanations(
     if end_date:
         query = query.filter(Explanation.date <= end_date)
 
-    # 3. Phân quyền truy cập
-    user_role = current_user.get("role")
-    user_name = current_user.get("username")
+    # ==========================================
+    # 3. Phân quyền truy cập bằng EmployeeDepartment
+    # ==========================================
+    me = db.query(Employee).filter(Employee.username == current_username).first()
+    if not me:
+        raise HTTPException(status_code=403, detail="Tài khoản không tồn tại")
 
-    if user_role == "user":
-        query = query.filter(Explanation.username == user_name)
-    elif user_role == "manager":
-        manager_db = db.query(Employee).filter(Employee.username == user_name).first()
-        user_dept = manager_db.department_id if manager_db else None;
-        if user_dept:
-            subquery = db.query(Employee.username).filter(Employee.department_id == user_dept)
-            query = query.filter(
-                or_(
-                    Explanation.username == user_name,
-                    Explanation.username.in_(subquery)
-                )
-            )
-        else:
-            query = query.filter(Explanation.username == user_name)
-    elif user_role != "admin":
-        raise HTTPException(status_code=403, detail="Quyền truy cập bị từ chối")
+    my_departments = db.query(EmployeeDepartment).filter(
+        EmployeeDepartment.employee_id == me.id
+    ).all()
+    
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    if not is_admin:
+        allowed_usernames = {current_username}
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
+
+        if managed_dept_ids:
+            dept_users = db.query(Employee.username).join(EmployeeDepartment).filter(
+                EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
+            
+            for u in dept_users:
+                allowed_usernames.add(u[0])
+
+        query = query.filter(Explanation.username.in_(list(allowed_usernames)))
 
     # 4. Thực hiện đếm và lấy dữ liệu
     total_records = query.count()
     
     if limit is not None and limit > 0:
-        results = query.offset(skip).limit(limit).all()
+        results = query.order_by(Explanation.id.desc()).offset(skip).limit(limit).all()
     else:
-        results = query.offset(skip).all()
+        results = query.order_by(Explanation.id.desc()).offset(skip).all()
 
     # 5. Map dữ liệu để trả về
     items = []
@@ -122,11 +133,10 @@ def create_explanation(
     date: date = Form(...),
     shift_code: str = Form(...),
     reason: str = Form(...),
-    status: str = Form(...), # Thêm trường status vì schema cũ có
-    attached_file: Optional[UploadFile] = File(None), # Nhận file ảnh
+    status: str = Form(...),
+    attached_file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    # --- 1. KIỂM TRA RÀNG BUỘC TRÙNG LẶP (1 ca/ngày/người) ---
     existing = db.query(Explanation).filter(
         and_(
             Explanation.username == username,
@@ -141,15 +151,12 @@ def create_explanation(
             detail=f"Đã tồn tại giải trình cho ca {shift_code} vào ngày {date}. Mỗi ca chỉ được giải trình một lần."
         )
 
-    # --- 2. VALIDATE DATE ---
     today = date.today()
     if date >= today:
         raise HTTPException(status_code=400, detail="Chỉ có thể giải trình cho các ngày trong quá khứ.")
 
-    # --- 3. LƯU ẢNH (NẾU CÓ) ---
     file_path = save_uploaded_file(attached_file)
 
-    # --- 4. LƯU DATABASE ---
     try:
         new_explanation = Explanation(
             username=username,
@@ -157,7 +164,7 @@ def create_explanation(
             shift_code=shift_code,
             reason=reason,
             status=status,
-            attached_file=file_path # Lưu đường dẫn
+            attached_file=file_path 
         )
         db.add(new_explanation)
         db.commit()
@@ -170,26 +177,63 @@ def create_explanation(
 
 @router.put("/api/explanations/{exp_id}/approve")
 def approve_explanation(exp_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") not in ["manager", "admin"]:
-        raise HTTPException(status_code=403, detail="Không có quyền")
-
+    current_username = current_user.get("username")
+    
     explanation = db.query(Explanation).filter(Explanation.id == exp_id).first()
     if not explanation:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
 
-    explanation.status = "2" # APPROVED (Đã sửa lại comment và message cho đúng logic)
+    # KIỂM TRA QUYỀN DUYỆT CHẶT CHẼ
+    me = db.query(Employee).filter(Employee.username == current_username).first()
+    my_departments = db.query(EmployeeDepartment).filter(EmployeeDepartment.employee_id == me.id).all()
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    if not is_admin:
+        managed_dept_ids = [d.department_id for d in my_departments if d.role and d.role.lower() == "manager"]
+        if not managed_dept_ids:
+            raise HTTPException(status_code=403, detail="Không có quyền quản lý")
+            
+        # Kiểm tra xem người tạo giải trình có nằm trong phòng ban do người này quản lý không
+        target_emp = db.query(Employee).filter(Employee.username == explanation.username).first()
+        if target_emp:
+            has_rights = db.query(EmployeeDepartment).filter(
+                EmployeeDepartment.employee_id == target_emp.id,
+                EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).first()
+            if not has_rights:
+                raise HTTPException(status_code=403, detail="Bạn không quản lý nhân viên này, không thể duyệt.")
+
+    explanation.status = "2" # APPROVED
     db.commit()
     return {"status": "success", "message": "Đã duyệt"}
 
 
 @router.put("/api/explanations/{exp_id}/reject")
 def reject_explanation(exp_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") not in ["manager", "admin"]:
-        raise HTTPException(status_code=403, detail="Không có quyền")
-
+    current_username = current_user.get("username")
+    
     explanation = db.query(Explanation).filter(Explanation.id == exp_id).first()
     if not explanation:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
+
+    # KIỂM TRA QUYỀN DUYỆT CHẶT CHẼ
+    me = db.query(Employee).filter(Employee.username == current_username).first()
+    my_departments = db.query(EmployeeDepartment).filter(EmployeeDepartment.employee_id == me.id).all()
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    if not is_admin:
+        managed_dept_ids = [d.department_id for d in my_departments if d.role and d.role.lower() == "manager"]
+        if not managed_dept_ids:
+            raise HTTPException(status_code=403, detail="Không có quyền quản lý")
+            
+        target_emp = db.query(Employee).filter(Employee.username == explanation.username).first()
+        if target_emp:
+            has_rights = db.query(EmployeeDepartment).filter(
+                EmployeeDepartment.employee_id == target_emp.id,
+                EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).first()
+            if not has_rights:
+                raise HTTPException(status_code=403, detail="Bạn không quản lý nhân viên này, không thể từ chối.")
 
     explanation.status = "3" # REJECTED
     db.commit()
@@ -202,11 +246,14 @@ def update_explanation(
     date: Optional[date] = Form(None),
     reason: Optional[str] = Form(None),
     shift_code: Optional[str] = Form(None),
-    attached_file: Optional[UploadFile] = File(None), # Nhận file ảnh mới
+    attached_file: Optional[UploadFile] = File(None), 
     db: Session = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
     explanation = db.query(Explanation).filter(Explanation.id == exp_id).first()
+    today = date.today()
+    if date >= today:
+        raise HTTPException(status_code=400, detail="Chỉ có thể giải trình cho các ngày trong quá khứ.")
     if not explanation:
         raise HTTPException(status_code=404, detail="Không tìm thấy")
 
@@ -224,9 +271,7 @@ def update_explanation(
         if shift_code:
             explanation.shift_code = shift_code
             
-        # Cập nhật ảnh nếu user upload ảnh mới
         if attached_file:
-            # (Tùy chọn: có thể viết thêm logic xóa file cũ bằng os.remove)
             new_file_path = save_uploaded_file(attached_file)
             explanation.attached_file = new_file_path
 

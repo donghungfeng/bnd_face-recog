@@ -1,6 +1,11 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import List, Optional
 from datetime import date, time, datetime
+
+class DepartmentAssignment(BaseModel):
+    department_id: int
+    role: str = "user"
+    is_primary: int = 0
 
 class FaceRequest(BaseModel):
     user_id: str = None
@@ -24,14 +29,12 @@ class EmployeeCreate(BaseModel):
     phone: Optional[str] = None
     dob: Optional[date] = None
     email: Optional[str] = None
-    department_id: Optional[int] = None
     status: Optional[str] = "active"
     notes: Optional[str] = None
     hourly_rate: int = 25000
     allowance: int = 0
     # CÁC TRƯỜNG MỚI:
     password: Optional[str] = "123456"
-    role: Optional[str] = "user"
     is_locked: Optional[int] = 0
     date_of_birth: Optional[date] = None
 
@@ -39,6 +42,7 @@ class EmployeeCreate(BaseModel):
     ccTapTrung: Optional[int] = None
     checkViTri: Optional[int] = None
     checkMang: Optional[int] = None
+    departments: Optional[List[DepartmentAssignment]] = None
 # Thêm schema này dùng cho API đổi mật khẩu
 class PasswordUpdate(BaseModel):
     new_password: str   
@@ -317,3 +321,38 @@ class WifiResponse(WifiBase):
 class ScanFraudRequest(BaseModel):
     start_date: str # Định dạng YYYY-MM-DD
     end_date: str
+
+class EmployeeDepartmentBase(BaseModel):
+    employee_id: int
+    department_id: int
+    role: Optional[str] = None
+    is_primary: int = 1
+    status: str = "active"
+
+class EmployeeDepartmentCreate(EmployeeDepartmentBase):
+    employee_id: int
+    is_primary: Optional[int] = None
+    status: Optional[str] = None
+    department_id: int
+    role: Optional[str] = None
+
+class EmployeeDepartmentUpdate(BaseModel):
+    id: int
+    employee_id: int
+    role: Optional[str] = None
+    is_primary: Optional[int] = None
+    status: Optional[str] = None
+    department_id: Optional[str] = None
+
+class EmployeeDepartmentOut(EmployeeDepartmentBase):
+    id: int
+    employee_id: int
+    department_id: int
+    role: Optional[str] = None
+    is_primary: int = 1
+    status: str = "active"
+    assigned_at: datetime
+    # Thêm thông tin tên phòng ban để hiển thị ở Frontend
+    unit_name: Optional[str] = None 
+    unit_code: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)

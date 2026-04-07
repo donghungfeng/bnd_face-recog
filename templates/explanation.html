@@ -366,10 +366,31 @@
     let currentEditId = null;
     let cachedItems = [];
 
-    const currentUser = {
+    // KHÔNG LẤY QUYỀN TỪ LOCALSTORAGE NỮA
+    let currentUser = {
         username: localStorage.getItem("hrm_username") || "",
-        role: localStorage.getItem("hrm_role") || "user"
+        role: "user"
     };
+
+    // HÀM LẤY QUYỀN THỰC TẾ TỪ DB
+    async function fetchUserRole() {
+        try {
+            const token = localStorage.getItem("hrm_token");
+            const res = await fetch('/api/employees/me', { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok) {
+                const payload = await res.json();
+                const roles = (payload.data.role || "user").split(",").map(r => r.trim().toLowerCase());
+                
+                // Cập nhật quyền cao nhất
+                if (roles.includes("admin")) currentUser.role = "admin";
+                else if (roles.includes("manager")) currentUser.role = "manager";
+                else currentUser.role = "user";
+                
+                // Cập nhật lại username chuẩn
+                currentUser.username = payload.data.username; 
+            }
+        } catch (e) { console.error("Lỗi lấy quyền:", e); }
+    }
 
     // --- XỬ LÝ PREVIEW ẢNH KHI CHỌN FILE ---
     function previewAttachment(event) {
@@ -391,7 +412,6 @@
 
     // --- MODAL XEM ẢNH ---
     function openImageModal(src) {
-        // Đảm bảo đường dẫn có dấu "/" ở đầu (vd: /static/uploads/...)
         const imagePath = src.startsWith('/') ? src : '/' + src;
         document.getElementById('previewImage').src = imagePath;
         document.getElementById('imageModal').style.display = 'flex';
@@ -465,23 +485,26 @@
             const dateStr = `${d}/${m}/${y}`;
 
             let actionHtml = "";
-            if ((currentUser.role === "admin" || currentUser.role === "manager") && statusInt === 1) {
+            
+            // LOGIC MỚI: Quản lý/Admin mới được duyệt VÀ KHÔNG ĐƯỢC duyệt đơn của chính mình
+            const canApprove = (currentUser.role === "admin" || currentUser.role === "manager") && (item.username !== currentUser.username);
+
+            if (canApprove && statusInt === 1) {
                 actionHtml += `
                     <button onclick="approveRecord(${item.id})" class="btn-action" style="background:#10b981; color:white; margin-right:4px;">Duyệt</button>
                     <button onclick="rejectRecord(${item.id})" class="btn-action" style="background:#ef4444; color:white;">Hủy</button>
                 `;
             }
 
-            if (statusInt === 1 && (currentUser.role !== "user" || item.username === currentUser.username)) {
+            // LOGIC MỚI: Chỉ chính chủ mới được sửa đơn của mình khi đang chờ duyệt
+            if (statusInt === 1 && item.username === currentUser.username) {
                 actionHtml += `<button onclick="editRecord(${item.id})" class="btn-action" style="background:#e0f2fe; color:#0284c7; margin-left:4px;">✏️ Sửa</button>`;
             }
 
             const displayShift = item.shift_name || item.shift_code || "Không xác định";
 
-            // HIỂN THỊ NÚT XEM ẢNH NẾU CÓ ĐÍNH KÈM
             let attachHtml = "";
             if (item.attached_file) {
-                // Thoát các ký tự đặc biệt để an toàn khi đưa vào hàm JS
                 const safePath = item.attached_file.replace(/'/g, "\\'");
                 attachHtml = `<div style="margin-top:5px; cursor:pointer; color:var(--primary); font-size:0.8rem; font-weight:700;" onclick="openImageModal('${safePath}')">🖼️ Xem đính kèm</div>`;
             }
@@ -520,13 +543,10 @@
         document.getElementById("post_username").value = item.username;
         document.getElementById("post_shift_code").value = item.shift_code;
 
-        // Reset file upload input
         document.getElementById("post_attached_file").value = "";
         
-        // Hiển thị lại ảnh cũ nếu có trong DB
         const preview = document.getElementById("attachment_preview");
         if (item.attached_file) {
-            // Thêm '/' vào trước để đảm bảo load đúng thư mục static
             preview.src = item.attached_file.startsWith('/') ? item.attached_file : '/' + item.attached_file;
             preview.style.display = "inline-block";
         } else {
@@ -556,19 +576,17 @@
         document.getElementById("post_date").valueAsDate = d;
     }
 
-    // --- 4. SUBMIT FORM (SỬ DỤNG FORMDATA ĐỂ GỬI FILE) ---
+    // --- 4. SUBMIT FORM ---
     document.getElementById("explainForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const btn = document.getElementById("saveBtn");
         btn.disabled = true;
 
-        // Khởi tạo FormData
         const formData = new FormData();
         formData.append("date", document.getElementById("post_date").value);
         formData.append("reason", document.getElementById("post_reason").value.trim());
         formData.append("shift_code", document.getElementById("post_shift_code").value);
 
-        // Lấy file ảnh nếu người dùng có chọn
         const fileInput = document.getElementById("post_attached_file");
         if (fileInput.files.length > 0) {
             formData.append("attached_file", fileInput.files[0]);
@@ -587,12 +605,9 @@
                 formData.append("status", "1");
             }
 
-            // Gửi request bằng fetch. LƯU Ý: Không set "Content-Type", Browser sẽ tự xử lý cho FormData
             const res = await fetch(url, {
                 method: method,
-                headers: { 
-                    "Authorization": `Bearer ${token}` 
-                },
+                headers: { "Authorization": `Bearer ${token}` },
                 body: formData
             });
 
@@ -660,7 +675,10 @@
     }
 
     // --- KHỞI TẠO ---
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
+        // Gọi API lấy quyền trước tiên
+        await fetchUserRole();
+        
         document.getElementById("post_username").value = currentUser.username;
         const d = new Date(); d.setDate(d.getDate() - 1);
         document.getElementById("post_date").valueAsDate = d;

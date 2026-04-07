@@ -34,32 +34,68 @@ async def render_page(request: Request):
 
 @router.get("/api")
 def get_all_requests(
-    page: int = 1,
-    size: int = 10,
     search: str = Query(None),
-    status: str = Query(None), # <--- 1. Bổ sung tham số nhận status
+    status: str = Query(None),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     current_username = current_user.get("username")
-    current_role = current_user.get("role", "user")
+
+    # ==========================================
+    # 1. TÌM THÔNG TIN USER VÀ QUYỀN TỪ DATABASE
+    # ==========================================
+    me = db.query(models.Employee).filter(models.Employee.username == current_username).first()
+    if not me:
+        return [] # Trả về mảng rỗng
+
+    # Lấy danh sách phòng ban & quyền
+    my_departments = db.query(models.EmployeeDepartment).filter(
+        models.EmployeeDepartment.employee_id == me.id
+    ).all()
+    
+    # Kiểm tra quyền admin
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
 
     query = db.query(models.LeaveRequest)
 
-    # Phân quyền (RBAC)
-    if current_role != "admin":
+    # ==========================================
+    # 2. ÁP DỤNG PHÂN QUYỀN NẾU KHÔNG PHẢI ADMIN
+    # ==========================================
+    if not is_admin:
+        allowed_usernames = {current_username}
+        
+        # Tìm các phòng ban đang làm manager
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
+
+        if managed_dept_ids:
+            dept_users = db.query(models.Employee.username).join(models.EmployeeDepartment).filter(
+                models.EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
+            
+            for u in dept_users:
+                allowed_usernames.add(u[0])
+
+        allowed_usernames_list = list(allowed_usernames)
+
+        # Bộ lọc: Thuộc danh sách quản lý HOẶC được chỉ định đích danh duyệt
         query = query.filter(
             or_(
-                models.LeaveRequest.username == current_username,
+                models.LeaveRequest.username.in_(allowed_usernames_list),
                 models.LeaveRequest.approver_username == current_username
             )
         )
 
-    # 2. Logic Lọc theo Trạng thái
+    # ==========================================
+    # 3. LOGIC LỌC THEO TRẠNG THÁI VÀ TÌM KIẾM
+    # ==========================================
     if status:
         query = query.filter(models.LeaveRequest.status == status)
 
-    # 3. Logic Tìm kiếm
     if search:
         query = query.filter(
             or_(
@@ -68,11 +104,10 @@ def get_all_requests(
             )
         )
 
-    # Phân trang
     total = query.count()
-    offset = (page - 1) * size
-    records = query.order_by(models.LeaveRequest.id.desc()).offset(offset).limit(size).all()
-    
+    total_pages = max(1, (total + size - 1) // size)
+    records = query.order_by(models.LeaveRequest.id.desc()).offset((page - 1) * size).limit(size).all()
+
     results = []
     for r in records:
         results.append({
@@ -87,13 +122,12 @@ def get_all_requests(
             "status": r.status,
             "approver_fullname": r.approver_fullname,
         })
-        
+
     return {
         "items": results,
         "total": total,
-        "page": page,
-        "size": size,
-        "total_pages": (total + size - 1) // size if size > 0 else 1
+        "total_pages": total_pages,
+        "page": page
     }
 
 @router.post("/api")

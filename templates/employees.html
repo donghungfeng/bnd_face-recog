@@ -343,7 +343,6 @@
         flex-wrap: wrap;
     }
 
-
     /* =========================================================
        1. CHẾ ĐỘ TABLET (Từ 601px đến 1180px)
        ========================================================= */
@@ -354,7 +353,6 @@
             width: 100% !important;
             max-width: 100vw !important;
             overflow-x: hidden !important;
-            /* Khóa chết vùng ngoài */
         }
 
         #formCard {
@@ -370,7 +368,6 @@
             display: none !important;
         }
 
-        /* CHỐT CHẶN: Chỉ vùng này được phép cuộn ngang */
         .table-responsive {
             width: 100% !important;
             max-width: 100% !important;
@@ -517,7 +514,6 @@
     .toggle-grid {
         display: flex;
         flex-direction: column;
-        /* Ép buộc mỗi item nằm trên 1 dòng */
         gap: 10px;
         margin-bottom: 15px;
     }
@@ -583,11 +579,31 @@
         transform: translateX(18px);
     }
 
-    /* --- TABLE TOGGLE (Read Only / Small) --- */
     .table-switch {
         pointer-events: none;
-        /* Chỉ hiển thị trạng thái */
         transform: scale(0.85);
+    }
+    
+    .btn-pagination {
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-pagination:hover:not(:disabled) {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+    }
+
+    .btn-pagination:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 </style>
 {% endblock %}
@@ -618,30 +634,28 @@
                     <label>Ngày Sinh</label>
                     <input type="date" id="date_of_birth">
                 </div>
-                <div class="form-group">
-                    <label>Phòng Ban / Đơn vị</label>
-                    <select id="department_id">
-                        <option value="">-- Chọn đơn vị --</option>
-                    </select>
-                </div>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <div class="form-group" style="flex:1; min-width: 120px;">
-                        <label>Phân quyền</label>
-                        <select id="role">
-                            <option value="user">Nhân viên</option>
-                            <option value="manager">Quản lý</option>
-                            <option value="admin">Admin</option>
-                        </select>
+
+                <div class="form-group" style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="margin: 0; font-weight: 800; color: var(--primary);">🏢 Phòng Ban / Quyền*</label>
+                        <button type="button" class="btn-pagination" onclick="addDepartmentRow()" style="font-size: 0.75rem; padding: 4px 10px; background: #dbeafe; color: #1e40af; border-color: #bfdbfe; font-weight: bold;">
+                            + Thêm
+                        </button>
                     </div>
-                    <div class="form-group" style="flex:1; min-width: 120px;" id="pwdGroup">
-                        <label>Mật khẩu</label>
-                        <input type="text" id="password" value="123456" required autocomplete="new-password">
-                    </div>
+                    <div id="departmentsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                        </div>
                 </div>
+
+                <div class="form-group" id="pwdGroup" style="margin-bottom: 15px;">
+                    <label>Mật khẩu (Cho tài khoản mới)</label>
+                    <input type="text" id="password" value="123456" required autocomplete="new-password">
+                </div>
+
                 <div class="form-group">
                     <label>Số điện thoại</label>
                     <input type="text" id="phone" placeholder="VD: 0987654321">
                 </div>
+                
                 <div class="form-group" id="statusGroup" style="display: none;">
                     <label>Trạng thái</label>
                     <select id="status">
@@ -686,8 +700,7 @@
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
                     <button type="button" class="btn-toolbar" id="cancelBtn" style="display: none; flex:1;"
                         onclick="resetForm()">HỦY</button>
-                    <button type="submit" class="btn-toolbar primary" id="submitBtn" style="flex: 1;">LƯU THÔNG
-                        TIN</button>
+                    <button type="submit" class="btn-toolbar primary" id="submitBtn" style="flex: 1;">LƯU THÔNG TIN</button>
                 </div>
             </form>
         </div>
@@ -712,8 +725,7 @@
                 <div class="excel-actions">
                     <input type="file" id="excelFile" accept=".xlsx, .xls" style="display: none;"
                         onchange="importExcel(this)">
-                    <button class="btn-toolbar" onclick="downloadTemplate()" title="Tải file mẫu Excel">📄 File
-                        Mẫu</button>
+                    <button class="btn-toolbar" onclick="downloadTemplate()" title="Tải file mẫu Excel">📄 File Mẫu</button>
                     <button class="btn-toolbar" onclick="document.getElementById('excelFile').click()"
                         title="Nhập từ Excel">📥 Nhập file</button>
                     <button class="btn-toolbar" onclick="exportExcel()" title="Xuất ra Excel">📤 Xuất file</button>
@@ -749,7 +761,6 @@
                 </table>
             </div>
 
-            <!-- Pagination Controls -->
             <div id="paginationControls"
                 style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #fff; border: 1px solid #e2e8f0; border-top: 2px solid #cbd5e1; border-radius: 0 0 8px 8px; font-size: 0.85rem; box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.1);">
                 <div style="display: flex; align-items: center; gap: 5px;">
@@ -783,30 +794,6 @@
         </div>
     </div>
 </div>
-
-<style>
-    .btn-pagination {
-        background: #fff;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        padding: 2px 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .btn-pagination:hover:not(:disabled) {
-        background: #f1f5f9;
-        border-color: #94a3b8;
-    }
-
-    .btn-pagination:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -845,22 +832,62 @@
         document.getElementById('formIcon').style.transform = "rotate(-90deg)";
     }
 
+    // ==========================================
+    // HÀM TẠO GIAO DIỆN CHỌN PHÒNG BAN ĐỘNG
+    // ==========================================
+    function addDepartmentRow(deptId = "", role = "user", isPrimary = false) {
+        const container = document.getElementById('departmentsContainer');
+        const rowCount = container.children.length;
+        const isFirst = rowCount === 0; 
+
+        const row = document.createElement('div');
+        row.className = 'dept-row';
+        row.style.cssText = 'display: flex; gap: 8px; align-items: center; background: #ffffff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; flex-wrap: wrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05);';
+
+        // 1. Dropdown Chọn Phòng Ban
+        let selectHTML = `<select class="dept-select" required style="flex: 2; min-width: 140px; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none;">
+            <option value="">-- Chọn đơn vị --</option>`;
+        allDepartments.forEach(d => {
+            selectHTML += `<option value="${d.id}" ${d.id == deptId ? 'selected' : ''}>${d.unit_name}</option>`;
+        });
+        selectHTML += `</select>`;
+
+        // 2. Dropdown Chọn Quyền
+        let roleHTML = `<select class="role-select" style="flex: 1; min-width: 110px; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none;">
+            <option value="user" ${role === 'user' ? 'selected' : ''}>Nhân viên</option>
+            <option value="manager" ${role === 'manager' ? 'selected' : ''}>Quản lý</option>
+            <option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option>
+        </select>`;
+
+        // 3. Nút Radio Check Phòng Ban Chính
+        let checkedAttr = (isPrimary || isFirst) ? 'checked' : '';
+        let radioHTML = `<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer; color: #475569;">
+            <input type="radio" name="primary_dept_radio" class="primary-radio" value="1" ${checkedAttr}> Chính
+        </label>`;
+
+        // 4. Nút Xóa (Dấu X đỏ)
+        let removeBtn = `<button type="button" onclick="this.parentElement.remove()" style="width: 28px; height: 28px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; color: #dc2626; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Xóa dòng này">✖</button>`;
+
+        row.innerHTML = selectHTML + roleHTML + radioHTML + removeBtn;
+        container.appendChild(row);
+    }
+
     async function initData() {
         try {
-            // Lấy danh sách phòng ban CÓ KÈM TOKEN
             const deptRes = await fetch('/api/departments', {
                 headers: getAuthHeaders()
             });
             allDepartments = await deptRes.json();
 
-            const deptSelectForm = document.getElementById('department_id');
+            // Đổ vào Select lọc
             const deptSelectFilter = document.getElementById('deptFilter');
-
             allDepartments.forEach(d => {
                 const optStr = `<option value="${d.id}">${d.unit_name}</option>`;
-                deptSelectForm.innerHTML += optStr;
                 deptSelectFilter.innerHTML += optStr;
             });
+
+            // Khởi tạo 1 dòng mặc định
+            addDepartmentRow();
 
             await fetchEmployees();
         } catch (e) { console.error(e); }
@@ -873,22 +900,17 @@
         const keyword = document.getElementById('searchInput').value.trim();
         const deptId = document.getElementById('deptFilter').value;
 
-        // Truyền đúng page, size, search, và department_id
         let url = `${API_URL}?page=${currentPage}&size=${pageSize}`;
         if (keyword) url += `&search=${encodeURIComponent(keyword)}`;
         if (deptId) url += `&department_id=${deptId}`;
 
         try {
-            // GỌI API KÈM TOKEN
-            const res = await fetch(url, {
-                headers: getAuthHeaders()
-            });
-            
+            const res = await fetch(url, { headers: getAuthHeaders() });
             if (!res.ok) throw new Error("Lỗi tải dữ liệu hoặc không có quyền truy cập");
 
             const data = await res.json();
-
             currentEmployees = data.items || data;
+            
             if (data.items) {
                 renderPagination(data.page, data.total_pages, data.total);
             }
@@ -905,7 +927,15 @@
         if (data.length === 0) return tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">Không có dữ liệu.</td></tr>';
 
         data.forEach((emp, i) => {
-            let roleBadge = emp.role === 'admin' ? `<span class="badge badge-admin">Admin</span>` : (emp.role === 'manager' ? `<span class="badge badge-manager">Quản lý</span>` : `<span class="badge badge-user">Nhân viên</span>`);
+            // Hiển thị quyền (vì giờ là chuỗi có thể chứa nhiều quyền)
+            let roleDisplay = "Nhân viên";
+            let roleBadge = `<span class="badge badge-user">${roleDisplay}</span>`;
+            if (emp.role && emp.role.includes("admin")) {
+                roleBadge = `<span class="badge badge-admin">Admin</span>`;
+            } else if (emp.role && emp.role.includes("manager")) {
+                roleBadge = `<span class="badge badge-manager">Quản lý</span>`;
+            }
+
             let lockStatus = emp.is_locked === 1 ? `<span class="badge badge-locked">Đang khóa</span>` : `<span style="color:#10b981; font-size:0.85rem; font-weight:bold;">Hoạt động</span>`;
             let dobDisplay = emp.date_of_birth ? emp.date_of_birth.split("-").reverse().join("/") : "---";
             let deptDisplay = emp.department_name ? emp.department_name : 'Chưa xếp phòng';
@@ -1005,9 +1035,7 @@
         document.getElementById('btnLast').disabled = (page >= totalPageCount);
     }
 
-    function changePage(delta) {
-        jumpToPage(currentPage + delta);
-    }
+    function changePage(delta) { jumpToPage(currentPage + delta); }
 
     function jumpToPage(page) {
         const pageNum = parseInt(page);
@@ -1015,11 +1043,9 @@
             document.getElementById('pageInput').value = currentPage;
             return;
         }
-        if (pageNum > totalPages && totalPages > 0) {
-            currentPage = totalPages;
-        } else {
-            currentPage = pageNum;
-        }
+        if (pageNum > totalPages && totalPages > 0) currentPage = totalPages;
+        else currentPage = pageNum;
+        
         fetchEmployees();
     }
 
@@ -1046,7 +1072,6 @@
 
     async function exportExcel() { 
         try {
-            // Có thể ghép thêm search / deptId vào URL nếu muốn xuất excel theo điều kiện lọc
             const res = await fetch('/api/employees/export', { headers: getAuthHeaders() });
             if (!res.ok) throw new Error();
             const blob = await res.blob();
@@ -1065,7 +1090,7 @@
         try {
             const res = await fetch('/api/employees/import', { 
                 method: 'POST', 
-                headers: getAuthHeaders(), // Không có Content-Type để cho phép FormData tự tạo boundary
+                headers: getAuthHeaders(),
                 body: formData 
             });
             const data = await res.json();
@@ -1158,7 +1183,7 @@
     }
 
     // ==========================================
-    // XỬ LÝ FORM THÊM SỬA
+    // XỬ LÝ FORM THÊM / SỬA NHÂN SỰ
     // ==========================================
     function editEmployee(username) {
         document.getElementById('formContent').style.display = "block";
@@ -1180,11 +1205,23 @@
         document.getElementById('username').value = emp.username;
         document.getElementById('full_name').value = emp.full_name;
         document.getElementById('date_of_birth').value = emp.date_of_birth || "";
-        document.getElementById('department_id').value = emp.department_id || "";
         document.getElementById('phone').value = emp.phone || "";
         document.getElementById('status').value = emp.status || "active";
-        document.getElementById('role').value = emp.role || "user";
         document.getElementById('is_locked').value = emp.is_locked;
+
+        // Xử lý render động danh sách phòng ban
+        document.getElementById('departmentsContainer').innerHTML = "";
+        if (emp.department_id) {
+            const deptIds = String(emp.department_id).split(',');
+            const roles = emp.role ? String(emp.role).split(',') : [];
+            
+            deptIds.forEach((id, index) => {
+                let r = roles[index] ? roles[index].trim() : (roles[0] || "user");
+                addDepartmentRow(id.trim(), r, index === 0);
+            });
+        } else {
+            addDepartmentRow();
+        }
 
         document.getElementById('ccCaNhan').checked = (emp.ccCaNhan === 1);
         document.getElementById('ccTapTrung').checked = (emp.ccTapTrung === 1);
@@ -1209,26 +1246,52 @@
         document.getElementById('ccTapTrung').checked = false;
         document.getElementById('checkViTri').checked = true;
         document.getElementById('checkMang').checked = true;
+
+        // Reset phòng ban về 1 dòng mặc định
+        document.getElementById('departmentsContainer').innerHTML = "";
+        addDepartmentRow();
     }
 
     document.getElementById('empForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const isEditMode = document.getElementById('edit_mode').value === "true";
 
+        // Gom danh sách phòng ban
+        const deptRows = document.querySelectorAll('.dept-row');
+        let departmentsArr = [];
+        
+        deptRows.forEach(row => {
+            const dId = row.querySelector('.dept-select').value;
+            const rVal = row.querySelector('.role-select').value;
+            const isPri = row.querySelector('.primary-radio').checked ? 1 : 0;
+            
+            if (dId) {
+                departmentsArr.push({
+                    department_id: parseInt(dId),
+                    role: rVal,
+                    is_primary: isPri
+                });
+            }
+        });
+
+        // Bắt buộc luôn phải có 1 phòng ban chính
+        if (departmentsArr.length > 0 && !departmentsArr.some(d => d.is_primary === 1)) {
+            departmentsArr[0].is_primary = 1;
+        }
+
         const payload = {
             username: document.getElementById('username').value.trim(),
             full_name: document.getElementById('full_name').value.trim(),
             date_of_birth: document.getElementById('date_of_birth').value || null,
-            department_id: document.getElementById('department_id').value ? parseInt(document.getElementById('department_id').value) : null,
             phone: document.getElementById('phone').value.trim(),
-            role: document.getElementById('role').value,
             status: isEditMode ? document.getElementById('status').value : "active",
             is_locked: parseInt(document.getElementById('is_locked').value),
             password: document.getElementById('password') ? document.getElementById('password').value : "123456",
             ccCaNhan: document.getElementById('ccCaNhan').checked ? 1 : 0,
             ccTapTrung: document.getElementById('ccTapTrung').checked ? 1 : 0,
             checkViTri: document.getElementById('checkViTri').checked ? 1 : 0,
-            checkMang: document.getElementById('checkMang').checked ? 1 : 0
+            checkMang: document.getElementById('checkMang').checked ? 1 : 0,
+            departments: departmentsArr 
         };
 
         const method = isEditMode ? 'PUT' : 'POST';

@@ -12,9 +12,10 @@ from fastapi.templating import Jinja2Templates
 templates = Jinja2Templates(directory="templates")
 
 from database import get_db
-from models import ShiftCategory, ShiftAssignment, Employee, OrganizationUnit
+from models import ShiftCategory, ShiftAssignment, Employee, OrganizationUnit, EmployeeDepartment
 from schemas import ShiftCategoryCreate, ShiftAssignmentCreate
 from routers.auth_router import get_current_user
+from collections import defaultdict
 
 router = APIRouter()
 
@@ -219,9 +220,10 @@ def export_assignment_template(
     current_user: dict = Depends(get_current_user)  # Bắt buộc: Lấy thông tin user hiện tại
 ):
     current_username = current_user.get("username")
-    current_role = current_user.get("role", "user")
     
+    # ==========================================
     # 1. XỬ LÝ NGÀY THÁNG
+    # ==========================================
     if not start_date or not end_date:
         today = date.today()
         start = today - timedelta(days=today.weekday())
@@ -241,7 +243,90 @@ def export_assignment_template(
         date_list.append(curr)
         curr += timedelta(days=1)
 
-    # 2. THIẾT LẬP FILE EXCEL
+    # ==========================================
+    # 2. TÌM THÔNG TIN USER VÀ QUYỀN TỪ DATABASE
+    # ==========================================
+    me = db.query(Employee).filter(Employee.username == current_username).first()
+    if not me:
+        raise HTTPException(status_code=403, detail="Không tìm thấy thông tin tài khoản hiện tại")
+
+    my_departments = db.query(EmployeeDepartment).filter(
+        EmployeeDepartment.employee_id == me.id
+    ).all()
+    
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    # Khởi tạo query gốc (Chỉ lấy NV Active, KHÔNG join bảng phòng ban ở đây)
+    query = db.query(Employee).filter(Employee.status == 'active')
+
+    # ==========================================
+    # 3. ÁP DỤNG PHÂN QUYỀN NẾU KHÔNG PHẢI ADMIN
+    # ==========================================
+    if not is_admin:
+        allowed_usernames = {current_username}
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
+
+        if managed_dept_ids:
+            dept_users = db.query(Employee.username).join(EmployeeDepartment).filter(
+                EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
+            
+            for u in dept_users:
+                allowed_usernames.add(u[0])
+
+        query = query.filter(Employee.username.in_(list(allowed_usernames)))
+
+    # ==========================================
+    # 4. LỌC THEO TÌM KIẾM VÀ PHÒNG BAN (TỪ FRONTEND)
+    # ==========================================
+    if search:
+        query = query.filter(
+            or_(
+                Employee.full_name.ilike(f"%{search}%"),
+                Employee.username.ilike(f"%{search}%")
+            )
+        )
+        
+    if department_id:
+        subq_dept = db.query(EmployeeDepartment.employee_id).filter(EmployeeDepartment.department_id == department_id)
+        query = query.filter(Employee.id.in_(subq_dept))
+
+    # Chốt danh sách nhân sự
+    employees = query.order_by(Employee.id.desc()).all()
+
+    # ==========================================
+    # 5. LẤY THÔNG TIN PHÒNG BAN VÀ GHÉP CHUỖI
+    # ==========================================
+    emp_depts_map = defaultdict(list)
+    if employees:
+        emp_ids = [e.id for e in employees]
+        Dept = aliased(OrganizationUnit)
+        ParentUnit = aliased(OrganizationUnit)
+
+        dept_query = db.query(
+            EmployeeDepartment.employee_id,
+            Dept.unit_name.label("dept_name"),
+            ParentUnit.unit_name.label("parent_name")
+        ).join(
+            Dept, EmployeeDepartment.department_id == Dept.id
+        ).outerjoin(
+            ParentUnit, Dept.parent_id == ParentUnit.id
+        ).filter(
+            EmployeeDepartment.employee_id.in_(emp_ids)
+        ).all()
+
+        for row in dept_query:
+            emp_depts_map[row.employee_id].append({
+                "dept_name": row.dept_name or "",
+                "parent_name": row.parent_name or ""
+            })
+
+    # ==========================================
+    # 6. THIẾT LẬP FILE EXCEL (SHEET 1)
+    # ==========================================
     wb = openpyxl.Workbook()
     header_font = Font(bold=True, color="FFFFFF")
     blue_fill = PatternFill(start_color="4361EE", fill_type="solid")
@@ -256,53 +341,10 @@ def export_assignment_template(
     for cell in ws1[1]:
         cell.font = header_font
         cell.fill = blue_fill
-    
-    Dept = aliased(OrganizationUnit)
-    ParentUnit = aliased(OrganizationUnit)
-    
-    # 3. TRUY VẤN CƠ BẢN (CHỈ LẤY NHÂN VIÊN ACTIVE)
-    query = db.query(
-        Employee,
-        Dept.unit_name.label("dept_name"),
-        ParentUnit.unit_name.label("parent_name")
-    ).outerjoin(
-        Dept, Employee.department_id == Dept.id
-    ).outerjoin(
-        ParentUnit, Dept.parent_id == ParentUnit.id
-    ).filter(Employee.status == 'active')
 
     # ==========================================
-    # 4. LOGIC PHÂN QUYỀN (RBAC)
+    # 7. LẤY DỮ LIỆU CA TRỰC ĐÃ GÁN
     # ==========================================
-    if current_role == "admin":
-        pass # Admin xem tất cả
-    elif current_role == "manager":
-        manager_dept_id = db.query(Employee.department_id).filter(Employee.username == current_username).scalar()
-        if manager_dept_id:
-            query = query.filter(Employee.department_id == manager_dept_id)
-        else:
-            query = query.filter(Employee.username == current_username)
-    else:
-        # User thường chỉ xuất được lịch của chính mình
-        query = query.filter(Employee.username == current_username)
-
-    # ==========================================
-    # 5. LỌC THEO TÌM KIẾM VÀ PHÒNG BAN (TỪ FRONTEND)
-    # ==========================================
-    if search:
-        query = query.filter(
-            or_(
-                Employee.full_name.ilike(f"%{search}%"),
-                Employee.username.ilike(f"%{search}%")
-            )
-        )
-    if department_id:
-        query = query.filter(Employee.department_id == department_id)
-
-    # Chốt danh sách dòng
-    rows = query.order_by(Employee.id.desc()).all()
-
-    # 6. LẤY DỮ LIỆU CA TRỰC ĐÃ GÁN
     current_assigns = db.query(ShiftAssignment).filter(
         ShiftAssignment.shift_date >= start,
         ShiftAssignment.shift_date <= end
@@ -312,21 +354,35 @@ def export_assignment_template(
     for a in current_assigns:
         assign_map[(a.employee_id, a.shift_date.strftime("%Y-%m-%d"))] = a.shift_code
 
-    # 7. ĐỔ DỮ LIỆU VÀO EXCEL
-    for i, (e, dept_name, parent_name) in enumerate(rows):
+    # ==========================================
+    # 8. ĐỔ DỮ LIỆU VÀO EXCEL
+    # ==========================================
+    for i, e in enumerate(employees):
         dob = e.dob or e.date_of_birth
         dob_str = dob.strftime("%Y-%m-%d") if dob else ""
         
-        ten_don_vi = parent_name or dept_name or ""
-        ten_phong_ban = dept_name if parent_name else ""
+        # Xử lý ghép chuỗi phòng ban
+        depts = emp_depts_map.get(e.id, [])
+        arr_ten_don_vi = []
+        arr_ten_phong_ban = []
+        
+        for d in depts:
+            if d["parent_name"]:
+                arr_ten_don_vi.append(d["parent_name"])
+                if d["dept_name"]: arr_ten_phong_ban.append(d["dept_name"])
+            else:
+                if d["dept_name"]: arr_ten_don_vi.append(d["dept_name"])
+
+        str_ten_don_vi = ", ".join(list(dict.fromkeys(filter(None, arr_ten_don_vi))))
+        str_ten_phong_ban = ", ".join(list(dict.fromkeys(filter(None, arr_ten_phong_ban))))
         
         row_data = [
             i + 1,
             e.id,
             e.full_name,
             dob_str,
-            ten_don_vi,
-            ten_phong_ban
+            str_ten_don_vi,
+            str_ten_phong_ban
         ]
         
         for d in date_list:
@@ -347,7 +403,9 @@ def export_assignment_template(
         col_letter = openpyxl.utils.get_column_letter(7 + i)
         ws1.column_dimensions[col_letter].width = 15
 
-    # 8. TẠO SHEET 2 (DANH MỤC CA TRỰC)
+    # ==========================================
+    # 9. TẠO SHEET 2 (DANH MỤC CA TRỰC)
+    # ==========================================
     ws2 = wb.create_sheet(title="DanhMucCaTruc")
     ws2.append(["MÃ CA TRỰC", "TÊN CA TRỰC", "GIỜ BẮT ĐẦU", "GIỜ KẾT THÚC", "GHI CHÚ"])
     for cell in ws2[1]:
@@ -369,7 +427,9 @@ def export_assignment_template(
             s.notes or ""
         ])
 
-    # 9. TRẢ VỀ FILE EXCEL QUA API
+    # ==========================================
+    # 10. TRẢ VỀ FILE EXCEL QUA API
+    # ==========================================
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)

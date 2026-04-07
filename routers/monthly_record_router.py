@@ -94,33 +94,61 @@ def get_monthly_report(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    role = current_user.get("role", "user")
     current_username = current_user.get("username")
+
+    # ==========================================
+    # 1. TÌM THÔNG TIN USER VÀ QUYỀN TỪ DATABASE
+    # ==========================================
+    me = db.query(models.Employee).filter(models.Employee.username == current_username).first()
+    if not me:
+        return []
+
+    # Lấy danh sách phòng ban & quyền
+    my_departments = db.query(models.EmployeeDepartment).filter(
+        models.EmployeeDepartment.employee_id == me.id
+    ).all()
     
-    # 1. Authorize access based on role
+    # Kiểm tra quyền admin
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    # ==========================================
+    # 2. XÁC ĐỊNH DANH SÁCH NHÂN VIÊN ĐƯỢC PHÉP XEM
+    # ==========================================
     allowed_emp_ids = None
-    if role == "user":
-        emp = db.query(models.Employee).filter(models.Employee.username == current_username).first()
-        if not emp:
-            return []
-        employee_id = emp.id
-        allowed_emp_ids = [emp.id]
-    elif role == "manager":
-        manager = db.query(models.Employee).filter(models.Employee.username == current_username).first()
-        if not manager or not manager.department_id:
-            return []
-        dept_users = db.query(models.Employee.id).filter(models.Employee.department_id == manager.department_id).all()
-        allowed_emp_ids = [u[0] for u in dept_users]
-        if employee_id and employee_id not in allowed_emp_ids:
-            return []
-    
-    # If employee_id is specifically requested (by Admin/Manager for a specific person)
+
+    if not is_admin:
+        # Mặc định: Luôn được xem bản ghi của chính mình
+        allowed_emp_ids = {me.id}
+        
+        # Tìm các ID phòng ban mà user này làm manager
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
+        
+        if managed_dept_ids:
+            # Lấy ID của tất cả nhân sự thuộc các phòng ban đang quản lý
+            managed_emps = db.query(models.EmployeeDepartment.employee_id).filter(
+                models.EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
+            for row in managed_emps:
+                allowed_emp_ids.add(row[0])
+
+    # ==========================================
+    # 3. XỬ LÝ YÊU CẦU TÌM CỤ THỂ 1 EMPLOYEE_ID
+    # ==========================================
     if employee_id is not None:
         employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
         if not employee:
             raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
-    
-    # 2. Get records using the hybrid service
+        
+        # Lớp khiên bảo mật: Chặn nếu không có quyền quản lý ID này
+        if allowed_emp_ids is not None and employee_id not in allowed_emp_ids:
+            return []
+
+    # ==========================================
+    # 4. TRUY VẤN DỮ LIỆU TỪ SERVICE
+    # ==========================================
     records = attendance_service.get_hybrid_monthly_records(
         db, 
         start_date, 
@@ -128,11 +156,14 @@ def get_monthly_report(
         employee_id
     )
     
-    # 3. If it was a bulk query (employee_id is None) and role is Manager, filter by department
+    # Lớp khiên số 2: Nếu truy vấn hàng loạt (bulk), phải lọc rác những người không thuộc quyền
     if employee_id is None and allowed_emp_ids is not None:
-         records = [r for r in records if r.employee_id in allowed_emp_ids]
+        records = [r for r in records if r.employee_id in allowed_emp_ids]
 
-    # Cache for performance
+    # ==========================================
+    # 5. RENDER DỮ LIỆU ĐỂ TRẢ VỀ FRONTEND
+    # ==========================================
+    # Cache lại để tối ưu vòng lặp
     emp_map = {e.id: e for e in db.query(models.Employee).all()}
     shift_map = {s.shift_code: s for s in db.query(models.ShiftCategory).all()}
     
@@ -141,7 +172,6 @@ def get_monthly_report(
         emp = emp_map.get(r.employee_id)
         sc = shift_map.get(r.shift_code)
         
-        # Build enriched record
         record_dict = {
             "id": getattr(r, "id", None),
             "employee_id": r.employee_id,
@@ -162,7 +192,6 @@ def get_monthly_report(
             "full_name": emp.full_name if emp else "Unknown",
             "username": emp.username if emp else "Unknown",
             "shift_display_name": sc.shift_name if sc else (r.shift_code or "Unknown"),
-            
         }
         results.append(record_dict)
         
@@ -199,43 +228,64 @@ def get_attendance_summary_endpoint(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    role             = current_user.get("role", "user")
     current_username = current_user.get("username")
 
     target_employee_id = None
     allowed_emp_ids    = None
 
-    if role == "user":
-        emp = db.query(models.Employee).filter(
-            models.Employee.username == current_username
-        ).first()
-        if not emp:
-            return []
-        target_employee_id = emp.id
-        allowed_emp_ids    = {emp.id}
+    # ==========================================
+    # 1. TÌM THÔNG TIN USER VÀ QUYỀN TỪ DATABASE
+    # ==========================================
+    me = db.query(models.Employee).filter(
+        models.Employee.username == current_username
+    ).first()
+    if not me:
+        return []
 
-    elif role == "manager":
-        manager = db.query(models.Employee).filter(
-            models.Employee.username == current_username
-        ).first()
-        if not manager or not manager.department_id:
-            return []
+    # Lấy danh sách phòng ban & quyền
+    my_departments = db.query(models.EmployeeDepartment).filter(
+        models.EmployeeDepartment.employee_id == me.id
+    ).all()
+    
+    # Kiểm tra quyền admin
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
 
-        allowed_emp_ids = {
-            row[0] for row in db.query(models.Employee.id).filter(
-                models.Employee.department_id == manager.department_id
+    # ==========================================
+    # 2. ÁP DỤNG PHÂN QUYỀN VÀ LỌC TẬP DỮ LIỆU
+    # ==========================================
+    if not is_admin:
+        # Mặc định: Tập hợp allowed_emp_ids luôn chứa ID của chính mình
+        allowed_emp_ids = {me.id}
+
+        # Tìm các ID phòng ban mà user này làm manager
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
+
+        if managed_dept_ids:
+            # Lấy tất cả employee_id thuộc các phòng ban quản lý
+            managed_emps = db.query(models.EmployeeDepartment.employee_id).filter(
+                models.EmployeeDepartment.department_id.in_(managed_dept_ids)
             ).all()
-        }
+            
+            for row in managed_emps:
+                allowed_emp_ids.add(row[0])
 
+        # Nếu request yêu cầu xem 1 username cụ thể
         if username:
             specific = db.query(models.Employee).filter(
                 models.Employee.username == username
             ).first()
+            
+            # Chặn đứng nếu username đó không tồn tại HOẶC không nằm trong ds được phép quản lý
             if not specific or specific.id not in allowed_emp_ids:
                 return []
+                
             target_employee_id = specific.id
 
-    else:  # admin
+    else:  
+        # is_admin == True -> Bỏ qua kiểm tra allowed_emp_ids (mặc định = None để lấy tất)
         if username:
             specific = db.query(models.Employee).filter(
                 models.Employee.username == username
@@ -244,6 +294,9 @@ def get_attendance_summary_endpoint(
                 return []
             target_employee_id = specific.id
 
+    # ==========================================
+    # 3. GỌI SERVICE XỬ LÝ NGHIỆP VỤ
+    # ==========================================
     return attendance_service.get_attendance_summary(
         db          = db,
         start_date  = start_date,

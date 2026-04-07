@@ -27,7 +27,7 @@ def get_all_wifis(
     db: Session = Depends(get_db),
     current_user: models.Employee = Depends(get_current_user)
 ):
-    check_admin_role(current_user)
+    # check_admin_role(current_user)
     
     wifis = db.query(models.Wifi).all()
     return wifis
@@ -39,7 +39,7 @@ def create_wifi(
     db: Session = Depends(get_db),
     current_user: models.Employee = Depends(get_current_user)
 ):
-    check_admin_role(current_user)
+    # check_admin_role(current_user)
     
     new_wifi = models.Wifi(**wifi_data.model_dump())
     db.add(new_wifi)
@@ -55,7 +55,7 @@ def update_wifi(
     db: Session = Depends(get_db),
     current_user: models.Employee = Depends(get_current_user)
 ):
-    check_admin_role(current_user)
+    # check_admin_role(current_user)
     
     wifi = db.query(models.Wifi).filter(models.Wifi.id == wifi_id).first()
     if not wifi:
@@ -77,7 +77,7 @@ def delete_wifi(
     db: Session = Depends(get_db),
     current_user: models.Employee = Depends(get_current_user)
 ):
-    check_admin_role(current_user)
+    # check_admin_role(current_user)
     
     wifi = db.query(models.Wifi).filter(models.Wifi.id == wifi_id).first()
     if not wifi:
