@@ -165,11 +165,14 @@ def background_logging(
             Attendance.check_in_time <= today_end
         ).order_by(Attendance.check_in_time.asc()).all()
 
+        date_folder = now.strftime("%Y-%m-%d")
         timestamp_str = now.strftime("%Y%m%d_%H%M%S")
         success_filename = f"{user_id}_{timestamp_str}.jpg"
-        success_filepath = os.path.join(HISTORY_PATH, success_filename)
+        daily_history_path = os.path.join(HISTORY_PATH, date_folder)
+        os.makedirs(daily_history_path, exist_ok=True)
+
+        success_filepath = os.path.join(daily_history_path, success_filename)
         
-        # Rào chắn bảo vệ OpenCV trước khi lưu ảnh
         if img_full is not None and getattr(img_full, 'size', 0) > 0:
             cv2.imwrite(success_filepath, img_full)
         else:
@@ -188,8 +191,8 @@ def background_logging(
         elif now >= time_12_00 and now < time_17_00:
             early_min = int((time_17_00 - now).total_seconds() / 60)
 
-        image_web_path = f"/data/history_db/{success_filename}"
-
+        image_web_path = f"/data/history_db/{date_folder}/{success_filename}"
+        
         if user_id == 'UNKNOWN':
             new_log = Attendance(
                 username=user_id, 

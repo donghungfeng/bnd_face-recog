@@ -338,6 +338,9 @@
                 if (data.recognized) {
                     resultBox.className = "info status-ok";
                     resultBox.innerHTML = `✅ CHẤM CÔNG THÀNH CÔNG`;
+                    const today = new Date();
+                    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                    localStorage.setItem('checkout_done_date', todayStr);
                     setTimeout(() => { window.location.href = "/attendance"; }, 2000);
                 } else {
                     resultBox.className = "info status-err";

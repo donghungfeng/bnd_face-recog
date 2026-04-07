@@ -5,7 +5,7 @@ import cv2
 import glob
 import numpy as np
 from fastapi.responses import FileResponse
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 from deepface import DeepFace
 from sqlalchemy.orm import Session
@@ -586,9 +586,10 @@ def check_client_ip(req_data: CheckIPRequest, db: Session = Depends(get_db)):
     }
 
 @router.post("/api/verify-personal")
-async def verify_personal(data: PersonalVerifyRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def verify_personal(request: Request, data: PersonalVerifyRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user_id = data.user_id.upper()
     client_ip = data.client_public_ip
+    request.state.user_id = user_id
     
     # --- 1. KIỂM TRA QUYỀN & CẤU HÌNH NHÂN VIÊN ---
     from models import Employee

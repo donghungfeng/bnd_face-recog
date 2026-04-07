@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Query, Request, HTTPException, Depends
+import os
+import shutil
+
+from fastapi import APIRouter, Form, Query, Request, HTTPException, Depends, UploadFile, File
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import or_
@@ -10,6 +13,9 @@ from routers.auth_router import get_current_user
 
 router = APIRouter(prefix="/leave-requests", tags=["Leave Requests"])
 templates = Jinja2Templates(directory="templates")
+
+LEAVE_DIR = "data/leave_requests"
+os.makedirs(LEAVE_DIR, exist_ok=True)
 
 # Schema nhận dữ liệu từ Frontend
 class LeaveRequestModel(BaseModel):
@@ -86,6 +92,7 @@ def get_all_requests(
             "to_session": r.to_session,
             "status": r.status,
             "approver_fullname": r.approver_fullname,
+            "attached_image": r.attached_image
         })
         
     return {
@@ -97,24 +104,61 @@ def get_all_requests(
     }
 
 @router.post("/api")
-def create_request(item: LeaveRequestModel, db: Session = Depends(get_db)):
+async def create_request(
+    username: str = Form(...),
+    fullname: str = Form(...),
+    from_date: str = Form(...),
+    from_session: str = Form(...),
+    to_date: str = Form(...),
+    to_session: str = Form(...),
+    type_id: int = Form(...),
+    reason: str = Form(...),
+    approver_username: str = Form(...),
+    attached_file: UploadFile = File(None), # <--- Tham số nhận file ảnh (không bắt buộc)
+    db: Session = Depends(get_db)
+):
     try:
-        # Lấy tên của người duyệt từ DB để lưu cho chuẩn xác
         from models import Employee
-        approver = db.query(Employee).filter(Employee.username == item.approver_username).first()
+        # Đã bỏ item. đi, dùng trực tiếp biến approver_username
+        approver = db.query(Employee).filter(Employee.username == approver_username).first()
         approver_name = approver.full_name if approver else "Quản lý"
 
+        # --- XỬ LÝ LƯU ẢNH ---
+        image_path_db = None
+        if attached_file and attached_file.filename:
+            import datetime as dt
+            now = dt.datetime.now()
+            date_folder = now.strftime("%Y-%m-%d")
+
+            base_dir = os.getcwd() 
+            save_dir = os.path.join(base_dir, LEAVE_DIR, date_folder)
+            os.makedirs(save_dir, exist_ok=True)
+
+            # Đã bỏ item. đi, dùng trực tiếp biến username
+            ext = os.path.splitext(attached_file.filename)[1]
+            filename = f"{username}_{now.strftime('%H%M%S')}{ext}"
+            file_path = os.path.join(save_dir, filename)
+
+            # Lưu file xuống ổ cứng
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(attached_file.file, buffer)
+
+            # Đường dẫn ảo để lưu vào database (chuẩn bị cho việc web đọc)
+            image_path_db = f"{LEAVE_DIR}/{date_folder}/{filename}"
+
+        # --- LƯU VÀO DATABASE ---
         new_req = models.LeaveRequest(
-            username=item.username,
-            fullname=item.fullname,
-            from_date=item.from_date,
-            from_session=item.from_session,
-            to_date=item.to_date,
-            to_session=item.to_session,
-            type_id=item.type_id,
-            reason=item.reason,
-            approver_username=item.approver_username, # <-- Lưu mã người duyệt
-            approver_fullname=approver_name,          # <-- Lưu tên người duyệt
+            username=username,               # Đã bỏ item.
+            fullname=fullname,               # Đã bỏ item.
+            from_date=from_date,             # Đã bỏ item.
+            from_session=from_session,       # Đã bỏ item.
+            to_date=to_date,                 # Đã bỏ item.
+            to_session=to_session,           # Đã bỏ item.
+            type_id=type_id,                 # Đã bỏ item.
+            reason=reason,                   # Đã bỏ item.
+            approver_username=approver_username, # Đã bỏ item.
+            approver_fullname=approver_name, 
+            attached_image=image_path_db, 
             status="PENDING"
         )
         db.add(new_req)

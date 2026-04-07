@@ -202,3 +202,4 @@ class LeaveRequest(Base):
     status = Column(String(50), server_default='PENDING')
 
     leave_type = relationship("LeaveType", back_populates="requests")
+    attached_image = Column(String(255), nullable=True)

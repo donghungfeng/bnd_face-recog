@@ -110,6 +110,37 @@
         /* Đẩy nút hành động sang phải trên mobile */
         .action-group { justify-content: flex-end; }
     }
+
+    .img-modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.75);
+        display: flex; justify-content: center; align-items: center;
+        z-index: 9999; opacity: 0; pointer-events: none; transition: 0.3s;
+        backdrop-filter: blur(3px);
+    }
+    .img-modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .img-modal-content {
+        position: relative;
+        max-width: 90%; max-height: 90%;
+        animation: zoomIn 0.3s ease;
+    }
+    @keyframes zoomIn {
+        from { transform: scale(0.9); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+    .img-modal-content img {
+        max-width: 100%; max-height: 85vh;
+        border-radius: 8px; box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+        display: block; object-fit: contain; background: #fff;
+    }
+    .img-modal-close {
+        position: absolute; top: -15px; right: -15px;
+        background: #ef4444; color: white; border: none;
+        width: 32px; height: 32px; border-radius: 50%;
+        font-weight: bold; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        display: flex; justify-content: center; align-items: center; font-size: 1rem;
+    }
+    .img-modal-close:hover { background: #dc2626; transform: scale(1.1); }
 </style>
 {% endblock %}
 
@@ -172,6 +203,11 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label>Ảnh đính kèm (Nếu có)</label>
+                <input type="file" id="attached_file" class="form-control" accept="image/*" style="padding: 6px;">
+            </div>
+
             <div class="flex-row" style="margin-top: 20px;">
                 <button type="button" class="btn btn-cancel flex-1" onclick="resetForm()">Làm lại</button>
                 <button type="submit" id="submitBtn" class="btn btn-primary flex-2">Gửi Yêu Cầu</button>
@@ -214,6 +250,13 @@
             <button id="prevBtn" class="btn btn-cancel" onclick="changePage(-1)">⬅️ Trước</button>
             <span id="pageInfo" style="font-weight: bold; color: var(--text-muted);">Trang 1 / 1</span>
             <button id="nextBtn" class="btn btn-cancel" onclick="changePage(1)">Sau ➡️</button>
+        </div>
+    </div>
+
+    <div class="img-modal-overlay" id="imagePreviewModal" onclick="closeImageModal()">
+        <div class="img-modal-content" onclick="event.stopPropagation()">
+            <button class="img-modal-close" onclick="closeImageModal()">✕</button>
+            <img id="previewImage" src="" alt="Ảnh đính kèm">
         </div>
     </div>
 
@@ -310,6 +353,11 @@
                 if (item.status === 'APPROVED') { badgeClass = 'bg-green'; badgeText = 'Đã Duyệt'; btnDisabled = 'disabled'; }
                 if (item.status === 'REJECTED') { badgeClass = 'bg-red'; badgeText = 'Từ Chối'; btnDisabled = 'disabled'; }
 
+                // Nút xem ảnh nếu có file đính kèm
+                let imageBtn = item.attached_image 
+                    ? `<button class="btn btn-sm btn-cancel" style="background:#f8fafc;" onclick="openImageModal('${item.attached_image}')">🖼️ Ảnh</button>` 
+                    : '';
+
                 tbody.innerHTML += `
                     <tr>
                         <td data-label="Nhân Viên">
@@ -332,6 +380,7 @@
                         </td>
                         <td data-label="Hành Động">
                             <div class="action-group">
+                                ${imageBtn}
                                 <button class="btn btn-sm btn-edit btn-cancel" ${btnDisabled} onclick="processRequest(${item.id}, 'APPROVED')">✅ Duyệt</button>
                                 <button class="btn btn-sm btn-del btn-cancel" ${btnDisabled} onclick="processRequest(${item.id}, 'REJECTED')">❌ Hủy</button>
                             </div>
@@ -354,16 +403,15 @@
     // Submit form
     document.getElementById('dataForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        const fromDateStr = document.getElementById('from_date').value;
+        const toDateStr = document.getElementById('to_date').value;
+        
         const payload = {
-            username: document.getElementById('username').value.trim().toUpperCase(),
-            fullname: document.getElementById('fullname').value.trim(),
-            type_id: parseInt(document.getElementById('type_id').value),
-            from_date: parseDateForAPI(document.getElementById('from_date').value),
+            from_date: parseDateForAPI(fromDateStr),
+            to_date: parseDateForAPI(toDateStr),
             from_session: document.getElementById('from_session').value,
-            to_date: parseDateForAPI(document.getElementById('to_date').value),
-            to_session: document.getElementById('to_session').value,
-            reason: document.getElementById('reason').value.trim(),
-            approver_username: document.getElementById('approver_username').value
+            to_session: document.getElementById('to_session').value
         };
 
         if (new Date(payload.from_date) > new Date(payload.to_date)) {
@@ -371,14 +419,36 @@
         }
         if (payload.from_date === payload.to_date) payload.to_session = payload.from_session;
 
+        // DÙNG FORMDATA THAY VÌ JSON ĐỂ GỬI ĐƯỢC FILE
+        const formData = new FormData();
+        formData.append('username', document.getElementById('username').value.trim().toUpperCase());
+        formData.append('fullname', document.getElementById('fullname').value.trim());
+        formData.append('type_id', document.getElementById('type_id').value);
+        formData.append('from_date', payload.from_date);
+        formData.append('from_session', payload.from_session);
+        formData.append('to_date', payload.to_date);
+        formData.append('to_session', payload.to_session);
+        formData.append('reason', document.getElementById('reason').value.trim());
+        formData.append('approver_username', document.getElementById('approver_username').value);
+
+        // Lấy file đính kèm
+        const fileInput = document.getElementById('attached_file');
+        if (fileInput.files.length > 0) {
+            formData.append('attached_file', fileInput.files[0]);
+        }
+
         const btn = document.getElementById('submitBtn');
         btn.innerText = 'Đang gửi...'; btn.disabled = true;
 
         try {
             const token = localStorage.getItem('hrm_token');
             const res = await fetch('/leave-requests/api', { 
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) 
+                method: 'POST', 
+                // QUAN TRỌNG: Không set 'Content-Type' khi dùng FormData, trình duyệt sẽ tự động set kèm Boundary
+                headers: { 'Authorization': `Bearer ${token}` }, 
+                body: formData 
             });
+            
             if(res.ok) { 
                 alert("Thành công!");
                 resetForm();
@@ -411,14 +481,33 @@
     }
 
     function resetForm() {
+        const name = localStorage.getItem("hrm_name") || "Quản trị viên";
+        const username = localStorage.getItem("hrm_username") || "ADMIN";
         document.getElementById('dataForm').reset();
         $('#type_id, #approver_username').val(null).trigger('change');
+        $('#username').val(username); 
+        $('#fullname').val(name);
         syncSessions(); 
+    }
+
+    function openImageModal(imageUrl) {
+        const modal = document.getElementById('imagePreviewModal');
+        const img = document.getElementById('previewImage');
+        img.src = imageUrl;
+        modal.classList.add('active');
+    }
+
+    function closeImageModal() {
+        const modal = document.getElementById('imagePreviewModal');
+        const img = document.getElementById('previewImage');
+        modal.classList.remove('active');
+        // Xóa src sau khi hiệu ứng tắt xong để tránh nhấp nháy ảnh cũ lần sau mở
+        setTimeout(() => { img.src = ''; }, 300);
     }
 
     // Init
     $(document).ready(function() {
-        fetchTypes(); fetchManagers(); loadData(1);
+        fetchTypes(); fetchManagers(); loadData(1);resetForm();
     });
 </script>
 {% endblock %}

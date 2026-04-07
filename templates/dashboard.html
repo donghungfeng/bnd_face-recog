@@ -959,6 +959,24 @@
     setInterval(updateClock, 1000);
     updateClock();
 
+    function isCheckOutTime() {
+        const now = new Date();
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        return (hours === 16 && minutes >= 20 && minutes <= 45);
+    }
+
+    function hasCheckedOutToday() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        const doneDate = localStorage.getItem('checkout_done_date');
+        return doneDate === todayStr; 
+    }
+
     // ═══════════════════════════════════════════════════
     // 2. BIẾN TOÀN CỤC
     // ═══════════════════════════════════════════════════
@@ -994,11 +1012,25 @@
             document.getElementById("dashSearchGroup").style.display = "none";
         }
 
+        if (isCheckOutTime() && !hasCheckedOutToday() && currentRole === "user") {
+            console.log("⏰ Đang trong giờ điểm danh về. Tự động chuyển hướng...");
+            window.location.href = "/verify_personal";
+            return; 
+        }
+
         // Tải các dữ liệu khi vừa mở trang
         fetchDashboardData();
         fetchDashboardRecords();
         fetchPendingExplanations();
         changeInterval();
+
+        setInterval(() => {
+            if (isCheckOutTime() && !hasCheckedOutToday() && currentRole === "user") {
+                console.log("⏰ Đến giờ điểm danh về! Tự động chuyển hướng...");
+                window.location.href = "/verify_personal";
+            }
+        }, 60000);
+
     });
 
     // ═══════════════════════════════════════════════════
