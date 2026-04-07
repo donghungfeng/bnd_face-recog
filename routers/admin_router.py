@@ -14,7 +14,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 import os
 
 from database import get_db
-from models import Employee, Attendance, LeaveRequest, ShiftCategory
+from models import Employee, Attendance, EmployeeDepartment, LeaveRequest, ShiftCategory
 from schemas import EmployeeCreate, LeaveSubmit, ExplainRequest
 from config import DB_PATH
 from routers.auth_router import get_current_user
@@ -22,25 +22,33 @@ from routers.auth_router import get_current_user
 router = APIRouter()
 
 # 2. Thêm Route trả về file dashboard.html (Ở mục 5. API ROUTES)
-@router.get("/")
-@router.get("/dashboard")
-def read_dashboard(request: Request): 
-    return templates.TemplateResponse("dashboard.html", {"request": request})
-
-# 3. Thêm API tính toán thống kê (Ở mục 6. API DATABASE)
 @router.get("/api/stats")
 def get_dashboard_stats(
     current_user: dict = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
-    role = current_user.get("role", "user")
     current_username = current_user.get("username")
-
+    
     # Tính toán mốc thời gian của ngày hôm nay
     today_start = datetime.combine(date.today(), time.min)
     today_end = datetime.combine(date.today(), time.max)
 
-    # 1. KHỞI TẠO CÁC QUERY CƠ BẢN
+    # ==========================================
+    # 1. TÌM THÔNG TIN USER VÀ QUYỀN TỪ DATABASE
+    # ==========================================
+    me = db.query(Employee).filter(Employee.username == current_username).first()
+    if not me:
+        return {"error": "User not found"}
+
+    # Lấy danh sách toàn bộ phòng ban và quyền của user từ bảng mới
+    my_departments = db.query(EmployeeDepartment).filter(EmployeeDepartment.employee_id == me.id).all()
+
+    # Kiểm tra xem user có role 'admin' ở bất kỳ record nào trong bảng mới không
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    # ==========================================
+    # 2. KHỞI TẠO CÁC QUERY CƠ BẢN
+    # ==========================================
     emp_query = db.query(Employee)
     
     att_query = db.query(Attendance).filter(
@@ -53,46 +61,42 @@ def get_dashboard_stats(
         Attendance.check_in_time <= today_end
     )
 
-    # 2. ÁP DỤNG LOGIC PHÂN QUYỀN (RBAC)
-    if role == "user":
-        # User: Chỉ lấy thống kê của chính mình
-        emp_query = emp_query.filter(Employee.username == current_username)
-        att_query = att_query.filter(Attendance.username == current_username)
-        unique_checkin_query = unique_checkin_query.filter(Attendance.username == current_username)
+    # ==========================================
+    # 3. ÁP DỤNG BỘ LỌC NẾU KHÔNG PHẢI ADMIN
+    # ==========================================
+    if not is_admin:
+        # Mặc định luôn xem được chính mình
+        allowed_usernames = {current_username}
 
-    elif role == "manager":
-        # Manager: Lấy thống kê của các nhân viên trong cùng phòng ban
-        manager = db.query(Employee).filter(Employee.username == current_username).first()
-        if not manager or manager.department_id is None:
-            # Nếu manager không thuộc phòng ban nào -> Trả về 0 để an toàn
-            emp_query = emp_query.filter(False)
-            att_query = att_query.filter(False)
-            unique_checkin_query = unique_checkin_query.filter(False)
-        else:
-            # Lấy danh sách username của nhân viên cùng phòng ban
-            dept_users = [
-                u[0] for u in db.query(Employee.username).filter(Employee.department_id == manager.department_id).all()
-            ]
-            emp_query = emp_query.filter(Employee.username.in_(dept_users))
-            att_query = att_query.filter(Attendance.username.in_(dept_users))
-            unique_checkin_query = unique_checkin_query.filter(Attendance.username.in_(dept_users))
+        # Lấy danh sách ID phòng ban mà mình làm Manager
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
+
+        # Nếu có phòng làm manager, lấy tất cả nhân viên phòng đó
+        if managed_dept_ids:
+            dept_users = db.query(Employee.username).join(EmployeeDepartment).filter(
+                EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
             
-    # Admin: Không cần filter thêm gì, query sẽ lấy toàn bộ database
+            for u in dept_users:
+                allowed_usernames.add(u[0])
 
-    # 3. THỰC THI QUERY VÀ LẤY KẾT QUẢ
-    total_employees = emp_query.count()
-    
-    # Lưu ý: Danh mục ca (ShiftCategory) là dữ liệu dùng chung (Global) nên không cần phân quyền
-    total_shifts = db.query(ShiftCategory).count() 
+        # Đè bộ lọc in_() vào các Query cơ bản
+        allowed_usernames_list = list(allowed_usernames)
+        emp_query = emp_query.filter(Employee.username.in_(allowed_usernames_list))
+        att_query = att_query.filter(Attendance.username.in_(allowed_usernames_list))
+        unique_checkin_query = unique_checkin_query.filter(Attendance.username.in_(allowed_usernames_list))
 
-    today_attendances = att_query.count()
-    unique_checkins_today = unique_checkin_query.distinct().count()
-
+    # ==========================================
+    # 4. TRẢ VỀ KẾT QUẢ
+    # ==========================================
     return {
-        "total_employees": total_employees,
-        "total_shifts": total_shifts,
-        "today_attendances": today_attendances,
-        "unique_checkins_today": unique_checkins_today
+        "total_employees": emp_query.count(),
+        "total_shifts": db.query(ShiftCategory).count(),
+        "today_attendances": att_query.count(),
+        "unique_checkins_today": unique_checkin_query.distinct().count()
     }
 
 

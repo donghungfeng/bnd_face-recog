@@ -267,7 +267,7 @@
             overflow-x: auto;
         }
 
-                .sidebar-header {
+        .sidebar-header {
             padding: 15px 20px;
             font-size: 1rem;
             font-weight: 700;
@@ -322,7 +322,7 @@
         }
 
 
-        /* LỖI CŨ Ở ĐÂY - ĐÃ ĐƯỢC CHỈNH LẠI CÚ PHÁP CHUẨN JINJA2 */
+        /* CHỖ CHÈN CSS TÙY CHỈNH CỦA CÁC TRANG CON */
         {% block extra_css %}{% endblock %}
         
     </style>
@@ -341,7 +341,7 @@
             <a href="/employees" id="nav-employees">👤 Quản lý Nhân sự</a>
             <a href="/shifts" id="nav-shifts">📋 Danh mục lịch làm việc</a>
             <a href="/assignments" id="nav-assignments">🤝 Phân công Lịch làm việc</a>
-            <a href="/enroll?id=${userName}" id="nav-enroll">📸 Quét mặt bằng Camera</a>
+            <a href="/enroll" id="nav-enroll">📸 Quét mặt bằng Camera</a>
             <a href="/attendance" id="nav-attendance">📊 Nhật ký chấm công</a>
             <a href="/explanation" id="nav-explanation">📈 Giải trình</a>
             <a href="/calendar" id="nav-calendar">📅 Lịch Chấm công</a>
@@ -355,9 +355,6 @@
 
             <a href="/user_info" id="nav-user_info" style="color: var(--primary);">📂 Thông tin Nhân viên</a>
             <a href="/wifi" id="nav-wifi" style="color: var(--danger);">⚙️ Cấu hình Wifi</a>
-
-            
-
         </div>
     </nav>
 
@@ -369,7 +366,7 @@
             </div>
             
             <div class="user-info">
-                <span id="displayUserName">Xin chào, Khách</span>
+                <span id="displayUserName">Đang tải...</span>
                 <button class="btn-logout" onclick="logout()">Đăng xuất</button>
             </div>
         </header>
@@ -380,10 +377,8 @@
     </div>
 
     <script>
-
         // === 1. KIỂM TRA ĐĂNG NHẬP ===
         const token = localStorage.getItem("hrm_token");
-        const userRole = localStorage.getItem("hrm_role") || "user"; 
         const isAuthPage = window.location.pathname.includes("/login") || window.location.pathname.includes("/verify");
         
         // Đá về trang Login nếu chưa đăng nhập
@@ -391,62 +386,97 @@
             window.location.href = "/login";
         }
 
-        // === 2. HIỂN THỊ TÊN VÀ CHỨC VỤ LÊN HEADER ===
-        if(token && !isAuthPage) {
-            const userName = localStorage.getItem("hrm_name") || "Khách";
-            
-            let roleName = "Nhân viên";
-            if (userRole === 'admin') roleName = "Quản trị hệ thống";
-            if (userRole === 'manager') roleName = "Quản lý / Trưởng khoa";
-            
-            document.getElementById('displayUserName').innerHTML = `Xin chào, <strong>${userName}</strong> (${roleName})`;
+        // === 2. HÀM KHỞI TẠO ỨNG DỤNG BẤT ĐỒNG BỘ ===
+        async function initializeApp() {
+            if (!token || isAuthPage) return;
+
+            try {
+                // Lấy thông tin user và quyền MỚI NHẤT từ Database
+                const res = await fetch('/api/employees/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) {
+                    // Token hết hạn hoặc tài khoản bị khóa -> Xóa cache và bắt đăng nhập lại
+                    localStorage.clear();
+                    window.location.href = "/login";
+                    return;
+                }
+
+                const payload = await res.json();
+                const data = payload.data;
+                const userName = data.username;
+                const displayName = data.full_name;
+
+                // XỬ LÝ TÌM QUYỀN LỚN NHẤT TỪ CHUỖI TRẢ VỀ (VD: "manager,user" -> "manager")
+                const roleString = data.role || "user";
+                // Tách chuỗi theo dấu phẩy thành mảng
+                const rolesArray = roleString.split(",").map(r => r.trim().toLowerCase());
+                
+                let highestRole = "user";
+                if (rolesArray.includes("admin")) {
+                    highestRole = "admin";
+                } else if (rolesArray.includes("manager")) {
+                    highestRole = "manager";
+                }
+
+                // Cập nhật lên Header
+                let roleName = "Nhân viên";
+                if (highestRole === 'admin') roleName = "Quản trị hệ thống";
+                if (highestRole === 'manager') roleName = "Quản lý / Trưởng khoa";
+                
+                document.getElementById('displayUserName').innerHTML = `Xin chào, <strong>${displayName}</strong> (${roleName})`;
+
+                // Binding username vào link Quét mặt
+                const enrollLink = document.getElementById('nav-enroll');
+                if (enrollLink) {
+                    enrollLink.href = `/enroll?id=${userName}`;
+                }
+
+                // === 3. PHÂN QUYỀN MENU DỰA TRÊN highestRole ===
+                const allowedMenus = {
+                    "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad","nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3" ],
+                    "manager": [ "nav-dashboard", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3" ],
+                    "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3", "nav-assignments" ]
+                };
+
+                // Ẩn tất cả trước
+                document.querySelectorAll('.sidebar-menu a').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+
+                // Chỉ bật những menu được phép
+                const myMenus = allowedMenus[highestRole] || allowedMenus["user"];
+                myMenus.forEach(menuId => {
+                    const el = document.getElementById(menuId);
+                    if (el) el.style.display = 'flex';
+                });
+
+                // === 4. BẢO MẬT CHẶN CHẶN URL BẰNG TAY ===
+                const currentPath = window.location.pathname;
+                
+                if (highestRole === "user" && ["/departments", "/employees", "/shifts", "/payroll", "/wifi"].some(p => currentPath.includes(p))) {
+                    alert("Bạn không có quyền truy cập trang này!");
+                    window.location.href = "/dashboard";
+                }
+                
+                if (highestRole === "manager" && ["/departments", "/shifts", "/payroll", "/wifi", "/employees"].some(p => currentPath.includes(p))) {
+                    alert("Bạn không có quyền truy cập trang này!");
+                    window.location.href = "/dashboard";
+                }
+
+            } catch (error) {
+                console.error("Lỗi lấy thông tin User:", error);
+            }
         }
 
-        // === 3. PHÂN QUYỀN GIAO DIỆN (LỚP 1) ===
-        // Đầu tiên, bổ sung id="nav-ipad" cho thẻ <a> mở iPad chấm công (nếu bạn chưa có)
-        // Cấu hình các menu được phép nhìn thấy theo từng chức vụ:
-        const allowedMenus = {
-            // THÊM "nav-faces" VÀO CUỐI DANH SÁCH ADMIN:
-            "admin": [ "nav-dashboard", "nav-departments", "nav-employees", "nav-shifts", "nav-assignments", "nav-attendance", "nav-calendar", "nav-payroll", "nav-faces", "nav-ipad","nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3" ],
-            "manager": [ "nav-dashboard", "nav-assignments", "nav-attendance", "nav-calendar", "nav-ipad", "nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3" ],
-            "user": [ "nav-dashboard", "nav-attendance", "nav-calendar", "nav-ipad","nav-enroll", "nav-explanation", "nav-leave-requests", "nav-user_info", "nav-wifi","nav-verify_personal_v3", "nav-assignments" ]
-        };
-        if (!isAuthPage) {
-            // Bước A: Ẩn TOÀN BỘ menu đi trước
-            document.querySelectorAll('.sidebar-menu a').forEach(menu => {
-                menu.style.display = 'none';
-            });
+        // CHẠY HÀM KHỞI TẠO NGAY KHI LOAD DOM
+        initializeApp();
 
-            // Bước B: Chỉ bật lại (display: flex) những menu mà Role đó được cấp phép
-            const myMenus = allowedMenus[userRole] || allowedMenus["user"];
-            myMenus.forEach(menuId => {
-                const el = document.getElementById(menuId);
-                if (el) el.style.display = 'flex'; // Trả lại layout gốc của menu
-            });
-
-            // Bước C: Chống người dùng cố tình gõ URL tay (Đá về Dashboard nếu không có quyền)
-            const currentPath = window.location.pathname;
-            
-            // Nhân viên thường không được vào các trang cấu hình và lương
-            if (userRole === "user" && ["/departments", "/employees", "/shifts", "/payroll", "/wifi"].some(p => currentPath.includes(p))) {
-                alert("Bạn không có quyền truy cập trang này!");
-                window.location.href = "/dashboard";
-            }
-            
-            // Quản lý không được vào cấu hình gốc và bảng lương tổng
-            if (userRole === "manager" && ["/departments", "/shifts", "/payroll", "/wifi", "/employees"].some(p => currentPath.includes(p))) {
-                alert("Bạn không có quyền truy cập trang này!");
-                window.location.href = "/dashboard";
-            }
-        }
-
-        // === 4. CÁC HÀM TIỆN ÍCH KHÁC ===
+        // === 5. CÁC HÀM TIỆN ÍCH KHÁC (UI) ===
         function logout() {
             if(confirm("Bạn có chắc chắn muốn đăng xuất?")) {
-                localStorage.removeItem("hrm_token");
-                localStorage.removeItem("hrm_role");
-                localStorage.removeItem("hrm_name");
-                localStorage.removeItem("hrm_username");
+                localStorage.clear(); // Dọn dẹp sạch sẽ toàn bộ cache
                 window.location.href = "/login";
             }
         }
@@ -464,29 +494,25 @@
         if (path.includes("calendar")) document.getElementById("nav-calendar")?.classList.add("active");
         if (path.includes("payroll")) document.getElementById("nav-payroll")?.classList.add("active");
 
-
-
-        // 5.1. Tự động gập Sidebar khi mới tải trang trên màn hình nhỏ (dưới 1024px)
+        // Tự động gập Sidebar khi mới tải trang trên màn hình nhỏ (dưới 1024px)
         if (window.innerWidth <= 1024) {
             document.getElementById('sidebar').classList.add('collapsed');
         }
 
-        // 5.2. Tự động đóng Sidebar khi bấm vào một link bất kỳ trong Menu
+        // Tự động đóng Sidebar khi bấm vào một link bất kỳ trong Menu (Mobile/Tablet)
         document.querySelectorAll('.sidebar-menu a').forEach(link => {
             link.addEventListener('click', () => {
-                // Chỉ tự động đóng nếu đang ở giao diện Tablet/Mobile
                 if (window.innerWidth <= 1024) {
                     document.getElementById('sidebar').classList.add('collapsed');
                 }
             });
         });
         
-        // 5.3. Bấm ra ngoài vùng menu thì cũng tự động gập menu lại (Cực kỳ tiện)
+        // Bấm ra ngoài vùng menu thì cũng tự động gập menu lại
         document.addEventListener('click', function(event) {
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.querySelector('.toggle-btn');
             
-            // Nếu đang ở màn hình nhỏ, menu đang mở, và click không rơi vào menu hoặc nút toggle
             if (window.innerWidth <= 1024 && !sidebar.classList.contains('collapsed')) {
                 if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
                     sidebar.classList.add('collapsed');
@@ -494,26 +520,6 @@
             }
         });
 
-
-        if(token && !isAuthPage) {
-            const userName = localStorage.getItem("hrm_username") || "guest"; // Lấy username (ID đăng nhập)
-            const displayName = localStorage.getItem("hrm_name") || "Khách"; // Lấy tên hiển thị
-            
-            let roleName = "Nhân viên";
-            if (userRole === 'admin') roleName = "Quản trị hệ thống";
-            if (userRole === 'manager') roleName = "Quản lý / Trưởng khoa";
-            
-            // Binding tên vào Header
-            document.getElementById('displayUserName').innerHTML = `Xin chào, <strong>${displayName}</strong> (${roleName})`;
-
-            // FIX LỖI TẠI ĐÂY: Binding username vào link Quét mặt
-            const enrollLink = document.getElementById('nav-enroll');
-            if (enrollLink) {
-                enrollLink.href = `/enroll?id=${userName}`;
-            }
-        }
-
-        
     </script>
 
     {% block extra_js %}{% endblock %}

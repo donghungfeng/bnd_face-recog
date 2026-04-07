@@ -18,7 +18,7 @@ import os
 from typing import Optional
 
 from database import get_db
-from models import Employee, Attendance, LeaveRequest, ShiftCategory
+from models import Employee, Attendance, LeaveRequest, ShiftCategory, EmployeeDepartment, MonthlyRecord
 from schemas import AttendanceUpdateRequest, EmployeeCreate, LeaveSubmit, ExplainRequest, ReviewExplainRequest, MarkFraudRequest
 from config import DB_PATH
 import models, schemas, constants
@@ -40,21 +40,52 @@ def get_attendance(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    role = current_user.get("role", "user")
     current_username = current_user.get("username")
 
+    # Khởi tạo query cơ bản (Join để lấy tên nhân viên)
     query = db.query(Attendance, Employee.full_name).outerjoin(Employee, Attendance.username == Employee.username)
 
-    # -- Phân quyền --
-    if role == "user":
-        query = query.filter(Attendance.username == current_username)
-    elif role == "manager":
-        manager_emp = db.query(Employee).filter(Employee.username == current_username).first()
-        if not manager_emp or manager_emp.department_id is None:
-            return {"data": [], "total": 0, "page": page, "limit": limit}
-        dept_users = [u[0] for u in db.query(Employee.username).filter(Employee.department_id == manager_emp.department_id).all()]
-        query = query.filter(Attendance.username.in_(dept_users))
+    # ==========================================
+    # 1. TÌM THÔNG TIN USER VÀ QUYỀN TỪ DATABASE
+    # ==========================================
+    me = db.query(Employee).filter(Employee.username == current_username).first()
+    if not me:
+        return {"data": [], "total": 0, "page": page, "limit": limit}
 
+    # Lấy danh sách phòng ban & quyền
+    my_departments = db.query(EmployeeDepartment).filter(EmployeeDepartment.employee_id == me.id).all()
+    
+    # Kiểm tra quyền admin
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    # ==========================================
+    # 2. ÁP DỤNG PHÂN QUYỀN NẾU KHÔNG PHẢI ADMIN
+    # ==========================================
+    if not is_admin:
+        # Mặc định luôn xem được chính mình
+        allowed_usernames = {current_username}
+
+        # Tìm các phòng ban đang làm manager
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
+
+        if managed_dept_ids:
+            dept_users = db.query(Employee.username).join(EmployeeDepartment).filter(
+                EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
+            
+            for u in dept_users:
+                allowed_usernames.add(u[0])
+
+        allowed_usernames_list = list(allowed_usernames)
+        # Giới hạn query chỉ nằm trong danh sách được phép
+        query = query.filter(Attendance.username.in_(allowed_usernames_list))
+
+    # ==========================================
+    # 3. CÁC BỘ LỌC CỦA NGƯỜI DÙNG (GIỮ NGUYÊN)
+    # ==========================================
     # -- Lọc thời gian --
     if start_date:
         query = query.filter(Attendance.check_in_time >= f"{start_date} 00:00:00")
@@ -87,6 +118,9 @@ def get_attendance(
             )
         )
 
+    # ==========================================
+    # 4. PHÂN TRANG VÀ TRẢ VỀ DỮ LIỆU
+    # ==========================================
     total_records = query.count()
     query_logs = query.order_by(Attendance.check_in_time.desc()).offset((page - 1) * limit).limit(limit).all()
 
@@ -116,7 +150,7 @@ def get_attendance(
         "total": total_records,
         "page": page,
         "limit": limit,
-        "total_pages": (total_records + limit - 1) // limit
+        "total_pages": (total_records + limit - 1) // limit if limit > 0 else 0
     }
 
 @router.post("/api/attendance/explain")
@@ -454,46 +488,68 @@ def count_pending_explanations(
     start_date: date = Query(..., alias="startDate"),
     end_date: date = Query(..., alias="endDate"),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user) # Sửa kiểu dữ liệu ở đây thành dict
+    current_user: dict = Depends(get_current_user)
 ):
     """
     API đếm tổng số lượng đơn giải trình đang chờ xét duyệt (Trạng thái = 1)
     """
+    current_username = current_user.get("username")
     start_dt = datetime.combine(start_date, time.min)
     end_dt = datetime.combine(end_date, time.max)  
 
+    # ==========================================
+    # 1. TÌM THÔNG TIN USER VÀ QUYỀN TỪ DATABASE
+    # ==========================================
+    me = db.query(models.Employee).filter(models.Employee.username == current_username).first()
+    if not me:
+        return {"status": "success", "total_pending": 0}
+
+    # Lấy danh sách phòng ban & quyền
+    my_departments = db.query(models.EmployeeDepartment).filter(
+        models.EmployeeDepartment.employee_id == me.id
+    ).all()
+    
+    # Kiểm tra quyền admin
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    # ==========================================
+    # 2. KHỞI TẠO QUERY CƠ BẢN
+    # ==========================================
     query = db.query(func.count(models.Attendance.id)).filter(
         models.Attendance.explanation_status == "1",
         models.Attendance.check_in_time >= start_dt,
         models.Attendance.check_in_time <= end_dt
     )
 
-    # 2. XỬ LÝ LOGIC PHÂN QUYỀN (Dùng .get() vì current_user là dict)
-    user_role = current_user.get("role")
-    user_name = current_user.get("username") # Lấy username từ dict
+    # ==========================================
+    # 3. ÁP DỤNG PHÂN QUYỀN NẾU KHÔNG PHẢI ADMIN
+    # ==========================================
+    if not is_admin:
+        # Mặc định luôn xem được của chính mình
+        allowed_usernames = {current_username}
 
-    if user_role == "admin":
-        pass # Admin xem tất cả
-        
-    elif user_role == "manager":
-        # Với manager, bạn cần tìm department_id của họ từ DB trước
-        manager_db = db.query(models.Employee).filter(models.Employee.username == user_name).first()
-        if manager_db and manager_db.department_id:
-            query = query.join(
-                models.Employee, 
-                models.Attendance.username == models.Employee.username
-            ).filter(
-                models.Employee.department_id == manager_db.department_id
-            )
-        else:
-             # Tránh lỗi nếu manager không thuộc phòng ban nào, cho mảng rỗng
-             return {"status": "success", "total_pending": 0}
-        
-    else:
-        # User thường chỉ xem của họ
-        query = query.filter(models.Attendance.username == user_name)
+        # Tìm các phòng ban đang làm manager
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
 
-    # 3. Thực thi query
+        if managed_dept_ids:
+            dept_users = db.query(models.Employee.username).join(models.EmployeeDepartment).filter(
+                models.EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
+            
+            for u in dept_users:
+                allowed_usernames.add(u[0])
+
+        allowed_usernames_list = list(allowed_usernames)
+        
+        # Đè bộ lọc in_() vào query đếm
+        query = query.filter(models.Attendance.username.in_(allowed_usernames_list))
+
+    # ==========================================
+    # 4. THỰC THI QUERY VÀ TRẢ VỀ
+    # ==========================================
     count = query.scalar()
     
     return {
@@ -513,45 +569,67 @@ def get_all_attendance_records(
 ):
     start_dt = datetime.combine(start_date, time.min)
     end_dt = datetime.combine(end_date, time.max)
+    
+    current_username = current_user.get("username")
 
-    # 1. Khởi tạo query cơ sở (Lọc theo thời gian)
+    # ==========================================
+    # 1. TÌM THÔNG TIN USER VÀ QUYỀN TỪ DATABASE
+    # ==========================================
+    me = db.query(models.Employee).filter(models.Employee.username == current_username).first()
+    if not me:
+        return []
+
+    # Lấy danh sách phòng ban & quyền
+    my_departments = db.query(models.EmployeeDepartment).filter(
+        models.EmployeeDepartment.employee_id == me.id
+    ).all()
+    
+    # Kiểm tra quyền admin
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    # ==========================================
+    # 2. KHỞI TẠO QUERY CƠ SỞ (Lọc theo thời gian và param)
+    # ==========================================
     query = db.query(models.Attendance).filter(
         models.Attendance.check_in_time >= start_dt,
         models.Attendance.check_in_time <= end_dt
     )
 
-    # 2. XỬ LÝ LỌC THEO USERNAME TỪ PARAM (Nếu Client có truyền lên)
+    # Nếu Client có truyền param username để tìm kiếm
     if username:
         query = query.filter(models.Attendance.username == username)
 
-    # 3. XỬ LÝ LOGIC PHÂN QUYỀN
-    user_role = current_user.get("role")
-    current_username = current_user.get("username")
+    # ==========================================
+    # 3. ÁP DỤNG PHÂN QUYỀN NẾU KHÔNG PHẢI ADMIN
+    # ==========================================
+    if not is_admin:
+        # Mặc định luôn xem được của chính mình
+        allowed_usernames = {current_username}
 
-    if user_role == "admin":
-        # Admin xem tất cả -> Không cần đè thêm điều kiện gì
-        pass
-        
-    elif user_role == "manager":
-        # Manager -> Tìm department_id của họ, lấy user cùng phòng
-        manager_db = db.query(models.Employee).filter(models.Employee.username == current_username).first()
-        
-        if manager_db and manager_db.department_id:
-            query = query.join(
-                models.Employee, 
-                models.Attendance.username == models.Employee.username
-            ).filter(
-                models.Employee.department_id == manager_db.department_id
-            )
-        else:
-            return [] # Lỗi phòng ban -> Trả về mảng rỗng cho an toàn
+        # Tìm các phòng ban đang làm manager
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
+
+        if managed_dept_ids:
+            dept_users = db.query(models.Employee.username).join(models.EmployeeDepartment).filter(
+                models.EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
             
-    else:
-        # LƯU Ý BẢO MẬT CHO USER THƯỜNG: 
-        # Đè lại điều kiện username của chính họ. Giúp chống lỗi khi User cố tình truyền param ?username=nguoi_khac
-        query = query.filter(models.Attendance.username == current_username)
+            for u in dept_users:
+                allowed_usernames.add(u[0])
 
+        allowed_usernames_list = list(allowed_usernames)
+        
+        # LƯU Ý BẢO MẬT: 
+        # Đè lại điều kiện username. Giúp chống lỗi khi User/Manager cố tình 
+        # truyền param ?username=nguoi_ngoai_phong_ban
+        query = query.filter(models.Attendance.username.in_(allowed_usernames_list))
+
+    # ==========================================
     # 4. SẮP XẾP VÀ PHÂN TRANG
+    # ==========================================
     # .offset(skip): Bỏ qua số lượng bản ghi (vd: trang 2 giới hạn 10 -> skip 10)
     # .limit(limit): Lấy đúng số lượng bản ghi yêu cầu
     records = query.order_by(models.Attendance.check_in_time.asc()).offset(skip).limit(limit).all()

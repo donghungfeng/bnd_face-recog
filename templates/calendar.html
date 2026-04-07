@@ -8,6 +8,16 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
 <style>
+    /* ── RESET SCROLL (KHẮC PHỤC LỖI NHẢY TRANG) ── */
+    html, body {
+        overflow-y: auto !important; /* Gỡ bỏ hidden cũ, cho phép cuộn tự nhiên */
+        height: auto;
+    }
+
+    .main-wrapper {
+        overflow-y: auto !important;
+    }
+
     /* ── THANH CÔNG CỤ ── */
     .filter-bar {
         background: var(--bg-card);
@@ -98,6 +108,7 @@
         padding: 15px;
         border-radius: 12px;
         border: 1px solid var(--border);
+        margin-bottom: 20px; /* Thêm khoảng trống ở dưới */
     }
 
     .calendar-header {
@@ -113,8 +124,9 @@
 
     .calendar-grid {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        grid-template-columns: repeat(7, minmax(0, 1fr)); /* Sửa lỗi tràn cột */
         gap: 6px;
+        align-items: stretch; /* Ép các ô trên cùng 1 hàng có độ cao bằng nhau */
     }
 
     /* Ô ngày */
@@ -129,6 +141,7 @@
         gap: 3px;
         transition: 0.2s;
         position: relative;
+        overflow: hidden; /* Giữ layout cứng cáp */
     }
 
     .cal-day:hover {
@@ -190,6 +203,7 @@
         font-size: 0.9rem;
         align-self: flex-end;
         margin-bottom: 2px;
+        flex-shrink: 0;
     }
 
     .cal-day.today .day-number {
@@ -393,7 +407,7 @@
     .day-actions {
         display: flex;
         gap: 3px;
-        margin-top: auto;
+        margin-top: auto; /* Đẩy cụm action xuống dưới đáy */
         padding-top: 4px;
         border-top: 1px dashed #e2e8f0;
     }
@@ -571,6 +585,22 @@
         height: 36px !important;
     }
 
+    /* CSS Tùy chỉnh Select2 riêng cho thanh Filter Bar */
+    .filter-item .select2-container {
+        width: 250px !important;
+    }
+
+    .filter-item .select2-container .select2-selection--single {
+        border-radius: 6px !important;
+        height: 35px !important;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.9rem;
+    }
+
+    .filter-item .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 33px !important;
+    }
+
     /* ── BOTTOM SHEET (MOBILE) ── */
     .bottom-sheet-overlay {
         display: none;
@@ -598,15 +628,8 @@
     }
 
     @keyframes slideUpSheet {
-        from {
-            transform: translateY(100%);
-            opacity: 0;
-        }
-
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
     }
 
     .sheet-handle {
@@ -708,21 +731,10 @@
         font-family: monospace;
     }
 
-    .sheet-val-in {
-        color: #0284c7;
-    }
-
-    .sheet-val-out {
-        color: #c026d3;
-    }
-
-    .sheet-val-work {
-        color: #16a34a;
-    }
-
-    .sheet-val-miss {
-        color: #cbd5e1;
-    }
+    .sheet-val-in { color: #0284c7; }
+    .sheet-val-out { color: #c026d3; }
+    .sheet-val-work { color: #16a34a; }
+    .sheet-val-miss { color: #cbd5e1; }
 
     .sheet-actions {
         display: flex;
@@ -822,43 +834,6 @@
         color: white;
     }
 
-    .select2-container .select2-selection--single {
-        height: 38px !important;
-        border: 1px solid var(--border) !important;
-        border-radius: 8px !important;
-        display: flex;
-        align-items: center;
-    }
-
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 36px !important;
-    }
-
-    /* CSS Tùy chỉnh Select2 riêng cho thanh Filter Bar */
-    .filter-item .select2-container {
-        width: 250px !important;
-    }
-
-    .filter-item .select2-container .select2-selection--single {
-        border-radius: 6px !important;
-        height: 35px !important;
-        /* Cân bằng với input date/month */
-        font-family: 'Nunito', sans-serif;
-        font-size: 0.9rem;
-    }
-
-    .filter-item .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 33px !important;
-    }
-
-    /* Thêm đoạn này vào trong @media (max-width: 900px) có sẵn */
-    @media (max-width: 900px) {
-        .filter-item .select2-container {
-            width: 100% !important;
-            max-width: 100% !important;
-        }
-    }
-
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
         .filter-bar {
@@ -871,6 +846,11 @@
         .filter-group {
             flex-wrap: wrap;
             gap: 10px;
+        }
+
+        .filter-item .select2-container {
+            width: 100% !important;
+            max-width: 100% !important;
         }
 
         .btn-action {
@@ -1148,6 +1128,7 @@
 <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
 
 <script>
+    let lastRenderedUsername = null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -1184,13 +1165,16 @@
 
     async function initLeaveModalData() {
         try {
-            const resTypes = await fetch('/leave-types/api');
+            const token = localStorage.getItem("hrm_token");
+            const authHeaders = { 'Authorization': `Bearer ${token}` };
+
+            const resTypes = await fetch('/leave-types/api', { headers: authHeaders });
             const types = await resTypes.json();
             const selectType = document.getElementById('leaveType');
             selectType.innerHTML = '<option value="">-- Chọn loại phép --</option>';
             types.forEach(t => selectType.innerHTML += `<option value="${t.id}">${t.name}</option>`);
 
-            const resMgrs = await fetch('/api/employees/managers');
+            const resMgrs = await fetch('/api/employees/managers', { headers: authHeaders });
             const mgrs = await resMgrs.json();
             const selectMgr = document.getElementById('leaveApprover');
             selectMgr.innerHTML = '<option value="">-- Chọn người duyệt --</option>';
@@ -1392,12 +1376,18 @@
         const grid = document.getElementById('calendarGrid');
 
         if (!username) {
+            grid.style.minHeight = '';
             grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:#94a3b8;font-style:italic;">👆 Vui lòng chọn nhân viên ở phía trên để xem lịch trình cá nhân...</div>`;
+            lastRenderedUsername = null;
             return;
         }
         if (!monthVal) return;
 
-        // Kiểm tra xem user đang đăng nhập có đang xem lịch của người khác không
+        // 🌟 Tính scrollY cần giữ TRƯỚC KHI làm bất cứ thứ gì
+        const isSameUser = (username === lastRenderedUsername);
+        const scrollY = isSameUser ? window.scrollY : 0;
+        lastRenderedUsername = username;
+
         const isViewingOtherUser = (username !== currentUsername);
 
         const [year, month] = monthVal.split('-');
@@ -1406,35 +1396,43 @@
         const startDate = `${year}-${mm}-01`;
         const endDate = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
 
-        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:#94a3b8;">Đang tải dữ liệu đa hệ thống...</div>`;
+        // 🌟 Lock chiều cao hiện tại + scroll về đúng vị trí TRƯỚC KHI thay innerHTML
+        const currentHeight = grid.offsetHeight;
+        grid.style.minHeight = `${currentHeight > 100 ? currentHeight : 600}px`;
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:#94a3b8;">Đang tải dữ liệu...</div>`;
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
 
         try {
             const token = localStorage.getItem('hrm_token');
+            const authHeaders = { 'Authorization': `Bearer ${token}` };
+
             let employeeIdParam = '';
             const selOpt = empSelect.options[empSelect.selectedIndex];
             if (selOpt?.dataset?.empId) employeeIdParam = `&employee_id=${selOpt.dataset.empId}`;
 
             const encodedUsername = encodeURIComponent(username);
+
             const [attRes, holRes, leaveRes, expRes] = await Promise.all([
-                fetch(`/api/monthly-records?startDate=${startDate}&endDate=${endDate}${employeeIdParam}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/holidays/api'),
-                fetch('/leave-requests/api'),
-                // GỌI API GIẢI TRÌNH VỚI START DATE VÀ END DATE CỦA THÁNG
-                fetch(`/api/explanations?username=${encodedUsername}&start_date=${startDate}&end_date=${endDate}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`/api/monthly-records?startDate=${startDate}&endDate=${endDate}${employeeIdParam}`, { headers: authHeaders }),
+                fetch('/holidays/api', { headers: authHeaders }),
+                fetch('/leave-requests/api', { headers: authHeaders }),
+                fetch(`/api/explanations?username=${encodedUsername}&start_date=${startDate}&end_date=${endDate}`, { headers: authHeaders })
             ]);
 
             const records = attRes.ok ? await attRes.json() : [];
-            const holidays = holRes.ok ? await holRes.json() : [];
-            const leaves = leaveRes.ok ? await leaveRes.json() : [];
+            const holRaw = holRes.ok ? await holRes.json() : [];
+            const holidays = holRaw.items ? holRaw.items : (Array.isArray(holRaw) ? holRaw : []);
 
-            // MAP GIẢI TRÌNH: Chuẩn hóa dữ liệu cắt khoảng trắng và thời gian
+            const leaveRaw = leaveRes.ok ? await leaveRes.json() : [];
+            const leaves = leaveRaw.items ? leaveRaw.items : (Array.isArray(leaveRaw) ? leaveRaw : []);
+
             const expData = expRes.ok ? await expRes.json() : { items: [] };
             const expMap = {};
             if (expData.items) {
                 expData.items.forEach(e => {
                     let eDate = e.date || '';
                     if (eDate.includes('T')) eDate = eDate.split('T')[0];
-                    const eShift = (e.shift_code || '').trim().toUpperCase(); // Ép chuẩn in hoa + cắt khoảng trắng
+                    const eShift = (e.shift_code || '').trim().toUpperCase();
                     expMap[`${eDate}_${eShift}`] = true;
                 });
             }
@@ -1451,10 +1449,20 @@
             // 2. Map Nghỉ lễ
             const holMap = {};
             holidays.forEach(h => {
-                let curr = new Date(h.from_date);
-                let end = new Date(h.to_date);
+                const startDateStr = h.from_date || h.start_date || h.date;
+                const endDateStr = h.to_date || h.end_date || startDateStr;
+                const holidayName = h.name || h.holiday_name || h.title || "Nghỉ lễ";
+                if (!startDateStr) return;
+                let curr = new Date(parseDateForAPI(startDateStr));
+                let end = new Date(parseDateForAPI(endDateStr));
+                if (isNaN(curr.getTime())) return;
+                curr.setHours(0, 0, 0, 0);
+                end.setHours(0, 0, 0, 0);
                 while (curr <= end) {
-                    holMap[curr.toISOString().split('T')[0]] = h.name;
+                    const y = curr.getFullYear();
+                    const m = String(curr.getMonth() + 1).padStart(2, '0');
+                    const d = String(curr.getDate()).padStart(2, '0');
+                    holMap[`${y}-${m}-${d}`] = holidayName;
                     curr.setDate(curr.getDate() + 1);
                 }
             });
@@ -1489,12 +1497,9 @@
                 const isHol = holMap[dateStr];
                 const dayLeaves = leaveMap[dateStr] || [];
 
-                // KIỂM TRA ĐÃ GIẢI TRÌNH CHƯA (So khớp an toàn)
                 recs.forEach(r => {
                     const rShift = (r.shift_code || '').trim().toUpperCase();
-                    if (expMap[`${dateStr}_${rShift}`]) {
-                        r.is_explained = true;
-                    }
+                    if (expMap[`${dateStr}_${rShift}`]) r.is_explained = true;
                 });
 
                 const thisDate = new Date(parseInt(year), parseInt(month) - 1, day);
@@ -1529,24 +1534,20 @@
                     }
                 }
 
-                // --- NÚT ACTION TRÊN GIAO DIỆN PC ---
                 let explainBtns = '';
                 if (recs.length === 1 && !isHol && dayLeaves.length === 0) {
                     const rec = recs[0];
                     const disabled = calcExplainDisabled(rec, isViewingOtherUser);
                     const btnText = rec.is_explained ? '✔️ Đã giải trình' : '✍️ Giải trình';
                     const attId = rec.id ?? '';
-
                     explainBtns = `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
                         onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${dateStr}','${rec.shift_code || ''}')"
                         title="${btnText}">${btnText}</button>`;
-
                 } else if (recs.length > 1 && !isHol && dayLeaves.length === 0) {
                     recs.forEach((rec, idx) => {
                         const disabled = calcExplainDisabled(rec, isViewingOtherUser);
                         const btnText = rec.is_explained ? `✔️ Đã GT Ca ${idx + 1}` : `✍️ Ca ${idx + 1}`;
                         const attId = rec.id ?? '';
-
                         explainBtns += `<button class="btn-day btn-day-explain" ${disabled ? 'disabled' : ''}
                             onclick="event.stopPropagation();openGiaiTrinhModal('${attId}','${safeEmpName}','${rec.date}','${rec.shift_code || ''}')"
                             title="${btnText}">${btnText}</button>`;
@@ -1589,10 +1590,16 @@
                     </div>`;
             }
 
+            // 🌟 Set innerHTML rồi bỏ lock, scroll lại để chắc chắn
             grid.innerHTML = htmlBuffer;
+            grid.style.minHeight = '';
+            requestAnimationFrame(() => {
+                window.scrollTo({ top: scrollY, behavior: 'instant' });
+            });
 
         } catch (e) {
             console.error("Lỗi khi render calendar", e);
+            grid.style.minHeight = '';
             grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:red;">Lỗi tải dữ liệu!</div>`;
         }
     }

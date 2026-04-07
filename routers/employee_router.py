@@ -5,13 +5,17 @@ import pandas as pd
 import io
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.util import defaultdict
 from database import get_db
-from models import Employee, OrganizationUnit
+from models import Employee, OrganizationUnit, EmployeeDepartment
 from schemas import EmployeeCreate, PasswordUpdate, ChangeMyPassword, UpdateMyProfile
 from config import DB_PATH
 from sqlalchemy.orm import aliased
 from sqlalchemy import or_
 from routers.auth_router import get_current_user
+from fastapi import Depends, Query
+from sqlalchemy import or_
+import os
 
 router = APIRouter()
 
@@ -21,7 +25,9 @@ def create_employee(emp: EmployeeCreate, db: Session = Depends(get_db)):
     if db_emp:
         raise HTTPException(status_code=400, detail="Mã nhân sự (Username) đã tồn tại")
     
-    emp_data = emp.dict()
+    # Ép kiểu schema thành dict và loại bỏ list departments để không bị lỗi khi insert bảng Employee
+    emp_data = emp.dict(exclude={"departments"})
+    
     # Sync dob and date_of_birth
     if emp.date_of_birth:
         emp_data['dob'] = emp.date_of_birth
@@ -30,12 +36,21 @@ def create_employee(emp: EmployeeCreate, db: Session = Depends(get_db)):
         
     new_emp = Employee(**emp_data)
     db.add(new_emp)
+    db.flush() # Đẩy tạm xuống DB để lấy new_emp.id
+    
+    # Xử lý insert danh sách phòng ban
+    if hasattr(emp, 'departments') and emp.departments:
+        for dept in emp.departments:
+            new_dept = EmployeeDepartment(
+                employee_id=new_emp.id,
+                department_id=dept.department_id,
+                role=dept.role,
+                is_primary=dept.is_primary
+            )
+            db.add(new_dept)
+            
     db.commit()
     return {"status": "success", "message": "Thêm nhân sự thành công"}
-
-from fastapi import Depends, Query
-from sqlalchemy import or_
-import os
 
 # Giả sử bạn đã import các thư viện và hàm cần thiết như Depends, get_db, get_current_user...
 
@@ -46,48 +61,48 @@ def get_employees(
     size: int = 15,
     search: str = Query(None),
     department_id: int = Query(None),
-    current_user: dict = Depends(get_current_user)  # <-- Bổ sung dependency lấy user hiện tại
+    current_user: dict = Depends(get_current_user)
 ):
     current_username = current_user.get("username")
-    current_role = current_user.get("role", "user")
-
-    Dept = aliased(OrganizationUnit)
-    ParentUnit = aliased(OrganizationUnit)
-
-    query = db.query(
-        Employee,
-        Dept.unit_name.label("dept_name"),
-        ParentUnit.unit_name.label("parent_name")
-    ).outerjoin(
-        Dept, Employee.department_id == Dept.id
-    ).outerjoin(
-        ParentUnit, Dept.parent_id == ParentUnit.id
-    )
 
     # ==========================================
-    # LOGIC PHÂN QUYỀN (RBAC)
+    # 1. TÌM THÔNG TIN USER VÀ QUYỀN TỪ DATABASE
     # ==========================================
-    if current_role == "admin":
-        # Admin được xem tất cả -> Không cần filter thêm
-        pass
-        
-    elif current_role == "manager":
-        # Lấy ID phòng ban của chính manager này
-        manager_dept_id = db.query(Employee.department_id).filter(Employee.username == current_username).scalar()
-        
-        if manager_dept_id:
-            # Manager chỉ được xem nhân viên trong cùng phòng ban
-            query = query.filter(Employee.department_id == manager_dept_id)
-        else:
-            # Fallback an toàn: Nếu manager chưa được xếp phòng, chỉ cho xem chính họ
-            query = query.filter(Employee.username == current_username)
+    me = db.query(Employee).filter(Employee.username == current_username).first()
+    if not me:
+        return {"items": [], "total": 0, "page": page, "size": size, "total_pages": 0}
+
+    my_departments = db.query(EmployeeDepartment).filter(
+        EmployeeDepartment.employee_id == me.id
+    ).all()
+    
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    # KHỞI TẠO QUERY CƠ BẢN (Chỉ query bảng Employee, KHÔNG join phòng ban ở đây để tránh nhân bản dòng)
+    query = db.query(Employee)
+
+    # ==========================================
+    # 2. ÁP DỤNG PHÂN QUYỀN NẾU KHÔNG PHẢI ADMIN
+    # ==========================================
+    if not is_admin:
+        allowed_usernames = {current_username}
+        managed_dept_ids = [
+            dept.department_id for dept in my_departments 
+            if dept.role and dept.role.lower() == "manager" 
+        ]
+
+        if managed_dept_ids:
+            dept_users = db.query(Employee.username).join(EmployeeDepartment).filter(
+                EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
             
-    else:
-        # Role 'user' hoặc các role không xác định khác: Chỉ xem được chính mình
-        query = query.filter(Employee.username == current_username)
+            for u in dept_users:
+                allowed_usernames.add(u[0])
+
+        query = query.filter(Employee.username.in_(list(allowed_usernames)))
 
     # ==========================================
-    # LOGIC TÌM KIẾM & LỌC BỔ SUNG
+    # 3. LOGIC TÌM KIẾM & LỌC BỔ SUNG
     # ==========================================
     if search:
         query = query.filter(
@@ -97,51 +112,108 @@ def get_employees(
             )
         )
         
-    # Lọc theo department_id (từ frontend gửi lên)
-    # Lưu ý: Nếu là Manager, điều kiện này sẽ kết hợp (AND) với điều kiện RBAC ở trên. 
-    # Nếu Manager cố tình chọn phòng ban khác, query sẽ tự động trả về rỗng -> Rất bảo mật!
+    # Lọc theo department_id lấy từ bảng mới
     if department_id:
-        query = query.filter(Employee.department_id == department_id)
+        subq_dept = db.query(EmployeeDepartment.employee_id).filter(EmployeeDepartment.department_id == department_id)
+        query = query.filter(Employee.id.in_(subq_dept))
 
     # ==========================================
-    # PHÂN TRANG & MAP KẾT QUẢ
+    # 4. PHÂN TRANG
     # ==========================================
     total = query.count()
     offset = (page - 1) * size
+    
+    # Lấy ra danh sách nhân viên của trang hiện tại
+    employees = query.order_by(Employee.id.desc()).offset(offset).limit(size).all()
 
-    rows = query.order_by(Employee.id.desc()).offset(offset).limit(size).all()
-
+    # ==========================================
+    # 5. LẤY THÔNG TIN PHÒNG BAN VÀ GHÉP CHUỖI (DẤU PHẨY)
+    # ==========================================
     result = []
-    for e, dept_name, parent_name in rows:
-        face_path = os.path.join(DB_PATH, f"{e.username}.jpg")
+    if employees:
+        emp_ids = [e.id for e in employees]
 
-        if parent_name:
-            ten_don_vi = parent_name
-            ten_phong_ban = dept_name or ""
-        else:
-            ten_don_vi = dept_name or ""
-            ten_phong_ban = ""
+        Dept = aliased(OrganizationUnit)
+        ParentUnit = aliased(OrganizationUnit)
 
-        result.append({
-            "id": e.id,
-            "username": e.username,
-            "full_name": e.full_name,
-            "department_id": e.department_id,
-            "department_name": dept_name,
-            "ten_don_vi": ten_don_vi,
-            "ten_phong_ban": ten_phong_ban,
-            "phone": e.phone,
-            "dob": e.dob,
-            "status": e.status,
-            "role": e.role,
-            "is_locked": e.is_locked,
-            "date_of_birth": e.date_of_birth,
-            "ccCaNhan": e.ccCaNhan,
-            "ccTapTrung": e.ccTapTrung,
-            "checkViTri": e.checkViTri,
-            "checkMang": e.checkMang,
-            "has_face": os.path.exists(face_path)
-        })
+        dept_query = db.query(
+            EmployeeDepartment.employee_id,
+            EmployeeDepartment.department_id,
+            EmployeeDepartment.role, # <--- BỔ SUNG LẤY CỘT ROLE
+            Dept.unit_name.label("dept_name"),
+            ParentUnit.unit_name.label("parent_name")
+        ).join(
+            Dept, EmployeeDepartment.department_id == Dept.id
+        ).outerjoin(
+            ParentUnit, Dept.parent_id == ParentUnit.id
+        ).filter(
+            EmployeeDepartment.employee_id.in_(emp_ids)
+        ).all()
+
+        emp_depts_map = defaultdict(list)
+        for row in dept_query:
+            emp_depts_map[row.employee_id].append({
+                "dept_id": str(row.department_id),
+                "role": row.role or "user", # <--- LƯU LẠI ROLE
+                "dept_name": row.dept_name or "",
+                "parent_name": row.parent_name or ""
+            })
+
+        for e in employees:
+            depts = emp_depts_map.get(e.id, [])
+            
+            arr_dept_ids = []
+            arr_roles = [] # Mảng chứa role
+            arr_ten_don_vi = []
+            arr_ten_phong_ban = []
+            arr_dept_names = []
+            
+            seen_dept_ids = set()
+            
+            for d in depts:
+                # Dùng Set để lọc trùng mà vẫn giữ đúng thứ tự (Đảm bảo role và dept_id khớp nhau 1-1)
+                if d["dept_id"] not in seen_dept_ids:
+                    seen_dept_ids.add(d["dept_id"])
+                    arr_dept_ids.append(d["dept_id"])
+                    arr_roles.append(d["role"]) # <--- THÊM ROLE VÀO MẢNG
+                    arr_dept_names.append(d["dept_name"])
+                    
+                    if d["parent_name"]:
+                        arr_ten_don_vi.append(d["parent_name"])
+                        if d["dept_name"]: arr_ten_phong_ban.append(d["dept_name"])
+                    else:
+                        if d["dept_name"]: arr_ten_don_vi.append(d["dept_name"])
+
+            # Nối chuỗi
+            str_dept_ids = ",".join(arr_dept_ids)
+            str_roles = ",".join(arr_roles) # <--- CHUỖI ROLE: vd "manager,user"
+            
+            str_dept_names = ", ".join(list(dict.fromkeys(filter(None, arr_dept_names))))
+            str_ten_don_vi = ", ".join(list(dict.fromkeys(filter(None, arr_ten_don_vi))))
+            str_ten_phong_ban = ", ".join(list(dict.fromkeys(filter(None, arr_ten_phong_ban))))
+
+            face_path = os.path.join(DB_PATH, f"{e.username}.jpg")
+
+            result.append({
+                "id": e.id,
+                "username": e.username,
+                "full_name": e.full_name,
+                "department_id": str_dept_ids, 
+                "department_name": str_dept_names,
+                "ten_don_vi": str_ten_don_vi,
+                "ten_phong_ban": str_ten_phong_ban,
+                "phone": e.phone,
+                "dob": e.dob,
+                "status": e.status,
+                "role": str_roles if str_roles else e.role, # <--- TRẢ VỀ ROLE ĐÃ NỐI CHUỖI TỪ BẢNG MỚI
+                "is_locked": e.is_locked,
+                "date_of_birth": e.date_of_birth,
+                "ccCaNhan": e.ccCaNhan,
+                "ccTapTrung": e.ccTapTrung,
+                "checkViTri": e.checkViTri,
+                "checkMang": e.checkMang,
+                "has_face": os.path.exists(face_path)
+            })
     
     return {
         "items": result,
@@ -151,52 +223,87 @@ def get_employees(
         "total_pages": (total + size - 1) // size if size > 0 else 1
     }
 
-@router.put("/api/employees/me")
-def update_my_profile(
-    req: UpdateMyProfile,
+from sqlalchemy.orm import aliased
+import os
+
+@router.get("/api/employees/me")
+def get_current_employee_info(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     current_username = current_user.get("username")
-    db_emp = db.query(Employee).filter(Employee.username == current_username).first()
-    if not db_emp:
-        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
 
-    db_emp.full_name = req.full_name
-    db_emp.phone     = req.phone
-    db_emp.email     = req.email
+    e = db.query(Employee).filter(Employee.username == current_username).first()
+    if not e:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thông tin tài khoản hiện tại")
+
+    Dept = aliased(OrganizationUnit)
+    ParentUnit = aliased(OrganizationUnit)
+
+    dept_query = db.query(
+        EmployeeDepartment.department_id,
+        EmployeeDepartment.role, # <--- LẤY CỘT ROLE
+        Dept.unit_name.label("dept_name"),
+        ParentUnit.unit_name.label("parent_name")
+    ).join(
+        Dept, EmployeeDepartment.department_id == Dept.id
+    ).outerjoin(
+        ParentUnit, Dept.parent_id == ParentUnit.id
+    ).filter(
+        EmployeeDepartment.employee_id == e.id
+    ).all()
+
+    arr_dept_ids = []
+    arr_roles = [] # <--- KHỞI TẠO MẢNG
+    arr_dept_names = []
+    arr_ten_don_vi = []
+    arr_ten_phong_ban = []
+
+    seen_dept_ids = set()
+
+    for row in dept_query:
+        if str(row.department_id) not in seen_dept_ids:
+            seen_dept_ids.add(str(row.department_id))
+            arr_dept_ids.append(str(row.department_id))
+            arr_roles.append(row.role or "user") # <--- THÊM ROLE
+            arr_dept_names.append(row.dept_name or "")
+            
+            if row.parent_name:
+                arr_ten_don_vi.append(row.parent_name)
+                if row.dept_name: arr_ten_phong_ban.append(row.dept_name)
+            else:
+                if row.dept_name: arr_ten_don_vi.append(row.dept_name)
+
+    str_dept_ids = ",".join(arr_dept_ids)
+    str_roles = ",".join(arr_roles) # <--- NỐI CHUỖI ROLE
     
-    # Sync dob and date_of_birth
-    db_emp.dob = req.dob
-    db_emp.date_of_birth = req.date_of_birth
+    str_dept_names = ", ".join(list(dict.fromkeys(filter(None, arr_dept_names))))
+    str_ten_don_vi = ", ".join(list(dict.fromkeys(filter(None, arr_ten_don_vi))))
+    str_ten_phong_ban = ", ".join(list(dict.fromkeys(filter(None, arr_ten_phong_ban))))
 
-    db_emp.notes     = req.notes
-    db_emp.ccCaNhan  = req.ccCaNhan
-    db_emp.ccTapTrung = req.ccTapTrung
-    db.commit()
-    db.refresh(db_emp)
+    face_path = os.path.join(DB_PATH, f"{e.username}.jpg")
 
-    face_path = os.path.join(DB_PATH, f"{db_emp.username}.jpg")
     return {
         "status": "success",
-        "message": "Cập nhật thông tin thành công!",
         "data": {
-            "id": db_emp.id,
-            "username": db_emp.username,
-            "full_name": db_emp.full_name,
-            "phone": db_emp.phone,
-            "email": db_emp.email,
-            "dob": db_emp.dob,
-            "date_of_birth": db_emp.date_of_birth,
-            "notes": db_emp.notes,
-            "role": db_emp.role,
-            "status": db_emp.status,
-            "department_id": db_emp.department_id,
-            "is_locked": db_emp.is_locked,
-            "ccCaNhan": db_emp.ccCaNhan,
-            "ccTapTrung": db_emp.ccTapTrung,
-            "checkViTri": db_emp.checkViTri,
-            "checkMang": db_emp.checkMang,
+            "id": e.id,
+            "username": e.username,
+            "full_name": e.full_name,
+            "department_id": str_dept_ids,
+            "department_name": str_dept_names,
+            "ten_don_vi": str_ten_don_vi,
+            "ten_phong_ban": str_ten_phong_ban,
+            "phone": e.phone,
+            "email": e.email,
+            "dob": e.dob, 
+            "date_of_birth": e.date_of_birth,
+            "status": e.status,
+            "role": str_roles if str_roles else e.role, # <--- TRẢ VỀ ROLE ĐÚNG
+            "is_locked": e.is_locked,
+            "ccCaNhan": e.ccCaNhan,
+            "ccTapTrung": e.ccTapTrung,
+            "checkViTri": e.checkViTri,
+            "checkMang": e.checkMang,
             "has_face": os.path.exists(face_path)
         }
     }
@@ -253,16 +360,26 @@ def auto_update_departments(db: Session = Depends(get_db)):
 
 @router.get("/api/employees/managers")
 def get_managers(db: Session = Depends(get_db)):
-    # Lấy những tài khoản có role là manager hoặc admin
-    managers = db.query(Employee).filter(Employee.role.in_(["manager", "admin"]), Employee.status == "active").all()
+    # Join 2 bảng và filter theo role trong bảng EmployeeDepartment
+    managers_query = db.query(
+        Employee.username, 
+        Employee.full_name, 
+        EmployeeDepartment.department_id
+    ).join(
+        EmployeeDepartment, Employee.id == EmployeeDepartment.employee_id
+    ).filter(
+        EmployeeDepartment.role.in_(["manager", "admin"]), 
+        Employee.status == "active"
+    ).all()
     
+    # Dùng list comprehension để map dữ liệu
     return [
         {
             "username": m.username,
             "full_name": m.full_name,
             "department_id": m.department_id
         }
-        for m in managers
+        for m in managers_query
     ]
 
 @router.put("/api/employees/{username}")
@@ -271,6 +388,7 @@ def update_employee(username: str, emp: EmployeeCreate, db: Session = Depends(ge
     if not db_emp:
         raise HTTPException(status_code=404, detail="Không tìm thấy nhân sự")
     
+    # 1. CẬP NHẬT THÔNG TIN CƠ BẢN
     db_emp.full_name = emp.full_name
     db_emp.phone = emp.phone
     db_emp.email = emp.email
@@ -280,9 +398,7 @@ def update_employee(username: str, emp: EmployeeCreate, db: Session = Depends(ge
     db_emp.date_of_birth = target_dob
     db_emp.dob = target_dob
     
-    db_emp.department_id = emp.department_id
     db_emp.status = emp.status
-    db_emp.role = emp.role
     db_emp.is_locked = emp.is_locked
     db_emp.notes = emp.notes
     db_emp.ccCaNhan = emp.ccCaNhan
@@ -291,9 +407,28 @@ def update_employee(username: str, emp: EmployeeCreate, db: Session = Depends(ge
     db_emp.checkMang = emp.checkMang
     db_emp.hourly_rate = emp.hourly_rate
     db_emp.allowance = emp.allowance
-    db_emp.username = emp.username # CẬP NHẬT THEO USERNAME MỚI (nếu có thay đổi)
+    
+    # Cập nhật username (Lưu ý: Nếu đổi username, cẩn thận ảnh hưởng đến các bảng dùng username làm khóa phụ như Attendance)
+    db_emp.username = emp.username 
 
+    # 2. XỬ LÝ DANH SÁCH PHÒNG BAN & QUYỀN
+    if emp.departments is not None:
+        # Xóa toàn bộ phòng ban và quyền cũ của nhân viên này
+        db.query(EmployeeDepartment).filter(EmployeeDepartment.employee_id == db_emp.id).delete()
+        
+        # Thêm danh sách phòng ban mới
+        for dept in emp.departments:
+            new_dept = EmployeeDepartment(
+                employee_id=db_emp.id,
+                department_id=dept.department_id,
+                role=dept.role,
+                is_primary=dept.is_primary
+            )
+            db.add(new_dept)
+            
+    # Đồng bộ lưu trữ xuống database
     db.commit()
+    
     return {"status": "success", "message": "Đã cập nhật thông tin"}
 
 @router.delete("/api/employees/{username}")
@@ -597,74 +732,95 @@ def get_accessible_employees(
     current_user: dict = Depends(get_current_user)
 ):
     current_username = current_user.get("username")
-    current_role = current_user.get("role")
 
-    # 1. Lấy nhanh thông tin phòng ban của user hiện tại
-    # Chỉ lấy đúng giá trị (scalar), không lấy cả object Employee
-    current_dept_id = db.query(Employee.department_id).filter(Employee.username == current_username).scalar()
+    # 1. QUYỀN HẠN TỪ BẢNG MỚI
+    me = db.query(Employee).filter(Employee.username == current_username).first()
+    if not me:
+        return {"status": "success", "items": [], "total": 0}
 
-    # 2. Định nghĩa danh sách các cột cần lấy (Đầy đủ như bạn muốn)
-    # Liệt kê cụ thể giúp DB tối ưu hóa tốc độ truy xuất hơn là dùng SELECT *
-    target_columns = [
-        Employee.id, Employee.username, Employee.full_name, 
-        Employee.department_id, Employee.phone, Employee.dob, 
-        Employee.status, Employee.role, Employee.is_locked, 
-        Employee.date_of_birth, Employee.ccCaNhan, Employee.ccTapTrung,
-        Employee.checkViTri, Employee.checkMang
-    ]
-    
-    # Kiểm tra nếu model có email thì lấy luôn
-    if hasattr(Employee, 'email'):
-        target_columns.append(Employee.email)
+    my_departments = db.query(EmployeeDepartment).filter(
+        EmployeeDepartment.employee_id == me.id
+    ).all()
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
 
-    Dept = aliased(OrganizationUnit)
-    ParentUnit = aliased(OrganizationUnit)
+    query = db.query(Employee)
 
-    # 3. Xây dựng Query tập trung vào tốc độ
-    query = db.query(
-        *target_columns,
-        Dept.unit_name.label("dept_name"),
-        ParentUnit.unit_name.label("parent_name")
-    ).outerjoin(
-        Dept, Employee.department_id == Dept.id
-    ).outerjoin(
-        ParentUnit, Dept.parent_id == ParentUnit.id
-    )
+    # 2. PHÂN QUYỀN: MANAGER CHỈ THẤY NHÂN VIÊN TRONG PHÒNG
+    if not is_admin:
+        allowed_usernames = {current_username}
+        managed_dept_ids = [d.department_id for d in my_departments if d.role and d.role.lower() == "manager"]
 
-    # 4. Phân quyền
-    if current_role == "manager" and current_dept_id:
-        query = query.filter(Employee.department_id == current_dept_id)
-    elif current_role != "admin":
-        query = query.filter(Employee.username == current_username)
+        if managed_dept_ids:
+            dept_users = db.query(Employee.username).join(EmployeeDepartment).filter(
+                EmployeeDepartment.department_id.in_(managed_dept_ids)
+            ).all()
+            for u in dept_users: allowed_usernames.add(u[0])
 
-    # 5. Lấy dữ liệu dạng Row (Tốc độ cao hơn lấy dạng Object)
-    rows = query.order_by(Employee.id.desc()).all()
+        query = query.filter(Employee.username.in_(list(allowed_usernames)))
 
-    # 6. Dùng List Comprehension (Cách nhanh nhất trong Python để tạo List)
+    # 3. LẤY DỮ LIỆU
+    employees = query.order_by(Employee.id.desc()).all()
+
+    # 4. MAP PHÒNG BAN VÀ TRẢ VỀ CHUỖI
+    result = []
+    if employees:
+        emp_ids = [e.id for e in employees]
+        Dept = aliased(OrganizationUnit)
+        ParentUnit = aliased(OrganizationUnit)
+
+        dept_query = db.query(
+            EmployeeDepartment.employee_id,
+            EmployeeDepartment.department_id,
+            EmployeeDepartment.role,
+            Dept.unit_name.label("dept_name"),
+            ParentUnit.unit_name.label("parent_name")
+        ).join(Dept, EmployeeDepartment.department_id == Dept.id)\
+         .outerjoin(ParentUnit, Dept.parent_id == ParentUnit.id)\
+         .filter(EmployeeDepartment.employee_id.in_(emp_ids)).all()
+
+        emp_depts_map = defaultdict(list)
+        for row in dept_query:
+            emp_depts_map[row.employee_id].append(row)
+
+        for e in employees:
+            depts = emp_depts_map.get(e.id, [])
+            
+            arr_dept_ids = [str(d.department_id) for d in depts]
+            arr_roles = [d.role for d in depts if d.role]
+            arr_dept_names = [d.dept_name for d in depts if d.dept_name]
+            
+            arr_ten_don_vi = []
+            arr_ten_phong_ban = []
+            for d in depts:
+                if d.parent_name:
+                    arr_ten_don_vi.append(d.parent_name)
+                    if d.dept_name: arr_ten_phong_ban.append(d.dept_name)
+                elif d.dept_name:
+                    arr_ten_don_vi.append(d.dept_name)
+
+            result.append({
+                "id": e.id,
+                "username": e.username,
+                "full_name": e.full_name,
+                "department_id": ",".join(list(dict.fromkeys(arr_dept_ids))),
+                "department_name": ", ".join(list(dict.fromkeys(arr_dept_names))),
+                "ten_don_vi": ", ".join(list(dict.fromkeys(arr_ten_don_vi))),
+                "ten_phong_ban": ", ".join(list(dict.fromkeys(arr_ten_phong_ban))),
+                "phone": e.phone,
+                "dob": e.dob,
+                "status": e.status,
+                "role": ", ".join(list(dict.fromkeys(arr_roles))) if arr_roles else e.role,
+                "is_locked": e.is_locked,
+                "date_of_birth": e.date_of_birth,
+                "ccCaNhan": e.ccCaNhan,
+                "ccTapTrung": e.ccTapTrung,
+                "checkViTri": e.checkViTri,
+                "checkMang": e.checkMang,
+                "email": getattr(e, "email", "")
+            })
+
     return {
         "status": "success",
-        "items": [
-            {
-                "id": r.id,
-                "username": r.username,
-                "full_name": r.full_name,
-                "department_id": r.department_id,
-                "department_name": r.dept_name or "",
-                "ten_don_vi": r.parent_name if r.parent_name else (r.dept_name or ""),
-                "ten_phong_ban": r.dept_name if r.parent_name else "",
-                "phone": r.phone,
-                "dob": r.dob,
-                "status": r.status,
-                "role": r.role,
-                "is_locked": r.is_locked,
-                "date_of_birth": r.date_of_birth,
-                "ccCaNhan": r.ccCaNhan,
-                "ccTapTrung": r.ccTapTrung,
-                "checkViTri": r.checkViTri,
-                "checkMang": r.checkMang,
-                "email": getattr(r, "email", "")
-            }
-            for r in rows
-        ],
-        "total": len(rows)
+        "items": result,
+        "total": len(result)
     }

@@ -229,7 +229,7 @@
     let pageSize = 15;
     let totalPages = 1;
     let shiftMapCache = {}; 
-    const currentUserRole = localStorage.getItem("hrm_role") || "user";
+    let currentUserRole = "user";
     // BIẾN LƯU NHIỀU CA TRỰC ĐƯỢC CHỌN
     let selectedShiftCodes = []; 
     let currentModalEmpId = null;
@@ -624,8 +624,39 @@
         }
     }
 
-    // Khởi tạo chạy ngay
-    loadShiftCategories();
-    fetchAssignments();
+    // ==========================================
+    // KHỞI TẠO TRANG (LẤY QUYỀN -> LẤY CA -> LẤY BẢNG)
+    // ==========================================
+    async function fetchUserRole() {
+        try {
+            const res = await fetch('/api/employees/me', { headers: getAuthHeaders() });
+            if (res.ok) {
+                const payload = await res.json();
+                const roleString = payload.data.role || "user";
+                const rolesArray = roleString.split(",").map(r => r.trim().toLowerCase());
+                
+                // Xác định quyền cao nhất
+                if (rolesArray.includes("admin")) {
+                    currentUserRole = "admin";
+                } else if (rolesArray.includes("manager")) {
+                    currentUserRole = "manager";
+                } else {
+                    currentUserRole = "user";
+                }
+            }
+        } catch (e) { 
+            console.error("Lỗi lấy quyền:", e); 
+        }
+    }
+
+    async function initPage() {
+        // Đợi lấy quyền xong mới vẽ bảng, nếu không bảng sẽ bị khóa nhầm
+        await fetchUserRole(); 
+        await loadShiftCategories();
+        await fetchAssignments();
+    }
+
+    // Chạy khởi tạo
+    initPage();
 </script>
 {% endblock %}

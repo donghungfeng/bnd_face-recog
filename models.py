@@ -32,6 +32,7 @@ class Employee(Base):
     ccTapTrung = Column(Integer, default=0)
     checkViTri = Column(Integer, default=1)
     checkMang = Column(Integer, default=1)
+    departments = relationship("EmployeeDepartment", back_populates="employee")
 
 class ShiftCategory(Base):
     __tablename__ = "shift_categories"
@@ -203,3 +204,18 @@ class LeaveRequest(Base):
 
     leave_type = relationship("LeaveType", back_populates="requests")
     attached_image = Column(String(255), nullable=True)
+
+class EmployeeDepartment(Base):
+    __tablename__ = "employee_departments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    department_id = Column(Integer, ForeignKey("organization_units.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String(256), nullable=True)
+    is_primary = Column(SmallInteger, default=1) # 1: Chính, 0: Phụ
+    status = Column(String(50), default="active")
+    assigned_at = Column(DateTime, default=datetime.now)
+
+    # Relationship để join ngược lại lấy tên phòng ban
+    department = relationship("OrganizationUnit")
+    employee = relationship("Employee", back_populates="departments")
