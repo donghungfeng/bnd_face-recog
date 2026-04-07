@@ -8,3 +8,5 @@
 /.env
 /venv
 .venv
+/data/explanation_db
+/data/ipads_db

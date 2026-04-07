@@ -50,6 +50,10 @@ def read_login(request: Request):
 def read_faces(request: Request): 
     return templates.TemplateResponse("faces.html", {"request": request})
 
+@router.get("/faces_ipad")
+def read_faces_ipad(request: Request): 
+    return templates.TemplateResponse("faces_ipad.html", {"request": request})
+
 @router.get("/admin_logs")
 def read_admin_logs(request: Request):
     return templates.TemplateResponse("admin_logs.html", {"request": request})

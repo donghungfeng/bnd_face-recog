@@ -11,7 +11,7 @@ from deepface import DeepFace
 from sqlalchemy.orm import Session
 from models import Attendance
 from schemas import CheckIPRequest, FaceRequest, ScanFraudRequest, SingleFaceDeleteRequest, UnregisterRequest, PersonalVerifyRequest, TestFaceRequest, UpdateImageUrlRequest
-from config import DB_PATH, MODEL_NAME, CACHE_FILE
+from config import DB_IPAD_PATH, DB_PATH, IPAD_FILE, MODEL_NAME, CACHE_FILE
 from database import get_db
 import time
 
@@ -101,11 +101,11 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
 
         current_embedding = np.array(results[0]["embedding"])
         
-        if len(services.known_user_ids) == 0:
+        if len(services.ipad_user_ids) == 0:
             return {"recognized": False, "message": "RAM chưa có dữ liệu, hãy tải lại."}
 
-        dot_products = np.dot(services.known_embeddings_matrix, current_embedding)
-        matrix_norms = np.linalg.norm(services.known_embeddings_matrix, axis=1)
+        dot_products = np.dot(services.ipad_embeddings_matrix, current_embedding)
+        matrix_norms = np.linalg.norm(services.ipad_embeddings_matrix, axis=1)
         current_norm = np.linalg.norm(current_embedding)
         
         similarities = dot_products / (matrix_norms * current_norm)
@@ -114,16 +114,16 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
         
         best_index = sorted_indices[0]
         max_sim = similarities[best_index]
-        best_match = services.known_user_ids[best_index]
+        best_match = services.ipad_user_ids[best_index]
         
         # Tìm người giống thứ 2 
         second_best_sim = 0.0
         second_best_match = None
         
         for idx in sorted_indices[1:]:
-            if services.known_user_ids[idx] != best_match:
+            if services.ipad_user_ids[idx] != best_match:
                 second_best_sim = similarities[idx]
-                second_best_match = services.known_user_ids[idx]
+                second_best_match = services.ipad_user_ids[idx]
                 break 
                 
         margin_percent = (max_sim - second_best_sim) * 100
@@ -221,12 +221,46 @@ async def unregister(request: UnregisterRequest):
         
     return {"status": "error", "message": "Không tìm thấy người này."}
 
+@router.post("/unregister_ipad")
+async def unregister(request: UnregisterRequest):
+    user_id = request.user_id
+    
+    files_to_delete = glob.glob(os.path.join(DB_IPAD_PATH, f"{user_id}_*.jpg"))
+    old_file = os.path.join(DB_IPAD_PATH, f"{user_id}.jpg")
+    if os.path.exists(old_file): files_to_delete.append(old_file)
+    
+    for f in files_to_delete:
+        try: os.remove(f)
+        except: pass
+        
+    indices_to_delete = [i for i, uid in enumerate(services.ipad_user_ids) if uid == user_id]
+    
+    if indices_to_delete:
+        services.ipad_embeddings_matrix = np.delete(services.ipad_embeddings_matrix, indices_to_delete, axis=0)
+        for i in sorted(indices_to_delete, reverse=True):
+            services.ipad_file_keys.pop(i)
+            services.ipad_user_ids.pop(i)
+            
+        services.save_cache()
+        return {"status": "success"}
+        
+    return {"status": "error", "message": "Không tìm thấy người này."}
+
 @router.get("/clear_ram")
 async def clear_ram():
     services.known_file_keys.clear()
     services.known_user_ids.clear()
     services.known_embeddings_matrix = np.array([])
     if os.path.exists(CACHE_FILE): os.remove(CACHE_FILE)
+    return {"status": "success"}
+
+
+@router.get("/clear_ram_ipad")
+async def clear_ram():
+    services.ipad_file_keys.clear()
+    services.ipad_user_ids.clear()
+    services.ipad_embeddings_matrix = np.array([])
+    if os.path.exists(IPAD_FILE): os.remove(IPAD_FILE)
     return {"status": "success"}
 
 @router.get("/api/ai_status")
@@ -239,12 +273,30 @@ async def get_ai_status():
         "ram_count": len(services.known_file_keys)
     }
 
+@router.get("/api/ai_status_ipad")
+async def get_ai_status():
+    import os
+    files = [f for f in os.listdir(DB_IPAD_PATH) if f.endswith(".jpg")]
+    
+    return {
+        "files_count": len(files), 
+        "ram_count": len(services.ipad_file_keys)
+    }
+
 @router.get("/reload_ram")
 async def reload_ram_api():
-    services.load_embeddings()
+    services.load_main_embeddings()
     return {
         "status": "success", 
-        "message": f"Đã nạp lại {len(services.known_file_keys)} khuôn mặt vào RAM!"
+        "message": f"Đã nạp lại danh sách khuôn mặt vào RAM!"
+    }
+
+@router.get("/reload_ram_ipad")
+async def reload_ram_api():
+    services.load_ipad_embeddings()
+    return {
+        "status": "success", 
+        "message": f"Đã nạp lại danh sách khuôn mặt vào RAM!"
     }
 
 @router.get("/api/faces/image/{filename}")
@@ -257,6 +309,21 @@ def get_face_image(filename: str):
     possible_files = [f"{filename}.jpg", f"{filename}_1.jpg", f"{filename}_2.jpg"]
     for pf in possible_files:
         pf_path = os.path.join(DB_PATH, pf)
+        if os.path.exists(pf_path):
+            return FileResponse(pf_path)
+            
+    raise HTTPException(status_code=404, detail="Không tìm thấy ảnh")
+
+@router.get("/api/ipad/image/{filename}")
+def get_face_image(filename: str):
+    import os
+    file_path = os.path.join(DB_IPAD_PATH, f"{filename}.jpg")
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+        
+    possible_files = [f"{filename}.jpg", f"{filename}_1.jpg", f"{filename}_2.jpg"]
+    for pf in possible_files:
+        pf_path = os.path.join(DB_IPAD_PATH, pf)
         if os.path.exists(pf_path):
             return FileResponse(pf_path)
             
@@ -349,6 +416,93 @@ def get_faces_overview(
         "total_pages": total_pages
     }
 
+@router.get("/api/ipad/overview")
+def get_faces_overview(
+    page: int = 1, 
+    limit: int = 12, 
+    search: str = "", 
+    status: str = "all", 
+    db: Session = Depends(get_db)
+):
+    import os
+    import math
+    from models import Employee
+    from sqlalchemy.orm import joinedload
+    
+    file_map = {}
+    if os.path.exists(DB_IPAD_PATH):
+        for f in os.listdir(DB_IPAD_PATH):
+            if f.endswith('.jpg'):
+                exact_name = f.replace('.jpg', '')
+                parts = exact_name.rsplit("_", 1)
+                if len(parts) == 2 and parts[1].isdigit():
+                    uid_upper = parts[0].upper()
+                else:
+                    uid_upper = exact_name.upper()
+                    
+                if uid_upper not in file_map:
+                    file_map[uid_upper] = []
+                file_map[uid_upper].append(exact_name)
+                
+    emps = db.query(Employee).options(joinedload(Employee.department)).all()
+    emp_dict_upper = {e.username.upper(): e for e in emps}
+    
+    all_results = []
+    
+    # Gộp dữ liệu nhân viên
+    for e in emps:
+        username_upper = e.username.upper()
+        has_face = username_upper in file_map
+        all_results.append({
+            "type": "mapped" if has_face else "no_face",
+            "username": e.username,
+            "full_name": e.full_name,
+            "department_name": e.department.unit_name if e.department else "Chưa xếp phòng",
+            "images": file_map.get(username_upper, [])
+        })
+        
+    # Gộp dữ liệu ảnh mồ côi
+    for upper_name, file_names in file_map.items():
+        if upper_name not in emp_dict_upper:
+            all_results.append({
+                "type": "unmapped",
+                "username": upper_name,
+                "full_name": "Người lạ / Chưa ĐK",
+                "department_name": "---",
+                "images": file_names
+            })
+            
+    # XỬ LÝ LỌC (FILTERING)
+    filtered_results = []
+    search_query = search.lower().strip()
+    
+    for item in all_results:
+        # Lọc trạng thái
+        if status != "all" and item["type"] != status:
+            continue
+        # Lọc tìm kiếm
+        if search_query:
+            if search_query not in item["username"].lower() and search_query not in item["full_name"].lower():
+                continue
+        
+        filtered_results.append(item)
+        
+    # XỬ LÝ PHÂN TRANG (PAGINATION)
+    total_items = len(filtered_results)
+    total_pages = math.ceil(total_items / limit) if total_items > 0 else 1
+    
+    start_idx = (page - 1) * limit
+    end_idx = start_idx + limit
+    paginated_results = filtered_results[start_idx:end_idx]
+            
+    return {
+        "data": paginated_results,
+        "total": total_items,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages
+    }
+
 @router.post("/delete_single_face")
 async def delete_single_face(request: SingleFaceDeleteRequest):
     filename = request.filename
@@ -366,7 +520,28 @@ async def delete_single_face(request: SingleFaceDeleteRequest):
         services.known_embeddings_matrix = np.delete(services.known_embeddings_matrix, idx, axis=0)
         
         # Lưu lại cache
-        services.save_cache()
+        services.save_cache("main")
+        
+    return {"status": "success", "message": f"Đã xóa ảnh {filename}"}
+
+@router.post("/delete_single_ipad_face")
+async def delete_single_ipad_face(request: SingleFaceDeleteRequest):
+    filename = request.filename
+    file_path = os.path.join(DB_IPAD_PATH, f"{filename}.jpg")
+    
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        
+    if filename in services.ipad_file_keys:
+        idx = services.ipad_file_keys.index(filename)
+        
+        # Rút phần tử khỏi mảng
+        services.ipad_file_keys.pop(idx)
+        services.ipad_user_ids.pop(idx)
+        services.ipad_embeddings_matrix = np.delete(services.ipad_embeddings_matrix, idx, axis=0)
+        
+        # Lưu lại cache
+        services.save_cache("ipad")
         
     return {"status": "success", "message": f"Đã xóa ảnh {filename}"}
 
@@ -565,10 +740,6 @@ async def test_real_flow(request: TestFaceRequest):
     except Exception as e:
         return {"status": "error", "message": f"Lỗi hệ thống: {str(e)}"}
 
-
-import cv2
-import os
-
 @router.post("/api/admin/scan-fraud")
 async def scan_fraud_records(req: ScanFraudRequest, db: Session = Depends(get_db)):
     try:
@@ -704,7 +875,7 @@ async def confirm_renew(request: FaceRequest, background_tasks: BackgroundTasks)
     # Ép lưu file thứ 4 để không đè lên 3 ảnh gốc của nhân sự
     new_filename = f"{user_id}_4.jpg"
     file_key = f"{user_id}_4"
-    file_path = os.path.join(DB_PATH, new_filename)
+    file_path = os.path.join(IPAD_FILE, new_filename)
     
     cv2.imwrite(file_path, img_crop)
     
@@ -713,16 +884,16 @@ async def confirm_renew(request: FaceRequest, background_tasks: BackgroundTasks)
         embedding = np.array(results[0]["embedding"])
         
         # 1. Đẩy thẳng vào RAM ngay lập tức
-        if file_key in services.known_file_keys:
-            idx = services.known_file_keys.index(file_key)
-            services.known_embeddings_matrix[idx] = embedding
+        if file_key in services.ipad_file_keys:
+            idx = services.ipad_file_keys.index(file_key)
+            services.ipad_embeddings_matrix[idx] = embedding
         else:
-            services.known_file_keys.append(file_key)
-            services.known_user_ids.append(user_id)
-            if services.known_embeddings_matrix.size == 0:
-                services.known_embeddings_matrix = np.array([embedding])
+            services.ipad_file_keys.append(file_key)
+            services.ipad_user_ids.append(user_id)
+            if services.ipad_embeddings_matrix.size == 0:
+                services.ipad_embeddings_matrix = np.array([embedding])
             else:
-                services.known_embeddings_matrix = np.vstack([services.known_embeddings_matrix, embedding])
+                services.ipad_embeddings_matrix = np.vstack([services.ipad_embeddings_matrix, embedding])
         
         if hasattr(services, 'save_cache'):
             services.save_cache()
