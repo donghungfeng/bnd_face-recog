@@ -937,13 +937,75 @@
     // ═══════════════════════════════════════════════════
     // 1. TẢI DỮ LIỆU TỪ SERVER
     // ═══════════════════════════════════════════════════
+    // async function fetchAttendance() {
+    //     const startDate = document.getElementById('startDateFilter')?.value || "";
+    //     const endDate = document.getElementById('endDateFilter')?.value || "";
+        
+    //     const attApiUrl = `/api/monthly-records?startDate=${startDate}&endDate=${endDate}`;
+    //     // Gọi thêm API lấy toàn bộ giải trình trong khoảng thời gian này
+    //     const expApiUrl = `/api/explanations?start_date=${startDate}&end_date=${endDate}`;
+
+    //     try {
+    //         document.getElementById('attTableBody').innerHTML =
+    //             '<tr><td colspan="9" style="text-align:center; padding:40px; color:#94a3b8;">Đang tải dữ liệu...</td></tr>';
+
+    //         const token = localStorage.getItem("hrm_token");
+            
+    //         // GỌI SONG SONG 2 API
+    //         const [attRes, expRes] = await Promise.all([
+    //             fetch(attApiUrl, { method: "GET", headers: { "Authorization": `Bearer ${token}` } }),
+    //             fetch(expApiUrl, { method: "GET", headers: { "Authorization": `Bearer ${token}` } })
+    //         ]);
+
+    //         if (!attRes.ok) {
+    //             if (attRes.status === 401) {
+    //                 alert("Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại!");
+    //                 window.location.href = "/login";
+    //                 return;
+    //             }
+    //             throw new Error("Mã lỗi: " + attRes.status);
+    //         }
+
+    //         const rawAttData = await attRes.json();
+            
+    //         // MAP GIẢI TRÌNH: Nhóm theo key: username_date_shift
+    //         const expData = expRes.ok ? await expRes.json() : { items: [] };
+    //         const expMap = {};
+    //         if (expData.items) {
+    //             expData.items.forEach(e => {
+    //                 let eDate = e.date || '';
+    //                 if (eDate.includes('T')) eDate = eDate.split('T')[0];
+    //                 const eShift = (e.shift_code || '').trim().toUpperCase();
+    //                 expMap[`${e.username}_${eDate}_${eShift}`] = true;
+    //             });
+    //         }
+
+    //         // Gắn cờ is_explained vào data chấm công
+    //         allAttendance = rawAttData.map(item => {
+    //             let iDate = item.date || '';
+    //             if (iDate.includes('T')) iDate = iDate.split('T')[0];
+    //             const iShift = (item.shift_code || '').trim().toUpperCase();
+    //             const isExplained = expMap[`${item.username}_${iDate}_${iShift}`] || false;
+
+    //             return {
+    //                 ...item,
+    //                 is_fraud: item.is_fraud || false,
+    //                 fraud_note: item.fraud_note || "",
+    //                 is_explained: isExplained
+    //             };
+    //         });
+
+    //         applyFilters();
+    //     } catch (error) {
+    //         document.getElementById('attTableBody').innerHTML =
+    //             '<tr><td colspan="9" style="text-align:center; color:red;">Lỗi kết nối máy chủ!</td></tr>';
+    //     }
+    // }
     async function fetchAttendance() {
         const startDate = document.getElementById('startDateFilter')?.value || "";
         const endDate = document.getElementById('endDateFilter')?.value || "";
         
         const attApiUrl = `/api/monthly-records?startDate=${startDate}&endDate=${endDate}`;
-        // Gọi thêm API lấy toàn bộ giải trình trong khoảng thời gian này
-        const expApiUrl = `/api/explanations?start_date=${startDate}&end_date=${endDate}`;
 
         try {
             document.getElementById('attTableBody').innerHTML =
@@ -951,11 +1013,11 @@
 
             const token = localStorage.getItem("hrm_token");
             
-            // GỌI SONG SONG 2 API
-            const [attRes, expRes] = await Promise.all([
-                fetch(attApiUrl, { method: "GET", headers: { "Authorization": `Bearer ${token}` } }),
-                fetch(expApiUrl, { method: "GET", headers: { "Authorization": `Bearer ${token}` } })
-            ]);
+            // CHỈ GỌI 1 API
+            const attRes = await fetch(attApiUrl, {
+                method: "GET",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
 
             if (!attRes.ok) {
                 if (attRes.status === 401) {
@@ -967,33 +1029,14 @@
             }
 
             const rawAttData = await attRes.json();
-            
-            // MAP GIẢI TRÌNH: Nhóm theo key: username_date_shift
-            const expData = expRes.ok ? await expRes.json() : { items: [] };
-            const expMap = {};
-            if (expData.items) {
-                expData.items.forEach(e => {
-                    let eDate = e.date || '';
-                    if (eDate.includes('T')) eDate = eDate.split('T')[0];
-                    const eShift = (e.shift_code || '').trim().toUpperCase();
-                    expMap[`${e.username}_${eDate}_${eShift}`] = true;
-                });
-            }
 
-            // Gắn cờ is_explained vào data chấm công
-            allAttendance = rawAttData.map(item => {
-                let iDate = item.date || '';
-                if (iDate.includes('T')) iDate = iDate.split('T')[0];
-                const iShift = (item.shift_code || '').trim().toUpperCase();
-                const isExplained = expMap[`${item.username}_${iDate}_${iShift}`] || false;
-
-                return {
-                    ...item,
-                    is_fraud: item.is_fraud || false,
-                    fraud_note: item.fraud_note || "",
-                    is_explained: isExplained
-                };
-            });
+            // Gắn dữ liệu trực tiếp, không cần map expMap nữa
+            allAttendance = rawAttData.map(item => ({
+                ...item,
+                is_fraud: item.is_fraud || false,
+                fraud_note: item.fraud_note || "",
+                is_explained: item.is_explained || false  // lấy từ backend nếu có, mặc định false
+            }));
 
             applyFilters();
         } catch (error) {
@@ -1393,7 +1436,7 @@
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
-            document.getElementById("startDateFilter").value = `${yyyy}-${mm}-01`;
+            document.getElementById("startDateFilter").value = `${yyyy}-${mm}-${dd}`;
             document.getElementById("endDateFilter").value = `${yyyy}-${mm}-${dd}`;
             fetchAttendance();
         }
