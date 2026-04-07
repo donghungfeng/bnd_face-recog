@@ -13,7 +13,7 @@ from services import load_all_embeddings, load_system_configs
 from routers import (
     attendance_router, auth_router, config_router, 
     department_router, employee_router, holidays_router, leave_requests_router, leave_types_router, page_router, 
-    face_router, admin_router, shift_router, monthly_record_router, explanation_router, wifi_router
+    face_router, admin_router, shift_router, monthly_record_router, explanation_router, wifi_router, shift_swap_request_router
 )
 
 # ==========================================
@@ -107,7 +107,7 @@ app.add_middleware(
 app.mount("/data/history_db", StaticFiles(directory="data/history_db"), name="history_db")
 app.mount("/data/explanation_db", StaticFiles(directory="data/explanation_db"), name="explanation_db")
 app.mount("/data/leave_requests", StaticFiles(directory="data/leave_requests"), name="leave_requests")
-
+app.mount("/data/shift_swap_images", StaticFiles(directory="data/shift_swap_images"), name="shift_swap_images")
 # 5. Gắn các Router
 app.include_router(page_router.router)
 app.include_router(face_router.router)
@@ -124,6 +124,7 @@ app.include_router(wifi_router.router)
 app.include_router(leave_types_router.router)
 app.include_router(holidays_router.router)
 app.include_router(leave_requests_router.router)
+app.include_router(shift_swap_request_router.router)
 
 if __name__ == "__main__":
     # Đã thêm access_log=False để tắt log mặc định của uvicorn, tránh bị in đúp

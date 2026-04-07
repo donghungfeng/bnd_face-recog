@@ -350,9 +350,51 @@ class EmployeeDepartmentOut(EmployeeDepartmentBase):
     department_id: int
     role: Optional[str] = None
     is_primary: int = 1
+    is_all_day: int = 0
     status: str = "active"
     assigned_at: datetime
     # Thêm thông tin tên phòng ban để hiển thị ở Frontend
     unit_name: Optional[str] = None 
     unit_code: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
+
+# 1. Base Schema chứa toàn bộ các trường dùng chung cho cả Create, Update và Get
+class ShiftSwapBase(BaseModel):
+    employee_source_id: int
+    employee_target_id: Optional[int] = None
+    source_date: date
+    target_date: date
+    source_shift_code: str
+    target_shift_code: str
+    reason: Optional[str] = None
+    status: Optional[str] = "PENDING"
+    approved_by_id: Optional[int] = None
+    attached_file: Optional[str] = None
+
+# 2. Schema cho CREATE (Không có ID, kế thừa nguyên si từ Base)
+class ShiftSwapCreate(ShiftSwapBase):
+    pass
+
+# 3. Schema cho UPDATE (Kế thừa từ Base nhưng BẮT BUỘC phải truyền lên ID)
+class ShiftSwapUpdate(ShiftSwapBase):
+    id: int
+
+# 4. Schema cho GET response trả về (Có ID và thêm thời gian tạo/cập nhật)
+class ShiftSwapOut(ShiftSwapBase):
+    id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    
+    # Nếu bạn muốn trả về thêm tên nhân viên thì có thể thêm các trường này:
+    # source_employee_name: Optional[str] = None
+    # target_employee_name: Optional[str] = None
+
+    # model_config = ConfigDict(from_attributes=True)
+    class Config:
+        orm_mode = True
+
+class PaginatedShiftSwapResponse(BaseModel):
+    total: int
+    items: list[ShiftSwapOut]
+    skip: int
+    limit: int

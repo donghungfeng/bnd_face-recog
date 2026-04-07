@@ -824,3 +824,39 @@ def get_accessible_employees(
         "items": result,
         "total": len(result)
     }
+
+
+# --- API CHUYÊN DỤNG CHO DROPDOWN CHỌN NHÂN SỰ ---
+@router.get("/api/employees/dropdown")
+def get_employee_dropdown(
+    department_id: str = Query(None, description="Danh sách ID phòng ban"), 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user) # Bổ sung lấy user đang đăng nhập
+):
+    current_username = current_user.get("username")
+    
+    # 1. Kiểm tra xem user này có phải Admin không
+    me = db.query(Employee).filter(Employee.username == current_username).first()
+    if not me:
+        raise HTTPException(status_code=403, detail="Tài khoản không tồn tại")
+        
+    my_departments = db.query(EmployeeDepartment).filter(
+        EmployeeDepartment.employee_id == me.id
+    ).all()
+    
+    is_admin = any(dept.role and dept.role.lower() == "admin" for dept in my_departments)
+
+    # 2. Khởi tạo query lấy những người đang active
+    query = db.query(Employee.id, Employee.username, Employee.full_name).filter(Employee.status == "active")
+    
+    # 3. NẾU KHÔNG PHẢI ADMIN -> Áp dụng lọc theo phòng ban truyền vào
+    if not is_admin and department_id:
+        dept_ids = [int(d.strip()) for d in department_id.split(",") if d.strip().isdigit()]
+        if dept_ids:
+            query = query.join(EmployeeDepartment, Employee.id == EmployeeDepartment.employee_id)\
+                         .filter(EmployeeDepartment.department_id.in_(dept_ids))
+    
+    # distinct() để tránh trùng lặp
+    employees = query.distinct().all()
+    
+    return [{"id": e.id, "username": e.username, "full_name": e.full_name} for e in employees]

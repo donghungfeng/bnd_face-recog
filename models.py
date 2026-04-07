@@ -219,3 +219,26 @@ class EmployeeDepartment(Base):
     # Relationship để join ngược lại lấy tên phòng ban
     department = relationship("OrganizationUnit")
     employee = relationship("Employee", back_populates="departments")
+
+class ShiftSwapRequest(Base):
+    __tablename__ = "shift_swap_request"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_source_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    employee_target_id = Column(Integer, ForeignKey("employees.id"), nullable=True) 
+    source_date = Column(Date, nullable=False)
+    target_date = Column(Date, nullable=False)
+    source_shift_code = Column(String(50), nullable=False)
+    target_shift_code = Column(String(50), nullable=False)
+    reason = Column(Text, nullable=True)
+    status = Column(String(20), default="PENDING") 
+    approved_by_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    attached_file = Column(String(1024), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    is_all_day = Column(Integer, default=0)
+
+    # Relationships giúp lấy thông tin nhân viên dễ dàng hơn
+    source_employee = relationship("Employee", foreign_keys=[employee_source_id])
+    target_employee = relationship("Employee", foreign_keys=[employee_target_id])
+    approver = relationship("Employee", foreign_keys=[approved_by_id])
