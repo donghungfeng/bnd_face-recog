@@ -129,7 +129,7 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
 
     emp_ids = list(set(s.employee_id for s in summary_list))
     dates = list(set(s.target_date for s in summary_list))
-    
+    original_query_dates = set(dates)
     # Mở rộng biên độ tìm kiếm ra hôm qua và ngày mai để hứng các Ca Đêm nối ngày
     min_date = min(dates) - timedelta(days=1)
     max_date = max(dates) + timedelta(days=1)
@@ -190,7 +190,9 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
 
         # Nếu ngày D là skip_date thì ca đêm D-1 cần được tạo bản ghi
         for d in skip_dates:
-            emp_valid_dates.add(d - timedelta(days=1))
+            prev_day = d - timedelta(days=1)
+            if prev_day in original_query_dates:  # 🌟 Chỉ add nếu ngày D-1 nằm trong range query gốc
+                emp_valid_dates.add(prev_day)
 
         # 2. TRẢI PHẲNG (FLATTEN) THÀNH CHUỖI THỜI GIAN
         shifts_chain = []
