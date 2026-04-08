@@ -1,3 +1,5 @@
+import gc
+
 import cv2
 import numpy as np
 import base64
@@ -175,6 +177,8 @@ def background_logging(
         
         if img_full is not None and getattr(img_full, 'size', 0) > 0:
             cv2.imwrite(success_filepath, img_full)
+            del img_full
+            gc.collect()
         else:
             print(f"⚠️ Bỏ qua lưu file ảnh cho {user_id} vì dữ liệu ảnh rỗng.")
 
@@ -192,7 +196,7 @@ def background_logging(
             early_min = int((time_17_00 - now).total_seconds() / 60)
 
         image_web_path = f"/data/history_db/{date_folder}/{success_filename}"
-        
+
         if user_id == 'UNKNOWN':
             new_log = Attendance(
                 username=user_id, 

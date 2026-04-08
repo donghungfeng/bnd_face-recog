@@ -218,7 +218,7 @@
                     imgHtml += `
                         <div style="position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;">
                             <button class="btn-del-single" onclick="deleteSingleFace('${imgName}')" title="Xóa bức ảnh này">✖</button>
-                            <img src="/api/faces/image/${imgName}?t=${Date.now()}" class="face-img-multi" title="${imgName}.jpg">
+                            <img src="/api/ipad/image/${imgName}?t=${Date.now()}" class="face-img-multi" title="${imgName}.jpg">
                             <span style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap;">${imgName}.jpg</span>
                         </div>`;
                 });

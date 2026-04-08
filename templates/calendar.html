@@ -1056,6 +1056,11 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label>Ảnh đính kèm (Nếu có)</label>
+                <input type="file" id="attached_file" class="form-control" accept="image/*" style="padding: 6px;">
+            </div>
+
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
                 <button type="button" class="btn-form-cancel" onclick="closeLeaveModal()">Hủy</button>
                 <button type="submit" class="btn-form-submit" id="leaveSubmitBtn">Gửi Đơn</button>
@@ -1728,22 +1733,28 @@
         const username = empSelect.value;
         const selOpt = empSelect.options[empSelect.selectedIndex];
         const fullname = selOpt?.dataset?.fullname || username;
+        const fromDate = document.getElementById('leaveFromDate').value;
+        const toDate = document.getElementById('leaveToDate').value;
 
         if (!username) return alert("Vui lòng chọn nhân viên ở Lịch trước!");
+    
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('fullname', fullname);
+        formData.append('type_id', parseInt(document.getElementById('leaveType').value));
+        formData.append('from_date', parseDateForAPI(document.getElementById('leaveFromDate').value));
+        formData.append('from_session', document.getElementById('leaveFromSession').value);
+        formData.append('to_date', parseDateForAPI(document.getElementById('leaveToDate').value));
+        formData.append('to_session', document.getElementById('leaveToSession').value);
+        formData.append('reason', document.getElementById('leaveReason').value.trim());
+        formData.append('approver_username', document.getElementById('leaveApprover').value);
 
-        const payload = {
-            username: username,
-            fullname: fullname,
-            type_id: parseInt(document.getElementById('leaveType').value),
-            from_date: parseDateForAPI(document.getElementById('leaveFromDate').value),
-            from_session: document.getElementById('leaveFromSession').value,
-            to_date: parseDateForAPI(document.getElementById('leaveToDate').value),
-            to_session: document.getElementById('leaveToSession').value,
-            reason: document.getElementById('leaveReason').value.trim(),
-            approver_username: document.getElementById('leaveApprover').value
-        };
+        const fileInput = document.getElementById('attached_file');
+        if (fileInput.files.length > 0) {
+            formData.append('attached_file', fileInput.files[0]);
+        }
 
-        if (new Date(payload.from_date) > new Date(payload.to_date)) {
+        if (new Date(fromDate) > new Date(toDate)) {
             return alert("Ngày bắt đầu không được lớn hơn ngày kết thúc!");
         }
 
@@ -1751,8 +1762,12 @@
         btn.disabled = true; btn.innerText = 'ĐANG GỬI...';
 
         try {
-            const res = await fetch("/leave-requests/api", {
-                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+            const token = localStorage.getItem('hrm_token');
+            const res = await fetch('/leave-requests/api', { 
+                method: 'POST', 
+                // QUAN TRỌNG: Không set 'Content-Type' khi dùng FormData, trình duyệt sẽ tự động set kèm Boundary
+                headers: { 'Authorization': `Bearer ${token}` }, 
+                body: formData 
             });
             if (res.ok) {
                 alert("Đăng ký nghỉ thành công!");

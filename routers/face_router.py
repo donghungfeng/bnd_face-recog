@@ -75,8 +75,57 @@ async def register(request: FaceRequest):
         
     return {"status": "success", "message": f"Đã đăng ký diện mạo số {next_index} cho {user_id}"}
 
+@router.post("/register_ipad")
+async def register(request: FaceRequest):
+    img = services.decode_base64(request.image_base64)
+    user_id = request.user_id
+    
+    existing_files = glob.glob(os.path.join(DB_IPAD_PATH, f"{user_id}_*.jpg"))
+    old_file = os.path.join(DB_IPAD_PATH, f"{user_id}.jpg")
+    if os.path.exists(old_file):
+        existing_files.append(old_file)
+        
+    next_index = 1
+    indices = []
+    for f in existing_files:
+        basename = os.path.basename(f).replace(".jpg", "")
+        parts = basename.rsplit("_", 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            indices.append(int(parts[1]))
+            
+    if indices:
+        next_index = max(indices) + 1
+    elif os.path.exists(old_file):
+        next_index = 2
+        
+    if next_index > 3: # Giới hạn 3 ảnh mỗi người
+        return {"status": "error", "message": "Đã đạt giới hạn 3 ảnh cho nhân viên này."}
+        
+    new_filename = f"{user_id}_{next_index}.jpg" if next_index > 1 else f"{user_id}.jpg"
+    file_key = new_filename.replace(".jpg", "")
+    file_path = os.path.join(DB_PATH, new_filename)
+    
+    cv2.imwrite(file_path, img)
+    
+    try:
+        results = await run_in_threadpool(DeepFace.represent, img_path=img, model_name=MODEL_NAME, enforce_detection=False)
+        embedding = np.array(results[0]["embedding"])
+        
+        services.known_file_keys.append(file_key)
+        services.known_user_ids.append(user_id)
+        if services.known_embeddings_matrix.size == 0:
+            services.known_embeddings_matrix = np.array([embedding])
+        else:
+            services.known_embeddings_matrix = np.vstack([services.known_embeddings_matrix, embedding])
+            
+    except Exception as e:
+        if os.path.exists(file_path): os.remove(file_path) # Xóa ảnh nếu AI lỗi
+        return {"status": "error", "message": f"Lỗi AI: {e}"}
+        
+    return {"status": "success", "message": f"Đã đăng ký diện mạo số {next_index} cho {user_id}"}
+
 @router.post("/recognize")
-async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
+def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
     global consecutive_unrecognized
     img_crop = services.decode_base64(request.image_base64)
     img_to_save = services.decode_base64(request.full_image_base64) if request.full_image_base64 else img_crop
@@ -93,7 +142,7 @@ async def recognize(request: FaceRequest, background_tasks: BackgroundTasks):
         pass 
 
     try:
-        results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=True,detector_backend="skip",anti_spoofing=is_anti_spoof_enabled)
+        results = DeepFace.represent(img_path=img_crop, model_name=MODEL_NAME, enforce_detection=True, detector_backend="skip", anti_spoofing=is_anti_spoof_enabled)
         if not results: return {"recognized": False, "message": "Không thấy mặt"}
         
         if is_anti_spoof_enabled and not results[0].get("is_real", True):
@@ -586,7 +635,7 @@ def check_client_ip(req_data: CheckIPRequest, db: Session = Depends(get_db)):
     }
 
 @router.post("/api/verify-personal")
-async def verify_personal(request: Request, data: PersonalVerifyRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def verify_personal(request: Request, data: PersonalVerifyRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user_id = data.user_id.upper()
     client_ip = data.client_public_ip
     request.state.user_id = user_id
@@ -657,7 +706,7 @@ async def verify_personal(request: Request, data: PersonalVerifyRequest, backgro
         img_full = services.decode_base64(data.full_image_base64) if data.full_image_base64 else None
         is_anti_spoof_enabled = services.get_config("ENABLE_ANTI_SPOOFING", "true").lower() == "true"
 
-        results = await run_in_threadpool(DeepFace.represent, img_path=img_crop, model_name=MODEL_NAME, enforce_detection=False, anti_spoofing=is_anti_spoof_enabled)
+        results = DeepFace.represent(img_path=img_crop, model_name=MODEL_NAME, enforce_detection=False, anti_spoofing=is_anti_spoof_enabled)
         if not results:
             return {"recognized": False, "message": "Không thấy mặt"}
 
