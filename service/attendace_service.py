@@ -545,13 +545,65 @@ def get_hybrid_monthly_records(db: Session, start_date: date, end_date: date, em
 def fetch_and_calculate_realtime(db: Session, s_date: date, e_date: date, employee_id: Optional[int] = None):
     start_dt = datetime.combine(s_date, time.min)
     end_dt = datetime.combine(e_date, time.max)
-    query = db.query(models.Attendance).filter(models.Attendance.check_in_time >= start_dt, models.Attendance.check_in_time <= end_dt)
+    
+    # 1. Lấy dữ liệu quẹt thẻ thực tế
+    query = db.query(models.Attendance).filter(
+        models.Attendance.check_in_time >= start_dt, 
+        models.Attendance.check_in_time <= end_dt
+    )
     if employee_id:
         emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
         if not emp: return []
         query = query.filter(models.Attendance.username == emp.username)
+        
     raw_data = query.all()
-    return process_attendance_to_monthly(db, raw_data) if raw_data else []
+    
+    # Lấy các summary của những người CÓ DỮ LIỆU
+    summaries = group_attendance_to_summaries(db, raw_data)
+    
+    # ==========================================
+    # 🌟 BẢN VÁ LỖI TÀNG HÌNH (INVISIBLE BUG FIX)
+    # ==========================================
+    
+    # 2. Tìm tất cả những ai CÓ LỊCH làm việc trong khoảng thời gian này
+    assign_query = db.query(models.ShiftAssignment).filter(
+        models.ShiftAssignment.shift_date >= s_date,
+        models.ShiftAssignment.shift_date <= e_date
+    )
+    if employee_id:
+        assign_query = assign_query.filter(models.ShiftAssignment.employee_id == employee_id)
+    
+    all_schedules = assign_query.all()
+    
+    # Gom nhóm ngày có lịch theo từng nhân viên
+    scheduled_dict = defaultdict(set)
+    for a in all_schedules:
+        scheduled_dict[a.employee_id].add(a.shift_date)
+        
+    # Gom nhóm ngày đã CÓ QUẸT THẺ
+    scanned_dict = defaultdict(set)
+    for s in summaries:
+        scanned_dict[s.employee_id].add(s.target_date)
+        
+    missing_emp_ids = set(scheduled_dict.keys())
+    if missing_emp_ids:
+        users = db.query(models.Employee).filter(models.Employee.id.in_(missing_emp_ids)).all()
+        user_map = {u.id: u.username for u in users}
+        
+        for e_id, dates in scheduled_dict.items():
+            for d in dates:
+                if d not in scanned_dict[e_id]:
+                    # 3. Tạo "mồi nhử" (fake summary với scans rỗng) 
+                    # Để ép hàm generate_monthly_records bên dưới phải chấm Vắng mặt
+                    summaries.append(schemas.AttendanceSummary(
+                        employee_id=e_id,
+                        username=user_map.get(e_id, "unknown"),
+                        target_date=d,
+                        scans=[] # Không có scan nào
+                    ))
+
+    # Thay vì gọi qua process_attendance_to_monthly, ta gọi trực tiếp generate
+    return generate_monthly_records(db, summaries)
 
 def group_records_by_employee(records: list, emp_map: dict[int, models.Employee]) -> list[schemas.AttendanceSummaryByEmployee]:
     grouped = defaultdict(list)
