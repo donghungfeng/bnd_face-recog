@@ -42,6 +42,7 @@ async def render_page(request: Request):
 def get_all_requests(
     search: str = Query(None),
     status: str = Query(None),
+    username: str = Query(None),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1),
     db: Session = Depends(get_db),
@@ -110,6 +111,8 @@ def get_all_requests(
             )
         )
 
+    if username:
+        query = query.filter(models.LeaveRequest.username == username)
     total = query.count()
     total_pages = max(1, (total + size - 1) // size)
     records = query.order_by(models.LeaveRequest.id.desc()).offset((page - 1) * size).limit(size).all()

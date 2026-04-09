@@ -265,7 +265,7 @@
 
 {% block extra_js %}
 <script>
-    const approverName = localStorage.getItem("hrm_full_name") || "Quản trị viên";
+    const approverName = localStorage.getItem("hrm_name") || "Quản trị viên";
     const approverUser = localStorage.getItem("hrm_username") || "ADMIN";
     let currentPage = 1;
     let totalPages = 1;
