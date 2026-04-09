@@ -2,6 +2,7 @@ from datetime import time, date, datetime, timedelta
 from collections import defaultdict
 from enum import IntEnum
 from typing import Optional
+from matplotlib.pylab import rec
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import models, schemas, constants
@@ -130,50 +131,83 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
     emp_ids = list(set(s.employee_id for s in summary_list))
     dates = list(set(s.target_date for s in summary_list))
     original_query_dates = set(dates)
-    # Mở rộng biên độ tìm kiếm ra hôm qua và ngày mai để hứng các Ca Đêm nối ngày
     min_date = min(dates) - timedelta(days=1)
     max_date = max(dates) + timedelta(days=1)
-    
+
+    # ====================================================================================
+    # PRE-LOAD TẤT CẢ DỮ LIỆU CẦN THIẾT — CHỈ QUERY DB MỘT LẦN DUY NHẤT
+    # ====================================================================================
     assignments = db.query(models.ShiftAssignment).filter(
         models.ShiftAssignment.employee_id.in_(emp_ids),
         models.ShiftAssignment.shift_date >= min_date,
         models.ShiftAssignment.shift_date <= max_date
     ).all()
-    
+
     assign_map = defaultdict(list)
     for a in assignments:
         assign_map[a.employee_id].append(a)
-        
+
     cat_map = {c.shift_code: c for c in db.query(models.ShiftCategory).all()}
-    
+
+    # Pre-load employee_id → username map (dùng cho explanation matching)
+    emp_username_map: dict[int, str] = {
+        e.id: e.username
+        for e in db.query(models.Employee.id, models.Employee.username)
+                   .filter(models.Employee.id.in_(emp_ids)).all()
+    }
+
+    # Pre-load approved explanations trong khoảng ngày truy vấn
+    # status có thể lưu dạng int hoặc string → dùng in_ để chắc chắn
+    approved_explanations = db.query(models.Explanation).filter(
+        models.Explanation.date >= min(dates),
+        models.Explanation.date <= max(dates),
+        models.Explanation.status.in_(["2", 2])
+    ).all()
+    # Lookup set: {(username, date)} — date phải là datetime.date
+    explanation_approved_set: set[tuple] = {
+        (e.username, e.date if isinstance(e.date, date) else e.date.date(), e.shift_code)
+        for e in approved_explanations
+    }
+
+    # Pre-load VP configs một lần
+    vp_configs: dict[str, str] = {
+        row.config_key: row.config_value
+        for row in db.query(models.AppConfig).filter(
+            models.AppConfig.config_key.like("VP_%")
+        ).all()
+    }
+    try:
+        vp_base = float(vp_configs.get("VP_BASE", "0") or "0")
+    except (ValueError, TypeError):
+        vp_base = 0.0
+
+    VIOLATION_STATUSES = {0, 2, 3, 6, 8, 9}
+
+    # ====================================================================================
+    # VÒNG LẶP CHÍNH — GIỮ NGUYÊN 100% LOGIC CŨ, KHÔNG THAY ĐỔI GÌ
+    # ====================================================================================
     result_records = []
-    
+
     emp_summaries = defaultdict(list)
     for s in summary_list:
         emp_summaries[s.employee_id].append(s)
-        
+
     for emp_id in emp_ids:
         # 1. TỔNG HỢP LỊCH LÀM VIỆC VÀ NGÀY QUẸT THẺ
         emp_schedule_map = defaultdict(list)
         for a in assign_map[emp_id]:
             emp_schedule_map[a.shift_date].extend([c.strip() for c in a.shift_code.split(',') if c.strip()])
 
-        # --- 🌟 THEO DÕI NHỮNG NGÀY BỊ THIẾU LỊCH VÀ PHẢI TỰ CHÈN CA X ---
         auto_assigned_dates = set()
-
         for s in emp_summaries[emp_id]:
             if s.target_date not in emp_schedule_map or not emp_schedule_map[s.target_date]:
                 emp_schedule_map[s.target_date] = ["X"]
                 auto_assigned_dates.add(s.target_date)
 
-        # --- 🌟 XÁC ĐỊNH NGÀY CẦN BỎ QUA ---
-        # Nếu ngày D không có lịch (auto X) VÀ ngày D-1 có ca qua đêm thật sự
-        # thì ngày D không cần tạo bản ghi riêng — scan cuối thuộc về ca đêm D-1
         skip_dates = set()
         for d in auto_assigned_dates:
             prev_day = d - timedelta(days=1)
             prev_codes = emp_schedule_map.get(prev_day, [])
-            # Chỉ xét ngày hôm trước nếu đó là lịch thật (không phải cũng auto-assigned)
             prev_is_real = prev_day not in auto_assigned_dates
             if prev_is_real and any(
                 _is_overnight_shift(cat_map.get(c))
@@ -182,41 +216,35 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
             ):
                 skip_dates.add(d)
 
-        # 🌟 Ngày hợp lệ để tạo bản ghi cho employee này:
-        # loại bỏ skip_dates vì scan của những ngày đó thuộc ca đêm hôm trước
-        # → dù startDate truy vấn = ngày D, cũng không hiển thị bản ghi ngày D
         emp_dates = {s.target_date for s in emp_summaries[emp_id]}
         emp_valid_dates = emp_dates - skip_dates
 
-        # Nếu ngày D là skip_date thì ca đêm D-1 cần được tạo bản ghi
         for d in skip_dates:
             prev_day = d - timedelta(days=1)
-            if prev_day in original_query_dates:  # 🌟 Chỉ add nếu ngày D-1 nằm trong range query gốc
+            if prev_day in original_query_dates:
                 emp_valid_dates.add(prev_day)
 
-        # 2. TRẢI PHẲNG (FLATTEN) THÀNH CHUỖI THỜI GIAN
+        # 2. TRẢI PHẲNG THÀNH CHUỖI THỜI GIAN
         shifts_chain = []
         all_dates = sorted(list(emp_schedule_map.keys()))
-        
+
         for d in all_dates:
             codes = emp_schedule_map[d]
             for c in codes:
                 if c in cat_map:
                     cat = cat_map[c]
                     is_ovn = _is_overnight_shift(cat)
-                    
+
                     s_time = getattr(cat, 'start_time', time.min)
                     e_time = getattr(cat, 'end_time', time.max)
                     ci_to = getattr(cat, 'checkin_to', None)
                     co_from = getattr(cat, 'checkout_from', None)
-                    
+
                     start_dt = datetime.combine(d, s_time)
                     end_dt = datetime.combine(d + timedelta(days=1 if is_ovn else 0), e_time)
-                    
                     checkin_to_dt = datetime.combine(d, ci_to) if ci_to else start_dt
                     checkout_from_dt = datetime.combine(d + timedelta(days=1 if is_ovn else 0), co_from) if co_from else end_dt
-                    
-                    # Xác định xem ca X này có phải là do hệ thống tự chèn không
+
                     is_auto = (d in auto_assigned_dates) and (c == "X")
 
                     shifts_chain.append({
@@ -225,42 +253,40 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                         'checkin_to': checkin_to_dt, 'checkout_from': checkout_from_dt,
                         'is_auto_schedule': is_auto
                     })
-                    
+
         shifts_chain.sort(key=lambda x: x['start_dt'])
-        
+
         # 3. TRẢI PHẲNG TOÀN BỘ SCANS
         emp_scans = []
         for s in emp_summaries[emp_id]:
             emp_scans.extend(s.scans)
-        emp_scans.sort(key=lambda x: x.check_in_time) 
-        
+        emp_scans.sort(key=lambda x: x.check_in_time)
+
         if not shifts_chain: continue
-            
+
         N = len(shifts_chain)
         shift_in_dt = [None] * N
         shift_out_dt = [None] * N
         shift_in_img = [None] * N
         shift_out_img = [None] * N
         now = datetime.now()
-        
-        # ====================================================================================
-        # RULE 1 & 2: Ranh giới giao ca (Contiguous & Gap)
-        # ====================================================================================
+
+        # RULE 1 & 2: Ranh giới giao ca
         for i in range(N - 1):
             s_curr = shifts_chain[i]
             s_next = shifts_chain[i+1]
-            
+
             is_same_day = s_curr['date'] == s_next['date']
             is_curr_overnight = _is_overnight_shift(s_curr['cat'])
-            
+
             if not (is_same_day or is_curr_overnight):
                 continue
-                
             if is_curr_overnight and s_next['is_auto_schedule']:
                 continue
+
             e_curr = s_curr['end_dt']
             s_next_start = s_next['start_dt']
-            
+
             if e_curr == s_next_start:
                 if e_curr <= now:
                     shift_out_dt[i] = e_curr
@@ -269,7 +295,6 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                     if exact:
                         shift_out_img[i] = getattr(exact[0], 'image_path', None)
                         shift_in_img[i+1] = getattr(exact[-1], 'image_path', None)
-                    
             elif e_curr < s_next_start:
                 gap_scans = [s for s in emp_scans if e_curr <= s.check_in_time <= s_next_start]
                 if len(gap_scans) >= 2:
@@ -280,21 +305,18 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                 elif len(gap_scans) == 1:
                     shift_out_dt[i] = gap_scans[0].check_in_time
                     shift_out_img[i] = getattr(gap_scans[0], 'image_path', None)
-        
-        # ====================================================================================
-        # BƯỚC ĐIỀN KHUYẾT: Tuân thủ chặt chẽ ranh giới ngày
-        # ====================================================================================
+
+        # BƯỚC ĐIỀN KHUYẾT
         for i in range(N):
             s_curr = shifts_chain[i]
-            
-            # Quét tìm Check-in
+
             if shift_in_dt[i] is None:
                 search_start = datetime.min
                 if i > 0:
                     prev_shift = shifts_chain[i-1]
                     is_same_day = s_curr['date'] == prev_shift['date']
                     is_prev_overnight = _is_overnight_shift(prev_shift['cat'])
-                    
+
                     if is_same_day or is_prev_overnight:
                         search_start = prev_shift['end_dt']
                         if shift_out_dt[i-1] is not None and prev_shift['end_dt'] < s_curr['start_dt']:
@@ -303,13 +325,12 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                         search_start = datetime.combine(s_curr['date'], time.min)
                 else:
                     search_start = datetime.combine(s_curr['date'], time.min)
-                    
+
                 avail = [s for s in emp_scans if s.check_in_time > search_start and s.check_in_time <= s_curr['end_dt']]
                 if avail:
                     shift_in_dt[i] = avail[0].check_in_time
                     shift_in_img[i] = getattr(avail[0], 'image_path', None)
 
-            # Quét tìm Check-out
             if shift_out_dt[i] is None:
                 search_start = s_curr['start_dt']
                 if shift_in_dt[i] is not None:
@@ -318,14 +339,11 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                 is_curr_overnight = _is_overnight_shift(s_curr['cat'])
                 next_day = s_curr['date'] + timedelta(days=1)
 
-                # 🌟 Ca qua đêm + ngày hôm sau không có lịch thật →
-                # checkout là bản ghi cuối cùng của ngày hôm sau, không bị chặn bởi ca X
                 if is_curr_overnight and next_day in auto_assigned_dates:
                     search_end = datetime.combine(next_day, time.max)
                 elif i < N - 1:
                     next_shift = shifts_chain[i+1]
                     is_same_day = s_curr['date'] == next_shift['date']
-
                     if is_same_day or is_curr_overnight:
                         search_end = next_shift['start_dt']
                     else:
@@ -334,29 +352,26 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                 else:
                     end_date = s_curr['date'] + timedelta(days=1 if is_curr_overnight else 0)
                     search_end = datetime.combine(end_date, time.max)
-                
+
                 avail = [s for s in emp_scans if s.check_in_time >= search_start and s.check_in_time <= search_end]
                 if avail:
                     shift_out_dt[i] = avail[-1].check_in_time
                     shift_out_img[i] = getattr(avail[-1], 'image_path', None)
-            
+
             if shift_in_dt[i] == shift_out_dt[i] and shift_in_dt[i] is not None:
-                if s_curr['end_dt'] != shift_out_dt[i]: 
+                if s_curr['end_dt'] != shift_out_dt[i]:
                     shift_out_dt[i] = None
                     shift_out_img[i] = None
 
-        # ====================================================================================
-        # KHỞI TẠO BẢN GHI
-        # ====================================================================================
+        # KHỞI TẠO BẢN GHI — giữ nguyên như cũ
         for i in range(N):
             s_curr = shifts_chain[i]
-            # emp_valid_dates đã loại sẵn skip_dates — một điều kiện duy nhất
             if s_curr['date'] not in emp_valid_dates: continue
-                
+
             c_in, c_out, status, late, early, img_in, img_out, hrs, days = calculate_shift_details(
                 s_curr, shift_in_dt[i], shift_out_dt[i], shift_in_img[i], shift_out_img[i]
             )
-            
+
             result_records.append(models.MonthlyRecord(
                 employee_id=emp_id, date=s_curr['date'], shift_code=s_curr['shift_code'],
                 checkin_time=c_in, checkout_time=c_out, status=status,
@@ -364,8 +379,140 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                 checkin_image_path=img_in, checkout_image_path=img_out,
                 actual_hours=hrs, actual_workday=days, explanation_status=0
             ))
+
+    # ====================================================================================
+    # POST-PROCESSING — CHẠY SAU KHI CÓ ĐỦ result_records, DÙNG DATA ĐÃ PRE-LOAD
+    # ====================================================================================
+    for rec in result_records:
+        uname = emp_username_map.get(rec.employee_id)
+
+        # ------------------------------------------------------------------
+        # #1: Đồng bộ explanation_status
+        # Normalize rec.date về datetime.date đề phòng ORM trả về datetime
+        # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # #1: Đồng bộ explanation_status và CẬP NHẬT TRẠNG THÁI
+        # Normalize rec.date về datetime.date đề phòng ORM trả về datetime
+        # ------------------------------------------------------------------
+        rec_date = rec.date if isinstance(rec.date, date) else rec.date.date()
+        
+        if uname and (uname, rec_date, rec.shift_code) in explanation_approved_set:
+            rec.explanation_status = 1
+            rec.status = 1 # 1: Đổi trạng thái thành ĐÚNG GIỜ
             
-    return result_records
+            # Xóa số phút ghi nhận đi muộn / về sớm
+            rec.late_minutes = 0
+            rec.early_minutes = 0
+            
+            # Phục hồi lại đủ giờ công và ngày công của ca đó (nếu trước đó bị chia 2)
+            cat_info = cat_map.get(rec.shift_code)
+            if cat_info:
+                rec.actual_hours = float(getattr(cat_info, 'work_hours', 0.0) or 0.0)
+                rec.actual_workday = float(getattr(cat_info, 'work_days', 0.0) or 0.0)
+
+        # ------------------------------------------------------------------
+        # #2: Status=9 → Tính late/early bị defer từ calculate_shift_details
+        # ------------------------------------------------------------------
+        if rec.status == 9 and rec.checkin_time and rec.checkout_time:
+            cat9 = cat_map.get(rec.shift_code) if rec.shift_code else None
+            if cat9:
+                checkin_deadline  = getattr(cat9, 'checkin_to', None)  or getattr(cat9, 'start_time', None)
+                checkout_threshold = getattr(cat9, 'checkout_from', None) or getattr(cat9, 'end_time', None)
+
+                if checkin_deadline:
+                    dt_in  = datetime.combine(rec_date, rec.checkin_time)
+                    dt_lim = datetime.combine(rec_date, checkin_deadline)
+                    if dt_in > dt_lim:
+                        rec.late_minutes = int((dt_in - dt_lim).total_seconds() / 60)
+
+                if checkout_threshold:
+                    dt_out = datetime.combine(rec_date, rec.checkout_time)
+                    dt_co  = datetime.combine(rec_date, checkout_threshold)
+                    if dt_out < dt_co:
+                        rec.early_minutes = int((dt_co - dt_out).total_seconds() / 60)
+
+        # ====================================================================================
+        # #3: Tính phạt công VP_ (Có tính toán số lần miễn trừ dựa trên VP_BASE)
+        # ====================================================================================
+        
+        # 3.1 Nhóm các bản ghi theo nhân viên và sắp xếp theo thời gian để tính số lần vi phạm
+        records_by_emp = defaultdict(list)
+        for rec in result_records:
+            records_by_emp[rec.employee_id].append(rec)
+            
+        for emp_id, emp_records in records_by_emp.items():
+            # Sắp xếp các bản ghi của nhân viên này theo thời gian (ngày, sau đó là giờ in)
+            emp_records.sort(key=lambda x: (x.date, x.checkin_time or time.max))
+            
+            violation_count = 0 # Bộ đếm số lần vi phạm của nhân viên trong tháng
+            
+            for rec in emp_records:
+                # 3.2 Bỏ qua nếu không phải trạng thái vi phạm
+                if rec.status not in VIOLATION_STATUSES:
+                    continue
+                    
+                rec_date = rec.date if isinstance(rec.date, date) else rec.date.date()
+                
+                # Tính số giờ thực làm (cần cho điều kiện status 6 và 9)
+                worked_hours: float | None = None
+                if rec.checkin_time and rec.checkout_time:
+                    dt_in_w  = datetime.combine(rec_date, rec.checkin_time)
+                    dt_out_w = datetime.combine(rec_date, rec.checkout_time)
+                    diff_sec = (dt_out_w - dt_in_w).total_seconds()
+                    if diff_sec < 0:          # ca qua đêm
+                        dt_out_w += timedelta(days=1)
+                        diff_sec = (dt_out_w - dt_in_w).total_seconds()
+                    worked_hours = diff_sec / 3600.0
+
+                # Xác định VP key
+                vp_key: str | None = None
+
+                if rec.status == 9:
+                    if worked_hours is not None and worked_hours >= 8.0:
+                        # TRƯỜNG HỢP LÀM BÙ ĐỦ >= 8 TIẾNG:
+                        rec.actual_workday = 1.0  # Khôi phục đủ 1 công
+                        rec.actual_hours = 8.0    # Khôi phục đủ 8 giờ
+                        rec.late_minutes = 0      # Xóa lỗi đi muộn
+                        rec.early_minutes = 0     # Xóa lỗi về sớm
+                        continue  # Thoát sớm, không tăng violation_count và không tính phạt
+                
+                    else:
+                        # Làm dưới 8 tiếng thì vẫn tính là 1 lần vi phạm để xét VP_BASE
+                        vp_key = "VP_9"
+
+                elif rec.status == 6:
+                    half_shift = (rec.actual_hours or 0.0) / 2.0
+                    vp_key = "VP_6" if (worked_hours is not None and worked_hours > half_shift) else "VP_6-0.5"
+
+                else:
+                    vp_key = f"VP_{rec.status}"   # VP_0, VP_2, VP_3, VP_8
+
+                vp_value_str = vp_configs.get(vp_key)
+                if not vp_value_str:
+                    continue
+
+                try:
+                    vp_value = float(vp_value_str)
+                except (ValueError, TypeError):
+                    continue
+                
+                # 3.3. Tăng biến đếm số lần vi phạm
+                violation_count += 1
+                
+                # 3.4. Kiểm tra xem lần vi phạm này có được miễn trừ không
+                # vp_base là số lần được miễn. Nếu số lần vi phạm <= số lần được miễn thì bỏ qua.
+                if violation_count <= vp_base:
+                    continue # Miễn trừ, không trừ công
+                    
+                # 3.5. Tiến hành trừ công nếu đã hết số lần miễn trừ
+                penalty_ratio    = vp_value
+                original_workday = rec.actual_workday or 0.0
+                original_hours   = rec.actual_hours   or 0.0
+
+                rec.actual_workday = max(0.0, original_workday - penalty_ratio * original_workday)
+                rec.actual_hours   = max(0.0, original_hours   - penalty_ratio * original_hours)
+
+        return result_records
 
 def get_hybrid_monthly_records(db: Session, start_date: date, end_date: date, employee_id: Optional[int] = None):
     today = date.today()
