@@ -1297,6 +1297,8 @@
         if (status === 4) return '📅 Nghỉ phép';
         if (status === 5) return '📅 Nghỉ KL';
         if (status === 7) return '⚡ Đang có mặt';
+        if (status === 8) return '➖ Chưa có lịch';  // ← THÊM
+        if (status === 9) return '⏱️ Chế độ 7h';     // ← THÊM
         if (isWeekend) return '🌿 Nghỉ cuối tuần';
         return '— Chưa có dữ liệu';
     }
@@ -1319,6 +1321,8 @@
         if (status === 4) return 'badge-status-leave';
         if (status === 5) return 'badge-status-unpaid';
         if (status === 7) return 'badge-status-inprogress';
+        if (status === 8) return '➖ Chưa có lịch';  // ← THÊM
+        if (status === 9) return '⏱️ Chế độ 7h';     // ← THÊM
         if (isWeekend) return 'badge-weekend-rest';
         return 'badge-miss';
     }
@@ -1420,7 +1424,7 @@
             const [attRes, holRes, leaveRes, expRes] = await Promise.all([
                 fetch(`/api/monthly-records?startDate=${startDate}&endDate=${endDate}${employeeIdParam}`, { headers: authHeaders }),
                 fetch('/holidays/api', { headers: authHeaders }),
-                fetch('/leave-requests/api', { headers: authHeaders }),
+                fetch(`/leave-requests/api?username=${encodeURIComponent(username)}&status=APPROVED&size=10000`, { headers: authHeaders }),
                 fetch(`/api/explanations?username=${encodedUsername}&start_date=${startDate}&end_date=${endDate}`, { headers: authHeaders })
             ]);
 
@@ -1525,20 +1529,33 @@
                     innerHtml += `<div class="badge-leave-info">✈️ ${lv.name} (${lv.session})</div>`;
                 });
 
-                if (!isHol && dayLeaves.every(lv => lv.session !== 'Cả ngày')) {
-                    if (isWeekend && recs.length === 0) {
+                // if (!isHol && dayLeaves.every(lv => lv.session !== 'Cả ngày')) {
+                //     if (isWeekend && recs.length === 0) {
+                //         innerHtml += `<div class="badge badge-weekend-rest">🌿 Nghỉ cuối tuần</div>`;
+                //     } else if (recs.length === 0) {
+                //         innerHtml += `<div class="badge badge-miss">— Chưa có dữ liệu</div>`;
+                //     } else if (recs.length === 1) {
+                //         innerHtml += buildShiftBlockHtml(recs[0], 0, 1, isWeekend);
+                //     } else {
+                //         innerHtml += `<div class="multi-shift-badge">🔄 ${recs.length} ca</div><div class="shifts-row">`;
+                //         recs.forEach((rec, idx) => innerHtml += buildShiftBlockHtml(rec, idx, recs.length, isWeekend));
+                //         innerHtml += `</div>`;
+                //     }
+                // }
+
+                if (!isHol) {
+                    if (isWeekend && recs.length === 0 && dayLeaves.length === 0) {
                         innerHtml += `<div class="badge badge-weekend-rest">🌿 Nghỉ cuối tuần</div>`;
-                    } else if (recs.length === 0) {
+                    } else if (recs.length === 0 && dayLeaves.length === 0) {
                         innerHtml += `<div class="badge badge-miss">— Chưa có dữ liệu</div>`;
                     } else if (recs.length === 1) {
                         innerHtml += buildShiftBlockHtml(recs[0], 0, 1, isWeekend);
-                    } else {
+                    } else if (recs.length > 1) {
                         innerHtml += `<div class="multi-shift-badge">🔄 ${recs.length} ca</div><div class="shifts-row">`;
                         recs.forEach((rec, idx) => innerHtml += buildShiftBlockHtml(rec, idx, recs.length, isWeekend));
                         innerHtml += `</div>`;
                     }
                 }
-
                 let explainBtns = '';
                 if (recs.length === 1 && !isHol && dayLeaves.length === 0) {
                     const rec = recs[0];
@@ -1559,7 +1576,8 @@
                     });
                 }
 
-                const leaveBtn = isViewingOtherUser ? '' : `<button class="btn-day btn-day-leave" onclick="event.stopPropagation();openLeaveModal('${dateStr}')">✈️ Xin nghỉ</button>`;
+                const hasFullDayLeave = dayLeaves.some(lv => lv.session === 'Cả ngày');
+                const leaveBtn = (isViewingOtherUser || hasFullDayLeave) ? '' : `<button class="btn-day btn-day-leave" onclick="event.stopPropagation();openLeaveModal('${dateStr}')">✈️ Xin nghỉ</button>`;
                 const actionsHtml = `<div class="day-actions">${explainBtns}${leaveBtn}</div>`;
 
                 let dotsHtml = '<div class="mobile-dots">';
@@ -1707,7 +1725,8 @@
         }
 
         const leaveBtn = document.getElementById('sheet-leave-btn');
-        if (isViewingOtherUser) {
+        const hasFullDayLeave = dayLeaves.some(lv => lv.session === 'Cả ngày');
+        if (isViewingOtherUser || hasFullDayLeave) {
             leaveBtn.style.display = 'none';
         } else {
             leaveBtn.style.display = '';
