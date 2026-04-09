@@ -67,6 +67,7 @@ app = FastAPI(title="BND HRM AI Face Recognition", lifespan=lifespan)
 # ==========================================
 # 2. MIDDLEWARE ĐO THỜI GIAN & GHI LOG
 # ==========================================
+@app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
     
