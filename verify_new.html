@@ -66,65 +66,25 @@
             line-height: 1.4;
         }
 
-        .distance-meter {
+        /* THANH GỒNG (HOLD METER) */
+        .hold-meter {
             width: 100%;
-            height: 6px;
-            background: #334155;
-            border-radius: 10px;
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
             margin-top: 15px;
             overflow: hidden;
             position: relative;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
 
-        #distanceFill {
+        #holdFill {
             width: 0%;
             height: 100%;
-            background: var(--primary);
-            transition: width 0.3s ease, background 0.3s ease;
-        }
-
-        /* Frame progress indicators */
-        .frame-progress {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin-top: 10px;
-            padding: 5px;
-        }
-
-        .frame-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: #334155;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-
-        .frame-dot.active {
-            background: var(--success);
+            background: linear-gradient(90deg, var(--warning), var(--success));
+            transition: width 0.15s linear;
             box-shadow: 0 0 15px var(--success);
-            transform: scale(1.2);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .frame-dot.processing {
-            background: var(--primary);
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-
-            50% {
-                opacity: 0.7;
-                transform: scale(1.1);
-            }
         }
 
         .main-wrapper {
@@ -149,25 +109,26 @@
             transform: scaleX(-1);
         }
 
-        .guide-overlay {
+        /* MẶT NẠ CHUYÊN NGHIỆP - TÍCH HỢP CSS TRƯỢT MƯỢT MÀ KHI BẤM NÚT */
+        .face-mask {
             position: absolute;
-            top: 50%;
+            top: 50%; /* Vị trí mặc định */
             left: 50%;
             transform: translate(-50%, -50%);
-            pointer-events: none;
-            border: 2px dashed rgba(255, 255, 255, 0.3);
-            border-radius: 50% / 45%;
             width: 260px;
-            height: 340px;
-            transition: all 0.3s;
+            height: 360px;
+            border-radius: 50% / 45%;
+            border: 3px dashed rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 0 2000px rgba(15, 23, 42, 0.8);
             z-index: 5;
+            pointer-events: none;
+            transition: top 0.4s cubic-bezier(0.25, 1, 0.5, 1), border 0.3s, box-shadow 0.3s;
         }
 
-        .guide-active {
-            border-color: var(--success);
-            box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
-            border-style: solid;
+        .face-mask.active {
+            border: 4px solid var(--success);
             background: rgba(0, 255, 136, 0.05);
+            box-shadow: 0 0 0 2000px rgba(15, 23, 42, 0.85), 0 0 30px var(--success) inset;
         }
 
         .scan-bar {
@@ -177,51 +138,53 @@
             background: linear-gradient(to bottom, transparent, var(--primary));
             box-shadow: 0 0 15px var(--primary);
             top: 0;
-            z-index: 5;
+            z-index: 6;
             animation: scan 3s ease-in-out infinite;
             opacity: 0.6;
         }
 
         @keyframes scan {
-
-            0%,
-            100% {
-                top: 5%;
-            }
-
-            50% {
-                top: 95%;
-            }
+            0%, 100% { top: 5%; }
+            50% { top: 95%; }
         }
 
-        .status-scanning {
-            color: var(--primary);
-            border-color: var(--primary);
+        /* KHỐI CHỌN CHIỀU CAO THỦ CÔNG 5 LEVEL */
+        .height-controls {
+            display: flex;
+            width: 100%;
+            max-width: 700px;
+            gap: 5px; /* Giảm gap chút để nhét 5 nút */
+            margin-top: 15px;
+            flex-shrink: 0;
         }
 
-        .status-ok {
-            color: var(--success);
-            border-color: var(--success);
-            background: rgba(0, 255, 136, 0.1);
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
-        }
-
-        .status-warning {
-            color: var(--warning);
-            border-color: var(--warning);
-        }
-
-        .status-err {
-            color: var(--error);
-            border-color: var(--error);
-            background: rgba(255, 68, 68, 0.1);
-        }
-
-        .status-sleep {
+        .btn-height {
+            flex: 1;
+            padding: 12px 2px; /* Giảm padding ngang chút */
+            background: var(--card);
+            border: 1px solid rgba(255,255,255,0.2);
             color: #94a3b8;
-            border-color: #475569;
-            background: #1e293b;
+            border-radius: 8px; /* Giảm radius chút */
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 0.8rem; /* Giảm font size chút để nhét vừa text */
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
         }
+
+        .btn-height.active {
+            background: rgba(0, 242, 255, 0.15);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+        }
+
+        .status-scanning { color: var(--primary); border-color: var(--primary); }
+        .status-ok { color: var(--success); border-color: var(--success); background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
+        .status-warning { color: var(--warning); border-color: var(--warning); }
+        .status-err { color: var(--error); border-color: var(--error); background: rgba(255, 68, 68, 0.1); }
+        .status-sleep { color: #94a3b8; border-color: #475569; background: #1e293b; }
 
         .loader {
             width: 18px;
@@ -232,17 +195,9 @@
             animation: spin 0.8s linear infinite;
         }
 
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* ================= BẢNG LỊCH SỬ ================= */
+        /* BẢNG LỊCH SỬ */
         .history-container {
             width: 100%;
             max-width: 700px;
@@ -297,12 +252,7 @@
             box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
         }
 
-        .history-time {
-            color: #cbd5e1;
-            font-family: monospace;
-            font-size: 0.75rem;
-        }
-
+        .history-time { color: #cbd5e1; font-family: monospace; font-size: 0.75rem; }
         .history-name {
             font-weight: bold;
             color: var(--success);
@@ -328,30 +278,17 @@
         }
 
         @keyframes popIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
         }
 
-        /* ================= POPUP XIN CHÀO ================= */
+        /* POPUP XIN CHÀO & POPUP RENEW */
         .popup-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(15, 23, 42, 0.9);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            backdrop-filter: blur(8px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 10000; backdrop-filter: blur(8px);
         }
 
         .popup-content {
@@ -365,106 +302,53 @@
             position: relative;
             max-width: 80%;
         }
+        
+        .popup-renew { border-color: var(--primary); box-shadow: 0 15px 40px rgba(0, 242, 255, 0.3); }
 
         .popup-close {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: #94a3b8;
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: 0.2s;
+            position: absolute; top: 10px; right: 15px;
+            background: none; border: none; color: #94a3b8; font-size: 1.5rem;
+            cursor: pointer; transition: 0.2s;
         }
-
-        .popup-close:hover {
-            color: #fff;
-            transform: scale(1.1);
-        }
-
-        .popup-icon {
-            font-size: 3.5rem;
-            margin-bottom: 10px;
-        }
-
-        .popup-title {
-            color: #fff;
-            font-size: 1.1rem;
-            margin: 0 0 5px 0;
-            font-weight: normal;
-        }
-
+        .popup-close:hover { color: #fff; transform: scale(1.1); }
+        .popup-icon { font-size: 3.5rem; margin-bottom: 10px; }
+        .popup-title { color: #fff; font-size: 1.1rem; margin: 0 0 5px 0; font-weight: normal; }
         .popup-name {
-            color: var(--success);
-            font-size: 1.8rem;
-            font-family: 'Orbitron', sans-serif;
-            margin: 0;
-            text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
-            font-weight: bold;
+            color: var(--success); font-size: 1.8rem; font-family: 'Orbitron', sans-serif;
+            margin: 0; text-shadow: 0 0 15px rgba(0, 255, 136, 0.5); font-weight: bold;
         }
 
-        /* ================= MÀN HÌNH NGỦ ĐÔNG ================= */
+        .btn-action {
+            padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold;
+            font-size: 1rem; cursor: pointer; transition: 0.2s; flex: 1; font-family: 'Roboto', sans-serif;
+        }
+        .btn-confirm { background: var(--primary); color: #000; box-shadow: 0 0 10px rgba(0, 242, 255, 0.4); }
+        .btn-confirm:hover { background: #00d4ff; transform: scale(1.05); }
+        .btn-cancel { background: #334155; color: #fff; }
+        .btn-cancel:hover { background: #475569; }
+
+        /* MÀN HÌNH NGỦ ĐÔNG */
         #sleepOverlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(15, 23, 42, 0.95);
-            z-index: 50;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(10px);
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); z-index: 50; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px); cursor: pointer;
         }
 
         .btn-wake {
-            background: var(--primary);
-            color: #000;
-            border: none;
-            padding: 18px 35px;
-            font-size: 1.2rem;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            border-radius: 40px;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            background: var(--primary); color: #000; border: none; padding: 18px 35px;
+            font-size: 1.2rem; font-family: 'Orbitron', sans-serif; font-weight: bold;
+            border-radius: 40px; cursor: pointer; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+            transition: 0.3s; display: flex; align-items: center; gap: 10px;
+            pointer-events: none; 
         }
-
-        .btn-wake:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 35px rgba(0, 242, 255, 0.8);
-        }
-
-        .sleep-text {
-            color: #94a3b8;
-            margin-top: 20px;
-            font-size: 0.95rem;
-            font-style: italic;
-        }
-
-        .icon-sleep {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            animation: float 3s ease-in-out infinite;
-        }
+        #sleepOverlay:hover .btn-wake { transform: scale(1.05); box-shadow: 0 0 35px rgba(0, 242, 255, 0.8); }
+        
+        .icon-sleep { font-size: 3rem; margin-bottom: 15px; animation: float 3s ease-in-out infinite; }
 
         @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-10px);
-            }
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
     </style>
 </head>
@@ -476,32 +360,44 @@
         <div id="resultBox" class="info status-scanning">
             <div class="loader"></div> ĐANG KHỞI TẠO CAMERA...
         </div>
-        <div class="distance-meter">
-            <div id="distanceFill"></div>
-        </div>
-        <!-- Frame progress indicators -->
-        <div class="frame-progress">
-            <div id="frame1" class="frame-dot"></div>
-            <div id="frame2" class="frame-dot"></div>
-            <div id="frame3" class="frame-dot"></div>
+        
+        <div class="hold-meter">
+            <div id="holdFill"></div>
         </div>
     </header>
 
     <div class="main-wrapper">
-        <div id="sleepOverlay">
+        <div id="sleepOverlay" onclick="wakeUp()">
             <div class="icon-sleep">💤</div>
-            <button class="btn-wake" onclick="wakeUp()">👋 CHẠM ĐỂ KHỞI ĐỘNG</button>
+            <button class="btn-wake">👋 CHẠM ĐỂ KHỞI ĐỘNG</button>
         </div>
 
-        <div class="guide-overlay" id="guideCircle"></div>
         <div class="scan-bar"></div>
         <video id="webcam" autoplay playsinline></video>
+        
+        <div id="faceMask" class="face-mask"></div>
+        
         <canvas id="cropCanvas" style="display:none;"></canvas>
+    </div>
+
+    <div class="height-controls">
+        <button class="btn-height" id="btnH1" onclick="setManualHeight(1)">Độ Cao 1</button>
+        <button class="btn-height" id="btnH2" onclick="setManualHeight(2)">Độ Cao 2</button>
+        <button class="btn-height active" id="btnH3" onclick="setManualHeight(3)">Độ Cao 3</button>
+        <button class="btn-height" id="btnH4" onclick="setManualHeight(4)">Độ Cao 4</button>
+        <button class="btn-height" id="btnH5" onclick="setManualHeight(5)">Độ Cao 5</button>
     </div>
 
     <div class="history-container">
         <div class="history-title"><span style="color:var(--success)">●</span> Danh sách chấm công thành công</div>
         <ul class="history-list" id="historyList"></ul>
+
+        <div id="debugBox" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); border: 2px solid var(--warning); padding: 10px; border-radius: 10px; z-index: 9999; text-align: center; display: none;">
+            <button onclick="document.getElementById('debugBox').style.display='none'" style="position: absolute; top: -10px; right: -10px; background: var(--error); color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 5px rgba(0,0,0,0.5);">✖</button>
+            
+            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; color: var(--warning);">👁️ ẢNH ĐÃ CHỤP</p>
+            <img id="debugImg" src="" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid #fff;" />
+        </div>
     </div>
 
     <div class="popup-overlay" id="successPopup" onclick="closePopup()">
@@ -513,37 +409,122 @@
         </div>
     </div>
 
+    <div class="popup-overlay" id="renewPopup">
+        <div class="popup-content popup-renew">
+            <div class="popup-icon">🔄</div>
+            <p class="popup-title" style="color: var(--primary); font-weight: bold;">CẬP NHẬT DIỆN MẠO</p>
+            <p id="renewMessage" style="color: #cbd5e1; margin: 15px 0 25px 0; font-size: 1.1rem; line-height: 1.5;">
+                ...
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center; margin-top: 10px;">
+                <button class="btn-action btn-cancel" onclick="cancelRenew()">KHÔNG PHẢI TÔI</button>
+                <button class="btn-action btn-confirm" onclick="submitRenew()">ĐÚNG LÀ TÔI</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const video = document.getElementById('webcam');
+        const faceMask = document.getElementById('faceMask');
         const resultBox = document.getElementById('resultBox');
-        const distanceFill = document.getElementById('distanceFill');
-        const guideCircle = document.getElementById('guideCircle');
+        const holdFill = document.getElementById('holdFill');
         const cropCanvas = document.getElementById('cropCanvas');
         const historyList = document.getElementById('historyList');
 
-        let lastProcessingTime = 0;
         let isProcessing = false;
         let lastDetection = null;
         let isFaceDetectionRunning = false;
         let currentPublicIp = '';
         let popupTimer = null;
 
-        let sleepTimer = null;
+        // ==========================================
+        // KHỐI QUẢN LÝ SLEEP (CƠ CHẾ TIMESTAMP BẤT TỬ)
+        // ==========================================
         let isSleeping = false;
-        const IDLE_TIMEOUT = 5 * 60 * 1000;
+        let lastActiveTime = Date.now();
+        const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 phút
 
-        // Multiple frames variables
+        function keepAwake() {
+            lastActiveTime = Date.now();
+        }
+
+        ['touchstart', 'mousedown', 'click'].forEach(evt => 
+            document.addEventListener(evt, () => {
+                if (!isSleeping) keepAwake();
+            })
+        );
+
+        setInterval(() => {
+            if (!isSleeping && (Date.now() - lastActiveTime > IDLE_TIMEOUT)) {
+                enterSleepMode();
+            }
+        }, 1000);
+
+        // ==========================================
+        // LOGIC NÚT ĐIỀU CHỈNH ĐỘ CAO MẶT NẠ 5 LEVEL (Sửa lại Level)
+        // 1: Thấp nhất, 5: Cao nhất
+        // ==========================================
+        let maskOffsetPercent = 50; 
+
+        function setManualHeight(level) {
+            keepAwake();
+            if (isApiLocked) return;
+
+            document.querySelectorAll('.btn-height').forEach(btn => btn.classList.remove('active'));
+
+            if (level === 1) {
+                maskOffsetPercent = 65; // Đẩy xuống thấp nhất
+                document.getElementById('btnH1').classList.add('active');
+            } else if (level === 2) {
+                maskOffsetPercent = 57.5; // Hơi thấp
+                document.getElementById('btnH2').classList.add('active');
+            } else if (level === 4) {
+                maskOffsetPercent = 42.5; // Hơi cao
+                document.getElementById('btnH4').classList.add('active');
+            } else if (level === 5) {
+                maskOffsetPercent = 35; // Cao nhất
+                document.getElementById('btnH5').classList.add('active');
+            } else {
+                maskOffsetPercent = 50; // Giữa
+                document.getElementById('btnH3').classList.add('active');
+            }
+
+            // Lưu vào localStorage
+            localStorage.setItem('maskHeightLevel', level);
+
+            // Cập nhật vị trí UI
+            faceMask.style.top = `${maskOffsetPercent}%`;
+        }
+
+        // Đọc cấu hình khi load
+        const savedHeightLevel = localStorage.getItem('maskHeightLevel');
+        if (savedHeightLevel) {
+            setManualHeight(parseInt(savedHeightLevel));
+        }
+
+        // ==========================================
+
         let consecutiveGoodFrames = 0;
-        const REQUIRED_GOOD_FRAMES = 3; // Số frame tốt liên tiếp cần đạt
-        let lastProcessedFrameTime = 0;
-        let hasCalledAPIForCurrentSession = false; // FIX Bug 1: khai báo ngoài callback
+        let isLoopRunning = false;
+        let emptyFrames = 0;
+        let isFetchingAPI = false;
+        let lastAttemptTime = 0;
+        let isApiLocked = false;
 
-        // FIX Bug 6: Cooldown per-user (30 giây)
         const USER_COOLDOWN_MS = 30 * 1000;
         const userCooldowns = {};
+        
+        let pendingRenewData = null;
 
-        // FIX Bug 3: Kiểm tra độ sắc nét ảnh (Laplacian Variance)
-        const SHARPNESS_THRESHOLD = 80;
+        // Tăng thời gian yêu cầu giữ cố định
+        const REQUIRED_GOOD_FRAMES = 65;  
+        const SHARPNESS_THRESHOLD = 75;   
+        
+        // Dung sai
+        const MASK_TOLERANCE_Y = 0.15; 
+        const CENTER_X_MIN = 0.35; const CENTER_X_MAX = 0.65; 
+        const FACE_MIN_SIZE = 0.25; const FACE_MAX_SIZE = 0.55; 
+
         function isImageSharp(canvas, threshold = SHARPNESS_THRESHOLD) {
             try {
                 const ctx = canvas.getContext('2d');
@@ -566,52 +547,26 @@
                 }
                 const mean = sum / count;
                 const variance = (sumSq / count) - (mean * mean);
-                console.log(`Sharpness score: ${variance.toFixed(1)}`);
                 return variance > threshold;
             } catch (e) {
-                return true; // Nếu lỗi thì cho qua
+                return true;
             }
         }
-
-        const FACE_MIN_SIZE = 0.30;
-        const FACE_MAX_SIZE = 0.55;
-        const CENTER_X_MIN = 0.4;
-        const CENTER_X_MAX = 0.6;
-        const CENTER_Y_MIN = 0.38;
-        const CENTER_Y_MAX = 0.62;
 
         const faceDetection = new FaceDetection({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
         });
 
-        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.85 });
-
-        // Function to update frame progress UI
-        function updateFrameProgress(count) {
-            const dots = ['frame1', 'frame2', 'frame3'];
-            dots.forEach((id, index) => {
-                const dot = document.getElementById(id);
-                if (dot) {
-                    if (index < count) {
-                        dot.classList.add('active');
-                        dot.classList.remove('processing');
-                    } else {
-                        dot.classList.remove('active');
-                        if (isProcessing && index === count) {
-                            dot.classList.add('processing');
-                        } else {
-                            dot.classList.remove('processing');
-                        }
-                    }
-                }
-            });
-        }
+        faceDetection.setOptions({ model: 'full', minDetectionConfidence: 0.60 });
 
         faceDetection.onResults((results) => {
             isFaceDetectionRunning = false;
 
+            // Bỏ qua nếu API đang bận hoặc hệ thống bị khóa
+            if (isApiLocked || isFetchingAPI) return;
+
             if (results.detections.length > 0) {
-                resetSleepTimer();
+                emptyFrames = 0;
 
                 const detection = results.detections[0];
                 lastDetection = detection.boundingBox;
@@ -621,13 +576,17 @@
                 const faceX = lastDetection.xCenter;
                 const faceY = lastDetection.yCenter;
 
-                distanceFill.style.width = (faceSize * 100) + "%";
+                if (faceSize > 0.15) {
+                    keepAwake();
+                }
 
-                const isCentered = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX) &&
-                    (faceY > CENTER_Y_MIN && faceY < CENTER_Y_MAX);
+                const targetY = maskOffsetPercent / 100;
+                const isCenteredY = Math.abs(faceY - targetY) < MASK_TOLERANCE_Y;
+                const isCenteredX = (faceX > CENTER_X_MIN && faceX < CENTER_X_MAX);
+                const isCentered = isCenteredX && isCenteredY;
 
                 let isStraight = true;
-                let poseWarning = ""; // FIX Bug 2: khai báo poseWarning
+                let poseWarning = "";
 
                 if (landmarks && landmarks.length >= 3) {
                     const eyeR = landmarks[0];
@@ -637,7 +596,7 @@
                     const eyeDistX = Math.abs(eyeL.x - eyeR.x);
                     const eyeDistY = Math.abs(eyeL.y - eyeR.y);
 
-                    if (eyeDistY / eyeDistX > 0.25) {
+                    if (eyeDistY / eyeDistX > 0.15) {
                         isStraight = false;
                         poseWarning = `⚠️ VUI LÒNG GIỮ THẲNG ĐẦU`;
                     }
@@ -645,88 +604,69 @@
                         const noseDistL = Math.abs(nose.x - eyeL.x);
                         const noseDistR = Math.abs(nose.x - eyeR.x);
 
-                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.25) { // FIX Bug 5: 0.35 → 0.25
+                        if (Math.abs(noseDistL - noseDistR) / eyeDistX > 0.15) {
                             isStraight = false;
                             poseWarning = `⚠️ VUI LÒNG NHÌN THẲNG CAMERA`;
                         }
                     }
                 }
 
+                let isValid = true;
+                let currentWarning = "";
+
                 if (!isCentered) {
-                    guideCircle.classList.remove('guide-active');
-                    consecutiveGoodFrames = 0;
-                    console.log("is not centered , consecutiveGoodFrames = 0");
-                    updateFrameProgress(0);
-                    if (!isProcessing) {
-                        resultBox.className = "info status-warning";
-                        resultBox.innerHTML = `⚠️ HÃY ĐƯA MẶT VÀO GIỮA KHUNG`;
-                    }
+                    isValid = false;
+                    currentWarning = `⚠️ VUI LÒNG ĐƯA MẶT VÀO GIỮA KHUNG HÌNH`;
+                } else if (!isStraight) {
+                    isValid = false;
+                    currentWarning = poseWarning;
+                } else if (faceSize < FACE_MIN_SIZE) {
+                    isValid = false;
+                    currentWarning = `⚠️ VUI LÒNG LẠI GẦN CAMERA HƠN`;
+                } else if (faceSize > FACE_MAX_SIZE) {
+                    isValid = false;
+                    currentWarning = `⚠️ VUI LÒNG ĐỨNG XA RA CHÚT`;
                 }
-                else if (!isStraight) {
-                    guideCircle.classList.remove('guide-active');
-                    consecutiveGoodFrames = 0;
-                    console.log("is not straight , consecutiveGoodFrames = 0")
-                    updateFrameProgress(0);
-                    if (!isProcessing) {
-                        resultBox.className = "info status-warning";
-                        resultBox.innerHTML = poseWarning;
-                    }
-                }
-                else if (faceSize < FACE_MIN_SIZE) {
-                    guideCircle.classList.remove('guide-active');
-                    consecutiveGoodFrames = 0;
-                    console.log("is not facesizemin , consecutiveGoodFrames = 0")
-                    updateFrameProgress(0);
-                    if (!isProcessing) {
-                        resultBox.className = "info status-warning";
-                        resultBox.innerHTML = `⚠️ VUI LÒNG LẠI GẦN CAMERA HƠN`;
-                    }
-                }
-                else if (faceSize > FACE_MAX_SIZE) {
-                    guideCircle.classList.remove('guide-active');
-                    consecutiveGoodFrames = 0;
-                    console.log("is not facesizemax , consecutiveGoodFrames = 0")
-                    updateFrameProgress(0);
-                    if (!isProcessing) {
-                        resultBox.className = "info status-warning";
-                        resultBox.innerHTML = `⚠️ VUI LÒNG ĐỨNG XA RA CHÚT`;
-                    }
-                }
-                else {
-                    guideCircle.classList.add('guide-active');
 
-                    // Chỉ tăng counter nếu không đang xử lý và chưa gọi API cho phiên này
-                    if (!isProcessing && !hasCalledAPIForCurrentSession) {
+                if (!isValid) {
+                    consecutiveGoodFrames = 0;
+                    holdFill.style.width = "0%";
+                    faceMask.classList.remove('active');
+                    
+                    if (!isProcessing) {
+                        resultBox.className = "info status-warning";
+                        resultBox.innerHTML = currentWarning;
+                    }
+                } else {
+                    if (!isProcessing) {
+                        faceMask.classList.add('active');
                         consecutiveGoodFrames = Math.min(consecutiveGoodFrames + 1, REQUIRED_GOOD_FRAMES);
-                        updateFrameProgress(consecutiveGoodFrames);
-                        console.log("valid frame , consecutiveGoodFrames = " + consecutiveGoodFrames);
-                    }
+                        const percent = (consecutiveGoodFrames / REQUIRED_GOOD_FRAMES) * 100;
+                        holdFill.style.width = `${percent}%`;
 
-                    const now = Date.now();
-
-                    // Hiển thị tiến trình
-                    if (!isProcessing && !hasCalledAPIForCurrentSession && consecutiveGoodFrames < REQUIRED_GOOD_FRAMES) {
-                        resultBox.className = "info status-scanning";
-                        resultBox.innerHTML = `📸 ĐANG XÁC NHẬN... ${consecutiveGoodFrames}/${REQUIRED_GOOD_FRAMES}`;
-                    }
-
-                    // Gọi API khi đủ điều kiện
-                    if (!isProcessing && !hasCalledAPIForCurrentSession && consecutiveGoodFrames >= REQUIRED_GOOD_FRAMES) {
-                        console.log("🎯 ĐỦ 3 FRAME - GỌI API");
-                        hasCalledAPIForCurrentSession = true;
-                        sendToAPI();
-                        lastProcessedFrameTime = now;
+                        if (consecutiveGoodFrames < REQUIRED_GOOD_FRAMES) {
+                            resultBox.className = "info status-scanning";
+                            resultBox.innerHTML = `📸 HÃY GIỮ YÊN TƯ THẾ NHÌN THẲNG...`;
+                        } else {
+                            resultBox.className = "info status-scanning";
+                            resultBox.innerHTML = `✅ ĐANG LẤY ẢNH...`;
+                            sendToAPI(); 
+                        }
                     }
                 }
-            } else {
-                lastDetection = null;
-                distanceFill.style.width = "0%";
-                guideCircle.classList.remove('guide-active');
 
-                // Reset counter khi mất khuôn mặt
+            } else {
+                emptyFrames++;
+                if (emptyFrames > 15) {
+                    consecutiveGoodFrames = 0;
+                    holdFill.style.width = "0%";
+                    faceMask.classList.remove('active');
+                }
+
+                lastDetection = null;
                 consecutiveGoodFrames = 0;
-                console.log("reset frame , consecutiveGoodFrames = " + consecutiveGoodFrames)
-                updateFrameProgress(0);
+                holdFill.style.width = "0%";
+                faceMask.classList.remove('active');
 
                 if (!isProcessing && !isSleeping) {
                     resultBox.className = "info status-scanning";
@@ -735,46 +675,46 @@
             }
         });
 
-        function resetSleepTimer() {
-            if (sleepTimer) clearTimeout(sleepTimer);
-            if (!isSleeping) {
-                sleepTimer = setTimeout(enterSleepMode, IDLE_TIMEOUT);
-            }
-        }
-
         function enterSleepMode() {
-            console.log("Hệ thống nhàn rỗi -> Vào chế độ ngủ đông!");
             isSleeping = true;
-
             if (video.srcObject) {
                 video.srcObject.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
             }
-
             document.getElementById('sleepOverlay').style.display = 'flex';
             document.getElementById('resultBox').className = "info status-sleep";
             document.getElementById('resultBox').innerHTML = "💤 HỆ THỐNG ĐANG TẠM NGHỈ";
-
-            guideCircle.classList.remove('guide-active');
-            distanceFill.style.width = "0%";
-
-            // Reset frame progress
             consecutiveGoodFrames = 0;
-            updateFrameProgress(0);
+            holdFill.style.width = "0%";
+            faceMask.classList.remove('active');
+            
+            // Tạm thời trả về level 3 khi ngủ, nhưng không lưu đè cấu hình local
+            document.querySelectorAll('.btn-height').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btnH3').classList.add('active');
+            faceMask.style.top = `50%`;
+            maskOffsetPercent = 50;
         }
 
         async function wakeUp() {
-            console.log("Đánh thức hệ thống!");
+            if (!isSleeping) return; 
             isSleeping = false;
+            keepAwake(); 
+            
+            // Phục hồi lại vị trí đã lưu
+            const savedHeightLevel = localStorage.getItem('maskHeightLevel');
+            if (savedHeightLevel) {
+                setManualHeight(parseInt(savedHeightLevel));
+            }
 
             document.getElementById('sleepOverlay').style.display = 'none';
             document.getElementById('resultBox').className = "info status-scanning";
             document.getElementById('resultBox').innerHTML = `<div class="loader"></div> ĐANG KHỞI ĐỘNG LẠI CAMERA...`;
-
             await startCamera();
-            resetSleepTimer();
         }
 
+        // ==============================================================
+        // PHẦN CROP GIỮ NGUYÊN GỐC 100%: Cắt thành hình vuông quanh tâm khuôn mặt
+        // ==============================================================
         function captureCroppedFace() {
             if (!lastDetection) return null;
 
@@ -782,7 +722,8 @@
             const videoH = video.videoHeight;
             let { xCenter, yCenter, width, height } = lastDetection;
 
-            const padding = 0.25;
+            const padding = 0.25; 
+            
             let cropW = width * (1 + padding) * videoW;
             let cropH = height * (1 + padding) * videoH;
 
@@ -817,7 +758,7 @@
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
 
-            return tempCanvas.toDataURL('image/jpeg', 0.7);
+            return tempCanvas.toDataURL('image/jpeg', 0.6);
         }
 
         function addHistoryItem(userId, probability) {
@@ -843,41 +784,114 @@
             popup.style.display = 'flex';
 
             if (popupTimer) clearTimeout(popupTimer);
-
-            popupTimer = setTimeout(() => {
-                closePopup();
-            }, 1500);
+            popupTimer = setTimeout(() => { closePopup(); }, 1500);
         }
 
         function closePopup() {
             document.getElementById('successPopup').style.display = 'none';
         }
 
-        async function sendToAPI() {
-            isProcessing = true;
+        // ==============================================================
+        // PHỤC HỒI HOÀN TOÀN TÍNH NĂNG AUTO-RENEW
+        // ==============================================================
+        async function submitRenew() {
+            if (!pendingRenewData) return;
+            
+            document.getElementById('renewPopup').style.display = 'none';
             resultBox.className = "info status-scanning";
-            resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
-            updateFrameProgress(REQUIRED_GOOD_FRAMES);
+            resultBox.innerHTML = `<div class="loader"></div> ĐANG CẬP NHẬT DỮ LIỆU...`;
 
             try {
-                const croppedImage = captureCroppedFace();
-                const fullImage = captureFullFrame();
+                const response = await fetch(`/api/confirm-renew`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pendingRenewData)
+                });
+                const resData = await response.json();
 
-                if (!croppedImage || !fullImage) {
-                    throw new Error("Không capture được ảnh");
+                if (resData.status === "success") {
+                    resultBox.className = "info status-ok";
+                    resultBox.innerHTML = `✅ CẬP NHẬT & CHẤM CÔNG THÀNH CÔNG`;
+                    triggerSuccessPopup(pendingRenewData.user_id);
+                    addHistoryItem(pendingRenewData.user_id, "100% (Mới)");
+                } else {
+                    resultBox.className = "info status-err";
+                    resultBox.innerHTML = `⚠️ LỖI CẬP NHẬT: ${resData.message}`;
                 }
-
-                // FIX Bug 3: Kiểm tra độ sắc nét trước khi gửi API
-                if (!isImageSharp(cropCanvas)) {
-                    resultBox.className = "info status-warning";
-                    resultBox.innerHTML = `⚠️ ẢNH CHƯA RÕ NÉT, VUI LÒNG ĐỨNG YÊN`;
+            } catch (e) {
+                resultBox.className = "info status-err";
+                resultBox.innerHTML = `⚠️ LỖI KẾT NỐI SERVER`;
+            } finally {
+                pendingRenewData = null;
+                setTimeout(() => {
+                    isApiLocked = false;
                     isProcessing = false;
-                    hasCalledAPIForCurrentSession = false;
+                    isFetchingAPI = false;
                     consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
-                    return;
+                    holdFill.style.width = "0%";
+                    faceMask.classList.remove('active');
+                }, 1500);
+            }
+        }
+
+        function cancelRenew() {
+            document.getElementById('renewPopup').style.display = 'none';
+            pendingRenewData = null;
+            
+            resultBox.className = "info status-warning";
+            resultBox.innerHTML = `⚠️ ĐÃ TỪ CHỐI CẬP NHẬT`;
+
+            setTimeout(() => {
+                isApiLocked = false;
+                isProcessing = false;
+                isFetchingAPI = false;
+                consecutiveGoodFrames = 0;
+                holdFill.style.width = "0%";
+                faceMask.classList.remove('active');
+            }, 800);
+        }
+
+        async function sendToAPI() {
+            const now = Date.now();
+            
+            if (isFetchingAPI || isApiLocked) return;
+            if (now - lastAttemptTime < 800) return;
+
+            isFetchingAPI = true;
+            isProcessing = true;
+            lastAttemptTime = now;
+
+            resultBox.className = "info status-scanning";
+            resultBox.innerHTML = `<div class="loader"></div> ĐANG PHÂN TÍCH AI...`;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            let isRenewFlow = false; 
+
+            const croppedImage = captureCroppedFace();
+            const fullImage = captureFullFrame(); 
+
+            try {
+
+                if (!isImageSharp(croppedImage, SHARPNESS_THRESHOLD)) {
+                    resultBox.className = "info status-warning";
+                    resultBox.innerHTML = `⚠️ ẢNH BỊ RUNG MỜ, VUI LÒNG ĐỨNG YÊN TƯ THẾ`;
+                    
+                    consecutiveGoodFrames = 0;
+                    holdFill.style.width = "0%";
+                    faceMask.classList.remove('active');
+                    
+                    setTimeout(() => { isApiLocked = false; isProcessing = false; isFetchingAPI = false; }, 800); 
+                    clearTimeout(timeoutId);
+                    return; 
                 }
 
+                if (!croppedImage || !fullImage) throw new Error("Không capture được ảnh");
+
+                document.getElementById('debugBox').style.display = 'block';
+                document.getElementById('debugImg').src = croppedImage;
+            
                 const response = await fetch(`/recognize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -885,53 +899,82 @@
                         image_base64: croppedImage,
                         full_image_base64: fullImage,
                         client_public_ip: currentPublicIp,
-                        attendance_type: 'Tập trung v2'
-                    })
+                        attendance_type: 'Tập trung v3'
+                    }),
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
                 const data = await response.json();
 
-                if (data.recognized) {
-                    // FIX Bug 6: Kiểm tra cooldown per-user
-                    const now = Date.now();
-                    if (userCooldowns[data.user_id] && now - userCooldowns[data.user_id] < USER_COOLDOWN_MS) {
+                if (data.recognized === true) {
+                    const checkTime = Date.now();
+                    if (userCooldowns[data.user_id] && checkTime - userCooldowns[data.user_id] < USER_COOLDOWN_MS) {
                         resultBox.className = "info status-ok";
                         resultBox.innerHTML = `✅ ${data.user_id.toUpperCase()} ĐÃ CHẤM CÔNG`;
                     } else {
-                        userCooldowns[data.user_id] = now;
+                        userCooldowns[data.user_id] = checkTime;
                         resultBox.className = "info status-ok";
                         resultBox.innerHTML = `✅ XIN CHÀO: ${data.user_id.toUpperCase()}`;
                         addHistoryItem(data.user_id, data.match_probability);
                         triggerSuccessPopup(data.user_id.toUpperCase());
                     }
-                } else {
-                    // FIX Bug 4: Reset ngay khi không nhận ra
-                    consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
+                } 
+                // BẮT MÃ LỆNH AUTO RENEW TỪ BACKEND
+                else if (data.recognized === "verify_renew") {
+                    isRenewFlow = true; 
+                    isApiLocked = true;
+                    
+                    pendingRenewData = {
+                        user_id: data.user_id,
+                        image_base64: croppedImage,
+                        full_image_base64: fullImage,
+                        client_public_ip: currentPublicIp,
+                        attendance_type: 'Tập trung v3'
+                    };
+
+                    document.getElementById('renewMessage').innerHTML = `Hệ thống nhận diện bạn là:<br><b style="font-size: 1.4rem; color: #fff;">${data.user_id.toUpperCase()}</b><br><br>Nhưng diện mạo của bạn có vẻ đã thay đổi.<br>Bạn có muốn lưu khuôn mặt này làm mặc định không?`;
+                    document.getElementById('renewPopup').style.display = 'flex';
+                }
+                else {
                     resultBox.className = "info status-warning";
-                    resultBox.innerHTML = `⚠️ KHÔNG NHẬN DIỆN ĐƯỢC`;
+                    resultBox.innerHTML = `⚠️ KHÔNG NHẬN DIỆN ĐƯỢC - ĐANG THỬ LẠI...`;
                 }
 
             } catch (e) {
+                clearTimeout(timeoutId);
                 console.error("Lỗi API:", e);
                 resultBox.className = "info status-err";
-                resultBox.innerHTML = `⚠️ LỖI KẾT NỐI`;
+                if (e.name === 'AbortError') {
+                    resultBox.innerHTML = `⚠️ MÁY CHỦ PHẢN HỒI QUÁ LÂU - ĐANG THỬ LẠI...`;
+                } else {
+                    resultBox.innerHTML = `⚠️ LỖI KẾT NỐI - ĐANG THỬ LẠI...`;
+                }
             } finally {
-                // Reset sau 2 giây để người dùng có thời gian đọc kết quả
-                setTimeout(() => {
-                    isProcessing = false;
-                    hasCalledAPIForCurrentSession = false;
-                    consecutiveGoodFrames = 0;
-                    updateFrameProgress(0);
-                    console.log("🔄 RESET HỆ THỐNG, SẴN SÀNG CHẤM CÔNG MỚI");
-                }, 2000);
+                if (!isRenewFlow) {
+                    setTimeout(() => {
+                        isApiLocked = false;
+                        isProcessing = false;
+                        isFetchingAPI = false;
+                        consecutiveGoodFrames = 0;
+                        holdFill.style.width = "0%";
+                        faceMask.classList.remove('active');
+                    }, 1000); 
+                }
             }
         }
 
         async function processVideoFrame() {
-            if (!isSleeping && video.readyState >= 2 && !isFaceDetectionRunning) {
+            // Chặn Canvas khi ngủ, khi stream chưa sẵn sàng, hoặc khi ĐANG GỌI API
+            if (!isSleeping && video.readyState >= 2 && !isFaceDetectionRunning && !isFetchingAPI) {
                 isFaceDetectionRunning = true;
-                await faceDetection.send({ image: video });
+                try {
+                    await faceDetection.send({ image: video });
+                } catch (err) {
+                    console.error("🔥 LỖI MEDIAPIPE - Đang tải lại AI...", err);
+                    window.location.reload(true);
+                    return;
+                }
             }
             requestAnimationFrame(processVideoFrame);
         }
@@ -939,12 +982,18 @@
         async function startCamera() {
             verifyNetwork();
             try {
+                document.getElementById('resultBox').innerHTML = `<div class="loader"></div> ĐANG TẢI MÔ HÌNH AI...`;
+                await faceDetection.initialize();
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
                 });
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
-                    processVideoFrame();
+                    video.play().catch(e => console.warn("Lỗi play video:", e));
+                    if (!isLoopRunning) {
+                        isLoopRunning = true;
+                        processVideoFrame();
+                    }
                 }
             } catch (err) {
                 resultBox.className = "info status-err";
@@ -957,14 +1006,9 @@
                 const ipRes = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipRes.json();
                 currentPublicIp = ipData.ip;
-            } catch (e) {
-                console.warn("Không lấy được IP mạng: ", e);
-            }
+            } catch (e) {}
         }
 
-        // ==========================================
-        // TỰ ĐỘNG RELOAD LÚC 6H SÁNG ĐỂ BẢO TRÌ RAM
-        // ==========================================
         function schedulePeriodicReload() {
             const now = new Date();
             const currentHour = now.getHours();
@@ -977,11 +1021,8 @@
             const isMorningWindow = currentHour >= 6 && currentHour < 8;
             const isAfternoonWindow = currentHour >= 16 && currentHour < 18;
 
-            // Trường hợp 1: Nằm trong khung 6h00 - 7h59 HOẶC 16h00 - 17h59
             if (isMorningWindow || isAfternoonWindow) {
-                // Tính mốc 10 phút tiếp theo (VD: 12p -> 20p, 20p -> 30p, 55p -> 60p)
                 const next10MinMark = Math.ceil((currentMinute + 1) / 10) * 10;
-
                 if (next10MinMark === 60) {
                     targetTime.setHours(currentHour + 1);
                     targetTime.setMinutes(0);
@@ -989,34 +1030,24 @@
                     targetTime.setMinutes(next10MinMark);
                 }
             }
-            // Trường hợp 2: Trước 6h sáng -> Hẹn đúng 6h00 sáng nay
             else if (currentHour < 6) {
                 targetTime.setHours(6, 0, 0, 0);
             }
-            // Trường hợp 3: Từ 8h00 sáng đến trước 16h00 chiều -> Hẹn đúng 16h00 chiều nay
             else if (currentHour >= 8 && currentHour < 16) {
                 targetTime.setHours(16, 0, 0, 0);
             }
-            // Trường hợp 4: Từ 18h00 tối trở đi -> Hẹn đúng 6h00 sáng ngày mai
             else {
                 targetTime.setDate(targetTime.getDate() + 1);
                 targetTime.setHours(6, 0, 0, 0);
             }
 
             const msUntilReload = targetTime.getTime() - now.getTime();
-
-            console.log(`Bảo trì RAM: Tự động Reload tiếp theo vào lúc ${targetTime.toLocaleTimeString('vi-VN')}`);
-
-            setTimeout(() => {
-                console.log("Đang tiến hành tải lại trang...");
-                window.location.reload(true);
-            }, msUntilReload);
+            setTimeout(() => window.location.reload(true), msUntilReload);
         }
 
-        // Khởi động hệ thống
         startCamera();
-        resetSleepTimer();
-        schedulePeriodicReload(); // Kích hoạt bộ đếm giờ tự động Reload
+        keepAwake(); 
+        schedulePeriodicReload();
     </script>
 </body>
 
