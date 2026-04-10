@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -18,11 +18,12 @@ ACCESS_TOKEN_EXPIRE_HOURS = 87600 # Hết hạn sau 24h
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(request: Request,token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         role: str = payload.get("role")
+        request.state.user_id = username.upper()
         if username is None:
             raise HTTPException(status_code=401, detail="Phiên đăng nhập không hợp lệ")
         return {"username": username, "role": role}
