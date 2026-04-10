@@ -1047,7 +1047,7 @@
                 
                 // Cập nhật giao diện dựa theo API RBAC mới
                 document.getElementById('val_employees').innerText = stats.total_employees || 0;
-                document.getElementById('val_unique_today').innerText = stats.unique_checkins_today || 0;
+                // document.getElementById('val_unique_today').innerText = stats.unique_checkins_today || 0;
                 // Note: API hiện tại chưa trả về total_leaves, nếu backend có update thì đổi lại sau
                 document.getElementById('val_leaves').innerText = stats.total_leaves || 0;
             }
@@ -1152,6 +1152,8 @@
         // 🌟 CẬP NHẬT UI (cần thêm 2 thẻ HTML bên dưới)
         document.getElementById('statNoSchedule').innerText = noSchedule;
         document.getElementById('statSevenHours').innerText = sevenHours;
+
+        document.getElementById('val_unique_today').innerText = late + inProgress;
 
         currentPage = 1;
         renderTable();
