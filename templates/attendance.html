@@ -548,8 +548,6 @@
         tbody td[data-label="NHÂN VIÊN"] { grid-column: 2/3; background: #f8fafc; }
         tbody td[data-label="CA LÀM VIỆC"] { grid-column: 1/2; }
         tbody td[data-label="GIỜ VÀO / RA"] { grid-column: 2/3; }
-        tbody td[data-label="GIỜ THỰC TẾ"] { grid-column: 1/2; }
-        tbody td[data-label="CÔNG THỰC TẾ"] { grid-column: 2/3; }
 
         /* Hàng cuối: Vi phạm - Giải trình - Chi tiết */
         tbody td[data-label="VI PHẠM"] {
@@ -821,8 +819,8 @@
                         <th>NHÂN VIÊN</th>
                         <th>CA LÀM VIỆC</th>
                         <th>GIỜ VÀO / RA</th>
-                        <th style="text-align:center;">GIỜ THỰC TẾ</th>
-                        <th style="text-align:center;">CÔNG THỰC TẾ</th>
+                        <!-- <th style="text-align:center;">GIỜ THỰC TẾ</th>
+                        <th style="text-align:center;">CÔNG THỰC TẾ</th> -->
                         <th>VI PHẠM</th>
                         <th style="text-align:center;">GIẢI TRÌNH</th>
                         <th style="text-align:center;">CHI TIẾT</th>
@@ -1185,12 +1183,6 @@
                             <div class="time-row"><span class="time-box">Vào: ${c_in}</span>${cinImg}</div>
                             <div class="time-row"><span class="time-box" style="background:#fff1f2;color:#e11d48;border-color:#fecdd3;">Ra: ${c_out}</span>${coutImg}</div>
                         </div>
-                    </td>
-                    <td data-label="GIỜ THỰC TẾ" style="text-align:center;">
-                        <span style="font-weight:800;color:#1e293b;font-size:1.1rem;">${item.actual_hours}</span>
-                    </td>
-                    <td data-label="CÔNG THỰC TẾ" style="text-align:center;">
-                        <span style="font-weight:800;color:#1e293b;font-size:1.1rem;">${item.actual_workday}</span>
                     </td>
                     <td data-label="VI PHẠM">
                         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">
