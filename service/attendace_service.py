@@ -92,6 +92,56 @@ def calculate_shift_details(shift_dict, c_in_dt, c_out_dt, img_in, img_out):
     return c_in, c_out, resolve_final_status(status), late_min, early_min, img_in, img_out, actual_hours, actual_workday
 
 
+# --- CÁC HÀM HỖ TRỢ BUILD LOOKUP ---
+
+def _build_leave_approved_map(approved_leaves: list, leave_type_map: dict) -> dict:
+    """
+    Trải phẳng danh sách đơn nghỉ được duyệt thành dict lookup theo (username, date).
+    Trả về: { (username, date): LeaveType | None }
+    Nếu cùng 1 ngày có nhiều đơn nghỉ thì ưu tiên đơn có benefit_rate cao hơn.
+    """
+    result: dict[tuple, object] = {}
+    for leave in approved_leaves:
+        lt = leave_type_map.get(leave.type_id)
+        d = leave.from_date
+        while d <= leave.to_date:
+            key = (leave.username, d)
+            if key not in result:
+                result[key] = lt
+            else:
+                # Ưu tiên giữ loại nghỉ có benefit_rate cao hơn
+                existing_lt = result[key]
+                existing_rate = float(getattr(existing_lt, 'benefit_rate', 100) or 100) if existing_lt else 100.0
+                new_rate = float(getattr(lt, 'benefit_rate', 100) or 100) if lt else 100.0
+                if new_rate > existing_rate:
+                    result[key] = lt
+            d += timedelta(days=1)
+    return result
+
+
+def _apply_leave_to_record(rec, leave_type, cat_map: dict):
+    """
+    Áp dụng đơn nghỉ đã duyệt vào 1 bản ghi:
+    - benefit_rate > 0  → ON_LEAVE (4),   giờ/công = base * (benefit_rate / 100)
+    - benefit_rate == 0 → UNPAID_LEAVE (5), giờ/công = 0
+    """
+    benefit_rate = float(getattr(leave_type, 'benefit_rate', 100) or 100) if leave_type else 100.0
+
+    rec.status        = constants.AttendanceStatus.ON_LEAVE if benefit_rate > 0 else constants.AttendanceStatus.UNPAID_LEAVE
+    rec.late_minutes  = 0
+    rec.early_minutes = 0
+
+    cat_info = cat_map.get(rec.shift_code)
+    if cat_info:
+        base_h = float(getattr(cat_info, 'work_hours', 0.0) or 0.0)
+        base_d = float(getattr(cat_info, 'work_days', 0.0) or 0.0)
+        rec.actual_hours   = round(base_h * (benefit_rate / 100.0), 4)
+        rec.actual_workday = round(base_d * (benefit_rate / 100.0), 4)
+    else:
+        rec.actual_hours   = 0.0
+        rec.actual_workday = 0.0
+
+
 # --- CÁC HÀM XỬ LÝ CHÍNH ---
 
 def process_attendance_to_monthly(db, list_data):
@@ -149,7 +199,7 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
 
     cat_map = {c.shift_code: c for c in db.query(models.ShiftCategory).all()}
 
-    # Pre-load employee_id → username map (dùng cho explanation matching)
+    # Pre-load employee_id → username map (dùng cho explanation + leave matching)
     emp_username_map: dict[int, str] = {
         e.id: e.username
         for e in db.query(models.Employee.id, models.Employee.username)
@@ -157,17 +207,38 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
     }
 
     # Pre-load approved explanations trong khoảng ngày truy vấn
-    # status có thể lưu dạng int hoặc string → dùng in_ để chắc chắn
     approved_explanations = db.query(models.Explanation).filter(
         models.Explanation.date >= min(dates),
         models.Explanation.date <= max(dates),
         models.Explanation.status.in_(["2", 2])
     ).all()
-    # Lookup set: {(username, date)} — date phải là datetime.date
     explanation_approved_set: set[tuple] = {
         (e.username, e.date if isinstance(e.date, date) else e.date.date(), e.shift_code)
         for e in approved_explanations
     }
+
+    # ------------------------------------------------------------------
+    # Pre-load đơn nghỉ phép đã được duyệt (APPROVED) trong khoảng ngày
+    # Dùng overlap condition: from_date <= max_query AND to_date >= min_query
+    # ------------------------------------------------------------------
+    approved_leaves = db.query(models.LeaveRequest).filter(
+        models.LeaveRequest.from_date <= max(dates),
+        models.LeaveRequest.to_date   >= min(dates),
+        models.LeaveRequest.status    == "APPROVED"
+    ).all()
+
+    # Pre-load leave types để biết benefit_rate (1 query duy nhất)
+    leave_type_map: dict[int, models.LeaveType] = {}
+    if approved_leaves:
+        leave_type_ids = {lv.type_id for lv in approved_leaves}
+        leave_type_map = {
+            lt.id: lt
+            for lt in db.query(models.LeaveType)
+                        .filter(models.LeaveType.id.in_(leave_type_ids)).all()
+        }
+
+    # Trải phẳng đơn nghỉ thành lookup (username, date) → LeaveType
+    leave_approved_map = _build_leave_approved_map(approved_leaves, leave_type_map)
 
     # Pre-load VP configs một lần
     vp_configs: dict[str, str] = {
@@ -381,34 +452,32 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
             ))
 
     # ====================================================================================
-    # POST-PROCESSING — CHẠY SAU KHI CÓ ĐỦ result_records, DÙNG DATA ĐÃ PRE-LOAD
+    # POST-PROCESSING — VÒNG LẶP 1: Explanation + Leave + Status 9
+    # Thứ tự ưu tiên: Explanation (status=1) > Leave APPROVED (status=4/5) > giữ nguyên
     # ====================================================================================
     for rec in result_records:
         uname = emp_username_map.get(rec.employee_id)
+        rec_date = rec.date if isinstance(rec.date, date) else rec.date.date()
 
         # ------------------------------------------------------------------
-        # #1: Đồng bộ explanation_status
-        # Normalize rec.date về datetime.date đề phòng ORM trả về datetime
+        # #1: Explanation được duyệt → ĐÚNG GIỜ (status=1), ưu tiên cao nhất
         # ------------------------------------------------------------------
-        # ------------------------------------------------------------------
-        # #1: Đồng bộ explanation_status và CẬP NHẬT TRẠNG THÁI
-        # Normalize rec.date về datetime.date đề phòng ORM trả về datetime
-        # ------------------------------------------------------------------
-        rec_date = rec.date if isinstance(rec.date, date) else rec.date.date()
-        
         if uname and (uname, rec_date, rec.shift_code) in explanation_approved_set:
             rec.explanation_status = 1
-            rec.status = 1 # 1: Đổi trạng thái thành ĐÚNG GIỜ
-            
-            # Xóa số phút ghi nhận đi muộn / về sớm
-            rec.late_minutes = 0
+            rec.status = 1  # ĐÚNG GIỜ
+            rec.late_minutes  = 0
             rec.early_minutes = 0
-            
-            # Phục hồi lại đủ giờ công và ngày công của ca đó (nếu trước đó bị chia 2)
             cat_info = cat_map.get(rec.shift_code)
             if cat_info:
-                rec.actual_hours = float(getattr(cat_info, 'work_hours', 0.0) or 0.0)
+                rec.actual_hours   = float(getattr(cat_info, 'work_hours', 0.0) or 0.0)
                 rec.actual_workday = float(getattr(cat_info, 'work_days', 0.0) or 0.0)
+
+        # ------------------------------------------------------------------
+        # #1b: Đơn nghỉ APPROVED → ON_LEAVE (4) hoặc UNPAID_LEAVE (5)
+        # Chỉ áp dụng nếu chưa được giải trình duyệt ở trên
+        # ------------------------------------------------------------------
+        elif uname and (uname, rec_date) in leave_approved_map:
+            _apply_leave_to_record(rec, leave_approved_map[(uname, rec_date)], cat_map)
 
         # ------------------------------------------------------------------
         # #2: Status=9 → Tính late/early bị defer từ calculate_shift_details
@@ -416,7 +485,7 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
         if rec.status == 9 and rec.checkin_time and rec.checkout_time:
             cat9 = cat_map.get(rec.shift_code) if rec.shift_code else None
             if cat9:
-                checkin_deadline  = getattr(cat9, 'checkin_to', None)  or getattr(cat9, 'start_time', None)
+                checkin_deadline   = getattr(cat9, 'checkin_to', None)  or getattr(cat9, 'start_time', None)
                 checkout_threshold = getattr(cat9, 'checkout_from', None) or getattr(cat9, 'end_time', None)
 
                 if checkin_deadline:
@@ -431,88 +500,146 @@ def generate_monthly_records(db: Session, summary_list: list[schemas.AttendanceS
                     if dt_out < dt_co:
                         rec.early_minutes = int((dt_co - dt_out).total_seconds() / 60)
 
-        # ====================================================================================
-        # #3: Tính phạt công VP_ (Có tính toán số lần miễn trừ dựa trên VP_BASE)
-        # ====================================================================================
-        
-        # 3.1 Nhóm các bản ghi theo nhân viên và sắp xếp theo thời gian để tính số lần vi phạm
-        records_by_emp = defaultdict(list)
-        for rec in result_records:
-            records_by_emp[rec.employee_id].append(rec)
-            
-        for emp_id, emp_records in records_by_emp.items():
-            # Sắp xếp các bản ghi của nhân viên này theo thời gian (ngày, sau đó là giờ in)
-            emp_records.sort(key=lambda x: (x.date, x.checkin_time or time.max))
-            
-            violation_count = 0 # Bộ đếm số lần vi phạm của nhân viên trong tháng
-            
-            for rec in emp_records:
-                # 3.2 Bỏ qua nếu không phải trạng thái vi phạm
-                if rec.status not in VIOLATION_STATUSES:
-                    continue
-                    
-                rec_date = rec.date if isinstance(rec.date, date) else rec.date.date()
-                
-                # Tính số giờ thực làm (cần cho điều kiện status 6 và 9)
-                worked_hours: float | None = None
-                if rec.checkin_time and rec.checkout_time:
-                    dt_in_w  = datetime.combine(rec_date, rec.checkin_time)
-                    dt_out_w = datetime.combine(rec_date, rec.checkout_time)
+    # ====================================================================================
+    # POST-PROCESSING — VÒNG LẶP 2: Tính phạt công VP_
+    # Tách ra ngoài vòng lặp trên để:
+    #   1. Tránh shadow biến `rec`
+    #   2. Đảm bảo explanation + leave đã được áp dụng TOÀN BỘ trước khi tính VP
+    # ====================================================================================
+    records_by_emp = defaultdict(list)
+    for r in result_records:
+        records_by_emp[r.employee_id].append(r)
+
+    for emp_id, emp_records in records_by_emp.items():
+        emp_records.sort(key=lambda x: (x.date, x.checkin_time or time.max))
+        violation_count = 0
+
+        for r in emp_records:
+            if r.status not in VIOLATION_STATUSES:
+                continue
+
+            r_date = r.date if isinstance(r.date, date) else r.date.date()
+
+            worked_hours: float | None = None
+            if r.checkin_time and r.checkout_time:
+                dt_in_w  = datetime.combine(r_date, r.checkin_time)
+                dt_out_w = datetime.combine(r_date, r.checkout_time)
+                diff_sec = (dt_out_w - dt_in_w).total_seconds()
+                if diff_sec < 0:          # ca qua đêm
+                    dt_out_w += timedelta(days=1)
                     diff_sec = (dt_out_w - dt_in_w).total_seconds()
-                    if diff_sec < 0:          # ca qua đêm
-                        dt_out_w += timedelta(days=1)
-                        diff_sec = (dt_out_w - dt_in_w).total_seconds()
-                    worked_hours = diff_sec / 3600.0
+                worked_hours = diff_sec / 3600.0
 
-                # Xác định VP key
-                vp_key: str | None = None
+            vp_key: str | None = None
 
-                if rec.status == 9:
-                    if worked_hours is not None and worked_hours >= 8.0:
-                        # TRƯỜNG HỢP LÀM BÙ ĐỦ >= 8 TIẾNG:
-                        rec.actual_workday = 1.0  # Khôi phục đủ 1 công
-                        rec.actual_hours = 8.0    # Khôi phục đủ 8 giờ
-                        rec.late_minutes = 0      # Xóa lỗi đi muộn
-                        rec.early_minutes = 0     # Xóa lỗi về sớm
-                        continue  # Thoát sớm, không tăng violation_count và không tính phạt
-                
-                    else:
-                        # Làm dưới 8 tiếng thì vẫn tính là 1 lần vi phạm để xét VP_BASE
-                        vp_key = "VP_9"
-
-                elif rec.status == 6:
-                    half_shift = (rec.actual_hours or 0.0) / 2.0
-                    vp_key = "VP_6" if (worked_hours is not None and worked_hours > half_shift) else "VP_6-0.5"
-
+            if r.status == 9:
+                if worked_hours is not None and worked_hours >= 8.0:
+                    r.actual_workday = 1.0
+                    r.actual_hours   = 8.0
+                    r.late_minutes   = 0
+                    r.early_minutes  = 0
+                    continue
                 else:
-                    vp_key = f"VP_{rec.status}"   # VP_0, VP_2, VP_3, VP_8
+                    vp_key = "VP_9"
+            elif r.status == 6:
+                half_shift = (r.actual_hours or 0.0) / 2.0
+                vp_key = "VP_6" if (worked_hours is not None and worked_hours > half_shift) else "VP_6-0.5"
+            else:
+                vp_key = f"VP_{r.status}"
 
-                vp_value_str = vp_configs.get(vp_key)
-                if not vp_value_str:
-                    continue
+            vp_value_str = vp_configs.get(vp_key)
+            if not vp_value_str:
+                continue
 
-                try:
-                    vp_value = float(vp_value_str)
-                except (ValueError, TypeError):
-                    continue
-                
-                # 3.3. Tăng biến đếm số lần vi phạm
-                violation_count += 1
-                
-                # 3.4. Kiểm tra xem lần vi phạm này có được miễn trừ không
-                # vp_base là số lần được miễn. Nếu số lần vi phạm <= số lần được miễn thì bỏ qua.
-                if violation_count <= vp_base:
-                    continue # Miễn trừ, không trừ công
-                    
-                # 3.5. Tiến hành trừ công nếu đã hết số lần miễn trừ
-                penalty_ratio    = vp_value
-                original_workday = rec.actual_workday or 0.0
-                original_hours   = rec.actual_hours   or 0.0
+            try:
+                vp_value = float(vp_value_str)
+            except (ValueError, TypeError):
+                continue
 
-                rec.actual_workday = max(0.0, original_workday - penalty_ratio * original_workday)
-                rec.actual_hours   = max(0.0, original_hours   - penalty_ratio * original_hours)
+            violation_count += 1
 
-        return result_records
+            if violation_count <= vp_base:
+                continue
+
+            penalty_ratio    = vp_value
+            original_workday = r.actual_workday or 0.0
+            original_hours   = r.actual_hours   or 0.0
+            r.actual_workday = max(0.0, original_workday - penalty_ratio * original_workday)
+            r.actual_hours   = max(0.0, original_hours   - penalty_ratio * original_hours)
+
+    return result_records
+
+
+def _apply_approvals_to_records(db: Session, records: list, start_date, end_date):
+    """
+    Áp dụng giải trình + đơn nghỉ đã duyệt cho bản ghi đọc từ bảng MonthlyRecord (dữ liệu lịch sử).
+    Thứ tự ưu tiên: Explanation (status=1) > Leave APPROVED (status=4/5)
+    """
+    if not records:
+        return records
+
+    # --- Query explanation ---
+    approved_explanations = db.query(models.Explanation).filter(
+        models.Explanation.date >= start_date,
+        models.Explanation.date <= end_date,
+        models.Explanation.status.in_(["2", 2])
+    ).all()
+    explanation_approved_set = {
+        (e.username, e.date if isinstance(e.date, date) else e.date.date(), e.shift_code)
+        for e in approved_explanations
+    }
+
+    # --- Query đơn nghỉ APPROVED ---
+    approved_leaves = db.query(models.LeaveRequest).filter(
+        models.LeaveRequest.from_date <= end_date,
+        models.LeaveRequest.to_date   >= start_date,
+        models.LeaveRequest.status    == "APPROVED"
+    ).all()
+
+    leave_type_map: dict[int, models.LeaveType] = {}
+    if approved_leaves:
+        leave_type_ids = {lv.type_id for lv in approved_leaves}
+        leave_type_map = {
+            lt.id: lt
+            for lt in db.query(models.LeaveType)
+                        .filter(models.LeaveType.id.in_(leave_type_ids)).all()
+        }
+
+    leave_approved_map = _build_leave_approved_map(approved_leaves, leave_type_map)
+
+    # Thoát sớm nếu không có gì để áp dụng — tránh query thêm Employee + ShiftCategory
+    if not explanation_approved_set and not leave_approved_map:
+        return records
+
+    emp_ids = {r.employee_id for r in records}
+    emp_username_map = {
+        e.id: e.username
+        for e in db.query(models.Employee.id, models.Employee.username)
+                   .filter(models.Employee.id.in_(emp_ids)).all()
+    }
+    cat_map = {c.shift_code: c for c in db.query(models.ShiftCategory).all()}
+
+    for rec in records:
+        uname = emp_username_map.get(rec.employee_id)
+        rec_date = rec.date if isinstance(rec.date, date) else rec.date.date()
+
+        # Explanation ưu tiên cao hơn
+        if uname and (uname, rec_date, rec.shift_code) in explanation_approved_set:
+            rec.explanation_status = 1
+            rec.status = 1
+            rec.late_minutes  = 0
+            rec.early_minutes = 0
+            cat_info = cat_map.get(rec.shift_code)
+            if cat_info:
+                rec.actual_hours   = float(getattr(cat_info, 'work_hours', 0.0) or 0.0)
+                rec.actual_workday = float(getattr(cat_info, 'work_days', 0.0) or 0.0)
+
+        # Đơn nghỉ APPROVED — chỉ khi chưa có explanation
+        elif uname and (uname, rec_date) in leave_approved_map:
+            _apply_leave_to_record(rec, leave_approved_map[(uname, rec_date)], cat_map)
+
+    return records
+
 
 def get_hybrid_monthly_records(db: Session, start_date: date, end_date: date, employee_id: Optional[int] = None):
     today = date.today()
@@ -531,13 +658,16 @@ def get_hybrid_monthly_records(db: Session, start_date: date, end_date: date, em
 
     if end_date < first_day_of_this_month:
         query = db.query(models.MonthlyRecord).filter(models.MonthlyRecord.date >= start_date, models.MonthlyRecord.date <= end_date)
-        return apply_filters(query).all()
+        records = apply_filters(query).all()
+        return _apply_approvals_to_records(db, records, start_date, end_date)
     elif start_date >= first_day_of_this_month:
         return fetch_and_calculate_realtime(db, start_date, end_date, employee_id)
     else:
         last_day_prev = first_day_of_this_month - timedelta(days=1)
         past_query = db.query(models.MonthlyRecord).filter(models.MonthlyRecord.date >= start_date, models.MonthlyRecord.date <= last_day_prev)
-        result_records.extend(apply_filters(past_query).all())
+        past_records = apply_filters(past_query).all()
+        past_records = _apply_approvals_to_records(db, past_records, start_date, last_day_prev)
+        result_records.extend(past_records)
         result_records.extend(fetch_and_calculate_realtime(db, first_day_of_this_month, end_date, employee_id))
         result_records.sort(key=lambda x: (x.date, x.employee_id))
         return result_records
